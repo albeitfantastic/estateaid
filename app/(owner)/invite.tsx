@@ -17,11 +17,18 @@ import { generateId, generateInviteCode } from '@/lib/id';
 const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
 
-const ROLES: { value: InvitationRole; label: string; description: string }[] = [
-  { value: 'guest', label: 'Guest', description: 'Can view estate info and request stays' },
-  { value: 'admin', label: 'Admin', description: 'Can manage stays and tickets' },
-  { value: 'owner', label: 'Owner', description: 'Full access including estate settings' },
+const ROLES: { value: InvitationRole; label: string }[] = [
+  { value: 'guest', label: 'Guest' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'owner', label: 'Owner' },
 ];
+
+interface GeneratedInvite {
+  estateName: string;
+  estateId: string;
+  role: InvitationRole;
+  code: string;
+}
 
 function buildShareText(estateName: string, code: string, role: InvitationRole, note?: string): string {
   const noteSection = note ? `\n\n"${note}"` : '';
@@ -33,6 +40,19 @@ function buildShareText(estateName: string, code: string, role: InvitationRole, 
     `Android: ${PLAY_STORE_URL}\n\n` +
     `Enter your code after signing up.`
   );
+}
+
+function shareVia(platform: 'whatsapp' | 'telegram' | 'native', estateName: string, code: string, role: InvitationRole, note?: string) {
+  const text = buildShareText(estateName, code, role, note);
+  if (platform === 'whatsapp') {
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+  } else if (platform === 'telegram') {
+    Linking.openURL(
+      `https://t.me/share/url?url=${encodeURIComponent(APP_STORE_URL)}&text=${encodeURIComponent(text)}`
+    );
+  } else {
+    Share.share({ message: text });
+  }
 }
 
 export default function InviteUser() {
@@ -49,44 +69,48 @@ export default function InviteUser() {
     [allEstates, currentUser?.id]
   );
 
-  const [selectedEstateId, setSelectedEstateId] = useState<string | null>(
-    estates.length === 1 ? estates[0].id : null
-  );
-  const [selectedRole, setSelectedRole] = useState<InvitationRole>('guest');
+  // estateRoles: estateId → role (only selected estates appear here)
+  const [estateRoles, setEstateRoles] = useState<Record<string, InvitationRole>>({});
   const [note, setNote] = useState('');
-  const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [createdInvites, setCreatedInvites] = useState<GeneratedInvite[]>([]);
 
-  const selectedEstate = estates.find((e) => e.id === selectedEstateId);
-
-  function createInvite() {
-    if (!selectedEstateId) return;
-    const code = generateInviteCode();
-    sendInvitation({
-      id: generateId(),
-      estateId: selectedEstateId,
-      ownerId: currentUser!.id,
-      inviteCode: code,
-      role: selectedRole,
-      message: note.trim() || undefined,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
+  function toggleEstate(estateId: string) {
+    setEstateRoles((prev) => {
+      if (estateId in prev) {
+        const next = { ...prev };
+        delete next[estateId];
+        return next;
+      }
+      return { ...prev, [estateId]: 'guest' };
     });
-    setCreatedCode(code);
   }
 
-  function shareVia(platform: 'whatsapp' | 'telegram' | 'native') {
-    if (!createdCode || !selectedEstate) return;
-    const text = buildShareText(selectedEstate.name, createdCode, selectedRole, note.trim() || undefined);
-    if (platform === 'whatsapp') {
-      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
-    } else if (platform === 'telegram') {
-      Linking.openURL(
-        `https://t.me/share/url?url=${encodeURIComponent(APP_STORE_URL)}&text=${encodeURIComponent(text)}`
-      );
-    } else {
-      Share.share({ message: text });
-    }
+  function setRole(estateId: string, role: InvitationRole) {
+    setEstateRoles((prev) => ({ ...prev, [estateId]: role }));
   }
+
+  function generateCodes() {
+    const now = new Date().toISOString();
+    const invites: GeneratedInvite[] = Object.entries(estateRoles).map(([estateId, role]) => {
+      const code = generateInviteCode();
+      sendInvitation({
+        id: generateId(),
+        estateId,
+        ownerId: currentUser!.id,
+        inviteCode: code,
+        role,
+        message: note.trim() || undefined,
+        status: 'pending',
+        createdAt: now,
+      });
+      const estate = estates.find((e) => e.id === estateId)!;
+      return { estateName: estate.name, estateId, role, code };
+    });
+    setCreatedInvites(invites);
+  }
+
+  const selectedCount = Object.keys(estateRoles).length;
+  const canGenerate = selectedCount > 0;
 
   return (
     <ThemedView style={styles.container}>
@@ -95,7 +119,7 @@ export default function InviteUser() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>Invite User</ThemedText>
-        {createdCode && (
+        {createdInvites.length > 0 && (
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Done</ThemedText>
           </TouchableOpacity>
@@ -106,65 +130,76 @@ export default function InviteUser() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {!createdCode ? (
+        {createdInvites.length === 0 ? (
           <>
-            {/* Estate picker */}
+            {/* Estate multi-select with per-estate role */}
             <View style={styles.section}>
-              <ThemedText style={[styles.label, { color: colors.icon }]}>Property</ThemedText>
-              <View style={styles.pillRow}>
+              <ThemedText style={[styles.label, { color: colors.icon }]}>
+                Properties{selectedCount > 0 ? ` · ${selectedCount} selected` : ''}
+              </ThemedText>
+              <View style={styles.estateList}>
                 {estates.map((e, i) => {
-                  const selected = e.id === selectedEstateId;
+                  const isSelected = e.id in estateRoles;
                   const dotColor = EstateColors[i % EstateColors.length];
+                  const currentRole = estateRoles[e.id] ?? 'guest';
                   return (
-                    <TouchableOpacity
-                      key={e.id}
-                      style={[
-                        styles.pill,
-                        {
-                          backgroundColor: selected ? dotColor + '22' : colors.background,
-                          borderColor: selected ? dotColor : colors.icon + '33',
-                        },
-                      ]}
-                      onPress={() => { setSelectedEstateId(e.id); setCreatedCode(null); }}
-                      activeOpacity={0.75}
-                    >
-                      <View style={[styles.dot, { backgroundColor: dotColor }]} />
-                      <ThemedText style={[styles.pillText, selected && { color: dotColor, fontWeight: '600' }]}>
-                        {e.name}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Role picker */}
-            <View style={styles.section}>
-              <ThemedText style={[styles.label, { color: colors.icon }]}>Role</ThemedText>
-              <View style={styles.roleList}>
-                {ROLES.map((r) => {
-                  const selected = r.value === selectedRole;
-                  return (
-                    <TouchableOpacity
-                      key={r.value}
-                      style={[
-                        styles.roleRow,
-                        {
-                          backgroundColor: selected ? colors.tint + '12' : colors.background,
-                          borderColor: selected ? colors.tint : colors.icon + '33',
-                        },
-                      ]}
-                      onPress={() => setSelectedRole(r.value)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={styles.roleText}>
-                        <ThemedText style={[styles.roleLabel, selected && { color: colors.tint, fontWeight: '700' }]}>
-                          {r.label}
+                    <View key={e.id}>
+                      <TouchableOpacity
+                        style={[
+                          styles.estateRow,
+                          {
+                            backgroundColor: isSelected ? dotColor + '12' : colors.background,
+                            borderColor: isSelected ? dotColor : colors.icon + '33',
+                          },
+                        ]}
+                        onPress={() => toggleEstate(e.id)}
+                        activeOpacity={0.75}
+                      >
+                        <View style={[styles.estateDot, { backgroundColor: dotColor }]} />
+                        <ThemedText style={[styles.estateName, isSelected && { fontWeight: '600' }]}>
+                          {e.name}
                         </ThemedText>
-                        <ThemedText style={[styles.roleDesc, { color: colors.icon }]}>{r.description}</ThemedText>
-                      </View>
-                      {selected && <IconSymbol name="checkmark.circle.fill" size={20} color={colors.tint} />}
-                    </TouchableOpacity>
+                        <View style={[
+                          styles.checkbox,
+                          {
+                            backgroundColor: isSelected ? dotColor : 'transparent',
+                            borderColor: isSelected ? dotColor : colors.icon + '55',
+                          },
+                        ]}>
+                          {isSelected && <IconSymbol name="checkmark" size={12} color="#fff" />}
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Inline role picker shown when estate is selected */}
+                      {isSelected && (
+                        <View style={[styles.rolePicker, { borderColor: dotColor + '44', backgroundColor: dotColor + '08' }]}>
+                          <ThemedText style={[styles.rolePickerLabel, { color: colors.icon }]}>Role for {e.name}</ThemedText>
+                          <View style={styles.rolePills}>
+                            {ROLES.map((r) => {
+                              const roleSelected = currentRole === r.value;
+                              return (
+                                <TouchableOpacity
+                                  key={r.value}
+                                  style={[
+                                    styles.rolePill,
+                                    {
+                                      backgroundColor: roleSelected ? dotColor + '22' : colors.background,
+                                      borderColor: roleSelected ? dotColor : colors.icon + '33',
+                                    },
+                                  ]}
+                                  onPress={() => setRole(e.id, r.value)}
+                                  activeOpacity={0.75}
+                                >
+                                  <ThemedText style={[styles.rolePillText, roleSelected && { color: dotColor, fontWeight: '700' }]}>
+                                    {r.label}
+                                  </ThemedText>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      )}
+                    </View>
                   );
                 })}
               </View>
@@ -175,65 +210,78 @@ export default function InviteUser() {
               <ThemedText style={[styles.label, { color: colors.icon }]}>Personal Note (optional)</ThemedText>
               <TextInput
                 style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
-                placeholder="e.g. Looking forward to seeing you this summer!"
+                placeholder="e.g. Looking forward to having you!"
                 placeholderTextColor={colors.icon}
                 value={note}
                 onChangeText={setNote}
                 multiline
-                numberOfLines={4}
+                numberOfLines={3}
                 textAlignVertical="top"
               />
             </View>
 
             <TouchableOpacity
-              style={[styles.createBtn, { backgroundColor: colors.tint }, !selectedEstateId && styles.disabled]}
-              onPress={createInvite}
-              disabled={!selectedEstateId}
+              style={[styles.generateBtn, { backgroundColor: colors.tint }, !canGenerate && styles.disabled]}
+              onPress={generateCodes}
+              disabled={!canGenerate}
               activeOpacity={0.85}
             >
               <IconSymbol name="key.fill" size={18} color="#fff" />
-              <ThemedText style={styles.createBtnText}>Generate Invite Code</ThemedText>
+              <ThemedText style={styles.generateBtnText}>
+                Generate {selectedCount > 1 ? `${selectedCount} Codes` : 'Invite Code'}
+              </ThemedText>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <View style={[styles.codeCard, { backgroundColor: colors.tint + '08', borderColor: colors.tint + '40' }]}>
-              <ThemedText style={[styles.codeLabel, { color: colors.icon }]}>INVITE CODE</ThemedText>
-              <ThemedText style={[styles.code, { color: colors.tint }]}>{createdCode}</ThemedText>
-              <ThemedText style={[styles.codeHint, { color: colors.icon }]}>
-                {selectedEstate?.name} · {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
-              </ThemedText>
-              <ThemedText style={[styles.codeHint, { color: colors.icon }]}>
-                Share this code with your invitee. It can only be used once.
+            <View style={[styles.codesHeader, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '25' }]}>
+              <IconSymbol name="checkmark.circle.fill" size={20} color={colors.tint} />
+              <ThemedText style={[styles.codesHeaderText, { color: colors.tint }]}>
+                {createdInvites.length} invite code{createdInvites.length > 1 ? 's' : ''} generated
               </ThemedText>
             </View>
 
-            <ThemedText style={[styles.label, { color: colors.icon }]}>Share via</ThemedText>
+            {createdInvites.map((inv) => (
+              <View
+                key={inv.code}
+                style={[styles.codeCard, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}
+              >
+                <View style={styles.codeCardHeader}>
+                  <ThemedText type="defaultSemiBold" style={styles.codeEstate}>{inv.estateName}</ThemedText>
+                  <View style={[styles.roleBadge, { backgroundColor: colors.tint + '15' }]}>
+                    <ThemedText style={[styles.roleBadgeText, { color: colors.tint }]}>
+                      {inv.role.charAt(0).toUpperCase() + inv.role.slice(1)}
+                    </ThemedText>
+                  </View>
+                </View>
+                <ThemedText style={[styles.code, { color: colors.tint }]}>{inv.code}</ThemedText>
+                <ThemedText style={[styles.codeHint, { color: colors.icon }]}>Single-use code</ThemedText>
 
-            <TouchableOpacity
-              style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
-              onPress={() => shareVia('whatsapp')}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.shareBtnText}>WhatsApp</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.shareBtn, { backgroundColor: '#0088CC' }]}
-              onPress={() => shareVia('telegram')}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.shareBtnText}>Telegram</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.shareBtn, { backgroundColor: colors.tint }]}
-              onPress={() => shareVia('native')}
-              activeOpacity={0.85}
-            >
-              <IconSymbol name="square.and.arrow.up" size={18} color="#fff" />
-              <ThemedText style={styles.shareBtnText}>More options…</ThemedText>
-            </TouchableOpacity>
+                <View style={styles.shareRow}>
+                  <TouchableOpacity
+                    style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
+                    onPress={() => shareVia('whatsapp', inv.estateName, inv.code, inv.role, note || undefined)}
+                    activeOpacity={0.85}
+                  >
+                    <ThemedText style={styles.shareBtnText}>WhatsApp</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.shareBtn, { backgroundColor: '#0088CC' }]}
+                    onPress={() => shareVia('telegram', inv.estateName, inv.code, inv.role, note || undefined)}
+                    activeOpacity={0.85}
+                  >
+                    <ThemedText style={styles.shareBtnText}>Telegram</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.shareBtn, { backgroundColor: colors.tint }]}
+                    onPress={() => shareVia('native', inv.estateName, inv.code, inv.role, note || undefined)}
+                    activeOpacity={0.85}
+                  >
+                    <IconSymbol name="square.and.arrow.up" size={14} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
           </>
         )}
       </ScrollView>
@@ -249,23 +297,37 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 24, paddingTop: 4 },
   section: { gap: 10 },
   label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  pillText: { fontSize: 14 },
-  roleList: { gap: 8 },
-  roleRow: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1.5, gap: 12 },
-  roleText: { flex: 1, gap: 2 },
-  roleLabel: { fontSize: 15 },
-  roleDesc: { fontSize: 12 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, height: 100, paddingTop: 12 },
-  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 14, paddingVertical: 18, marginTop: 4 },
-  createBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  // Estate list
+  estateList: { gap: 8 },
+  estateRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1.5 },
+  estateDot: { width: 10, height: 10, borderRadius: 5 },
+  estateName: { flex: 1, fontSize: 15 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+
+  // Inline role picker
+  rolePicker: { marginTop: -4, marginBottom: 0, padding: 12, borderRadius: 12, borderWidth: 1, borderTopLeftRadius: 0, borderTopRightRadius: 0, gap: 8 },
+  rolePickerLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  rolePills: { flexDirection: 'row', gap: 8 },
+  rolePill: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
+  rolePillText: { fontSize: 13 },
+
+  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, height: 90, paddingTop: 12 },
+  generateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 14, paddingVertical: 18 },
+  generateBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   disabled: { opacity: 0.45 },
-  codeCard: { borderRadius: 20, borderWidth: 1.5, padding: 24, alignItems: 'center', gap: 8 },
-  codeLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
-  code: { fontSize: 36, fontWeight: '800', letterSpacing: 8 },
-  codeHint: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
-  shareBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 14, paddingVertical: 16 },
-  shareBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  // Generated codes
+  codesHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1 },
+  codesHeaderText: { fontSize: 14, fontWeight: '600' },
+  codeCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 8 },
+  codeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  codeEstate: { fontSize: 15 },
+  roleBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+  roleBadgeText: { fontSize: 12, fontWeight: '600' },
+  code: { fontSize: 28, fontWeight: '800', letterSpacing: 6 },
+  codeHint: { fontSize: 12 },
+  shareRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  shareBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 10 },
+  shareBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 });

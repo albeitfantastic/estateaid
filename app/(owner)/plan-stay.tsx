@@ -35,46 +35,61 @@ export default function PlanStay() {
   const [selectedEstateId, setSelectedEstateId] = useState<string | null>(
     estates.length === 1 ? estates[0].id : null
   );
-  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
+  const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
 
   const blockedRanges = selectedEstateId ? getBlockedRanges(selectedEstateId) : [];
 
-  const guests = useMemo(() => {
-    if (!selectedEstateId) return [];
+  // Build guest options: owner first, then accepted guests of the selected estate
+  const guestOptions = useMemo(() => {
+    const ownerEntry = currentUser
+      ? [{ id: currentUser.id, name: `${currentUser.name} (you)`, email: currentUser.email }]
+      : [];
+    if (!selectedEstateId) return ownerEntry;
     const accepted = getInvitationsByEstate(selectedEstateId).filter(
       (inv) => inv.status === 'accepted' && inv.guestId
     );
     const guestIds = [...new Set(accepted.map((inv) => inv.guestId!))];
-    return SEED_USERS.filter((u) => guestIds.includes(u.id));
-  }, [selectedEstateId, getInvitationsByEstate]);
+    const guests = SEED_USERS.filter((u) => guestIds.includes(u.id));
+    return [...ownerEntry, ...guests];
+  }, [selectedEstateId, currentUser, getInvitationsByEstate]);
 
-  // Reset guest if estate changes
   function pickEstate(id: string) {
     setSelectedEstateId(id);
-    setSelectedGuestId(null);
+    setSelectedGuestIds([]);
     setFrom(null);
     setTo(null);
   }
 
+  function toggleGuest(id: string) {
+    setSelectedGuestIds((prev) =>
+      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+    );
+  }
+
   function submit() {
-    if (!selectedEstateId) { Alert.alert('Required', 'Please select an estate.'); return; }
-    if (!selectedGuestId) { Alert.alert('Required', 'Please select a guest.'); return; }
+    if (!selectedEstateId) { Alert.alert('Required', 'Please select a property.'); return; }
+    if (selectedGuestIds.length === 0) { Alert.alert('Required', 'Please select at least one guest.'); return; }
     if (!from || !to) { Alert.alert('Required', 'Please select check-in and check-out dates.'); return; }
-    createDirectStay({
-      id: generateId(),
-      stayRequestId: '',
-      estateId: selectedEstateId,
-      guestId: selectedGuestId,
-      from,
-      to,
+
+    selectedGuestIds.forEach((guestId) => {
+      createDirectStay({
+        id: generateId(),
+        stayRequestId: '',
+        estateId: selectedEstateId,
+        guestId,
+        from,
+        to,
+      });
     });
-    Alert.alert('Stay Planned', 'The stay has been added to the calendar.');
+
+    const count = selectedGuestIds.length;
+    Alert.alert('Stay Planned', `${count} stay${count > 1 ? 's' : ''} added to the calendar.`);
     router.back();
   }
 
-  const canSubmit = !!selectedEstateId && !!selectedGuestId && !!from && !!to;
+  const canSubmit = !!selectedEstateId && selectedGuestIds.length > 0 && !!from && !!to;
 
   return (
     <ThemedView style={styles.container}>
@@ -119,55 +134,57 @@ export default function PlanStay() {
           </View>
         </View>
 
-        {/* Guest picker */}
+        {/* Guest multi-select */}
         {selectedEstateId && (
           <View style={styles.section}>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>Guest</ThemedText>
-            {guests.length === 0 ? (
-              <View style={[styles.emptyGuests, { borderColor: colors.icon + '33' }]}>
-                <ThemedText style={[styles.emptyGuestsText, { color: colors.icon }]}>
-                  No accepted guests for this property yet.
-                </ThemedText>
-              </View>
-            ) : (
-              <View style={styles.guestList}>
-                {guests.map((g) => {
-                  const selected = g.id === selectedGuestId;
-                  return (
-                    <TouchableOpacity
-                      key={g.id}
-                      style={[
-                        styles.guestRow,
-                        {
-                          backgroundColor: selected ? colors.tint + '12' : colors.background,
-                          borderColor: selected ? colors.tint : colors.icon + '33',
-                        },
-                      ]}
-                      onPress={() => setSelectedGuestId(g.id)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={[styles.avatar, { backgroundColor: colors.tint + '22' }]}>
-                        <ThemedText style={[styles.avatarText, { color: colors.tint }]}>
-                          {g.name.charAt(0).toUpperCase()}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.guestInfo}>
-                        <ThemedText style={[styles.guestName, selected && { color: colors.tint }]}>
-                          {g.name}
-                        </ThemedText>
-                        <ThemedText style={[styles.guestEmail, { color: colors.icon }]}>{g.email}</ThemedText>
-                      </View>
-                      {selected && <IconSymbol name="checkmark.circle.fill" size={20} color={colors.tint} />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+            <ThemedText style={[styles.label, { color: colors.icon }]}>
+              Guests{selectedGuestIds.length > 0 ? ` · ${selectedGuestIds.length} selected` : ''}
+            </ThemedText>
+            <View style={styles.guestList}>
+              {guestOptions.map((g) => {
+                const selected = selectedGuestIds.includes(g.id);
+                return (
+                  <TouchableOpacity
+                    key={g.id}
+                    style={[
+                      styles.guestRow,
+                      {
+                        backgroundColor: selected ? colors.tint + '12' : colors.background,
+                        borderColor: selected ? colors.tint : colors.icon + '33',
+                      },
+                    ]}
+                    onPress={() => toggleGuest(g.id)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.avatar, { backgroundColor: colors.tint + '22' }]}>
+                      <ThemedText style={[styles.avatarText, { color: colors.tint }]}>
+                        {g.name.charAt(0).toUpperCase()}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.guestInfo}>
+                      <ThemedText style={[styles.guestName, selected && { color: colors.tint }]}>
+                        {g.name}
+                      </ThemedText>
+                      <ThemedText style={[styles.guestEmail, { color: colors.icon }]}>{g.email}</ThemedText>
+                    </View>
+                    <View style={[
+                      styles.checkbox,
+                      {
+                        backgroundColor: selected ? colors.tint : 'transparent',
+                        borderColor: selected ? colors.tint : colors.icon + '55',
+                      },
+                    ]}>
+                      {selected && <IconSymbol name="checkmark" size={12} color="#fff" />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         )}
 
         {/* Date picker */}
-        {selectedEstateId && guests.length > 0 && (
+        {selectedEstateId && (
           <View style={styles.section}>
             <ThemedText style={[styles.label, { color: colors.icon }]}>Dates</ThemedText>
             <View style={[styles.pickerWrap, { borderColor: colors.icon + '33', backgroundColor: colors.background }]}>
@@ -220,8 +237,7 @@ const styles = StyleSheet.create({
   guestInfo: { flex: 1, gap: 2 },
   guestName: { fontSize: 15, fontWeight: '500' },
   guestEmail: { fontSize: 12 },
-  emptyGuests: { padding: 16, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
-  emptyGuestsText: { fontSize: 14 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   pickerWrap: { padding: 16, borderRadius: 16, borderWidth: 1 },
   summary: { padding: 14, borderRadius: 12, borderWidth: 1, gap: 4 },
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 18, borderRadius: 14, marginTop: 8 },

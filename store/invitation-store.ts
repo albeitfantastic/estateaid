@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Invitation, InvitationStatus } from '@/types';
+import { Invitation, InvitationStatus, InvitationRole } from '@/types';
 
 interface InvitationState {
   invitations: Invitation[];
@@ -9,6 +9,7 @@ interface InvitationState {
   sendInvitation: (invitation: Invitation) => void;
   respondToInvitation: (id: string, status: 'accepted' | 'declined', guestId?: string) => void;
   revokeInvitation: (id: string) => void;
+  updateInvitationRole: (id: string, role: InvitationRole) => void;
   redeemCode: (code: string, guestId: string) => { success: boolean; invitation?: Invitation; reason?: string };
   getInvitationsByEstate: (estateId: string) => Invitation[];
   getPendingInvitationsForGuest: (guestId: string, guestEmail?: string) => Invitation[];
@@ -34,6 +35,12 @@ export const useInvitationStore = create<InvitationState>()(
         set((s) => ({
           invitations: s.invitations.map((inv) =>
             inv.id === id ? { ...inv, status: 'revoked' as InvitationStatus } : inv
+          ),
+        })),
+      updateInvitationRole: (id, role) =>
+        set((s) => ({
+          invitations: s.invitations.map((inv) =>
+            inv.id === id ? { ...inv, role } : inv
           ),
         })),
       redeemCode: (code, guestId) => {

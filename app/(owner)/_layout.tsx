@@ -1,13 +1,13 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
 import { useMemo } from 'react';
+import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useEstateStore } from '@/store/estate-store';
 import { useAuthStore } from '@/store/auth-store';
+import { useEstateStore } from '@/store/estate-store';
 import { useStayStore } from '@/store/stay-store';
 
 export default function OwnerTabLayout() {
@@ -76,9 +76,13 @@ export default function OwnerTabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol name="person.fill" color={color} />,
         }}
       />
+      <Tabs.Screen name="visitors/index" options={{ href: null }} />
+      <Tabs.Screen name="guests" options={{ href: null }} />
       <Tabs.Screen name="plan-stay" options={{ href: null }} />
       <Tabs.Screen name="invite" options={{ href: null }} />
-      <Tabs.Screen name="new-ticket" options={{ href: null }} />
+      <Tabs.Screen name="tickets/new-ticket" options={{ href: null }} />
+      <Tabs.Screen name="tickets/index" options={{ href: null }} />
+      <Tabs.Screen name="stays" options={{ href: null }} />
     </Tabs>
   );
 }

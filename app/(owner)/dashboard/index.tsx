@@ -1,36 +1,25 @@
-import {
-  Animated,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
 import { useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useMemo, useRef, useState } from 'react';
 
-import { MonthGrid, DayInfo } from '@/components/calendar/month-grid';
-import { EmptyState } from '@/components/ui/empty-state';
-import { SectionHeader } from '@/components/ui/section-header';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { DayInfo, MonthGrid } from '@/components/calendar/month-grid';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { EmptyState } from '@/components/ui/empty-state';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Colors, EstateColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { formatDateRange, getDaysInRange, today } from '@/lib/date-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { useInvitationStore } from '@/store/invitation-store';
+import { SEED_USERS } from '@/store/seed-data';
 import { useStayStore } from '@/store/stay-store';
 import { useTicketStore } from '@/store/ticket-store';
-import { SEED_USERS } from '@/store/seed-data';
-import { today, getDaysInRange, formatDateRange } from '@/lib/date-utils';
 
-const FAB_ITEMS: { icon: string; label: string; route: string }[] = [
-  { icon: 'building.2.fill', label: 'New Estate', route: '/(owner)/estates/new' },
-  { icon: 'envelope.fill', label: 'Invite User', route: '/(owner)/invite' },
-  { icon: 'calendar.badge.plus', label: 'Plan Stay', route: '/(owner)/plan-stay' },
-  { icon: 'ticket.fill', label: 'New Ticket', route: '/(owner)/new-ticket' },
-];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function OwnerDashboard() {
   const router = useRouter();
@@ -42,6 +31,7 @@ export default function OwnerDashboard() {
   const allStayRequests = useStayStore((s) => s.stayRequests);
   const allStays = useStayStore((s) => s.stays);
   const allTickets = useTicketStore((s) => s.tickets);
+  const allInvitations = useInvitationStore((s) => s.invitations);
   const todayStr = today();
 
   const estates = useMemo(
@@ -63,7 +53,15 @@ export default function OwnerDashboard() {
     [allStays, estateIds, todayStr]
   );
 
-  // Upcoming stays (from today, sorted)
+  const guestsCount = useMemo(() => {
+    const ids = new Set(
+      allInvitations
+        .filter((inv) => estateIds.includes(inv.estateId) && inv.status === 'accepted' && inv.guestId)
+        .map((inv) => inv.guestId!)
+    );
+    return ids.size;
+  }, [allInvitations, estateIds]);
+
   const upcomingStays = useMemo(
     () =>
       allStays
@@ -73,18 +71,28 @@ export default function OwnerDashboard() {
     [allStays, estateIds, todayStr]
   );
 
-  // Estate color map
   const estateColorMap = useMemo(() => {
     const map: Record<string, string> = {};
     estates.forEach((e, i) => { map[e.id] = EstateColors[i % EstateColors.length]; });
     return map;
   }, [estates]);
 
-  // Mini calendar
+  // Interactive calendar state
   const now = new Date();
-  const viewYear = now.getFullYear();
-  const viewMonth = now.getMonth();
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+    else setViewMonth((m) => m - 1);
+    setSelectedDay(null);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+    else setViewMonth((m) => m + 1);
+    setSelectedDay(null);
+  }
 
   const dayInfoMap = useMemo(() => {
     const map: Record<string, DayInfo> = {};
@@ -103,27 +111,8 @@ export default function OwnerDashboard() {
     ? allStays.filter((s) => selectedDay >= s.from && selectedDay <= s.to && estateIds.includes(s.estateId))
     : [];
 
-  // FAB
-  const [fabOpen, setFabOpen] = useState(false);
-  const fabAnim = useRef(new Animated.Value(0)).current;
-
-  function toggleFab() {
-    const toValue = fabOpen ? 0 : 1;
-    Animated.spring(fabAnim, { toValue, useNativeDriver: true, tension: 80, friction: 10 }).start();
-    setFabOpen((prev) => !prev);
-  }
-
-  function handleFabItem(route: string) {
-    setFabOpen(false);
-    fabAnim.setValue(0);
-    router.push(route as never);
-  }
-
-  const fabRotation = fabAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] });
-
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View>
           <ThemedText type="title" style={styles.greeting}>
@@ -134,7 +123,7 @@ export default function OwnerDashboard() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 96 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Stats row */}
@@ -149,11 +138,11 @@ export default function OwnerDashboard() {
           />
           <StatCard
             icon="person.2.fill"
-            value={activeStays.length}
-            label="Active Guests"
+            value={guestsCount}
+            label="Guests"
             color="#22c55e"
             colors={colors}
-            onPress={() => router.push('/(owner)/visitors' as never)}
+            onPress={() => router.push('/(owner)/guests' as never)}
           />
           <StatCard
             icon="tray.fill"
@@ -173,11 +162,38 @@ export default function OwnerDashboard() {
           />
         </View>
 
+        {/* Action buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.actionCard, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}
+            onPress={() => router.push('/(owner)/plan-stay' as never)}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
+              <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
+            </View>
+            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>Plan a Stay</ThemedText>
+            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>Schedule guests</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionCard, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}
+            onPress={() => router.push('/(owner)/invite' as never)}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
+              <IconSymbol name="envelope.fill" size={22} color={colors.tint} />
+            </View>
+            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>Invite User</ThemedText>
+            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>Send access codes</ThemedText>
+          </TouchableOpacity>
+        </View>
+
         {/* Upcoming Stays */}
         <SectionHeader
           title="Upcoming Stays"
           actionLabel="See All"
-          onAction={() => router.push('/(owner)/visitors' as never)}
+          onAction={() => router.push('/(owner)/stays' as never)}
         />
         {upcomingStays.length === 0 ? (
           <EmptyState
@@ -211,8 +227,19 @@ export default function OwnerDashboard() {
           </View>
         )}
 
-        {/* Mini Calendar */}
+        {/* Interactive Calendar */}
         <SectionHeader title="This Month" />
+        <View style={styles.calendarNav}>
+          <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
+            <IconSymbol name="arrow.left" size={18} color={colors.tint} />
+          </TouchableOpacity>
+          <ThemedText type="defaultSemiBold" style={styles.monthLabel}>
+            {MONTHS[viewMonth]} {viewYear}
+          </ThemedText>
+          <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
+            <IconSymbol name="arrow.right" size={18} color={colors.tint} />
+          </TouchableOpacity>
+        </View>
         <View style={[styles.calendarWrap, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}>
           <MonthGrid
             year={viewYear}
@@ -222,7 +249,6 @@ export default function OwnerDashboard() {
           />
         </View>
 
-        {/* Legend */}
         {estates.length > 0 && (
           <View style={styles.legend}>
             {estates.map((e, i) => (
@@ -234,7 +260,6 @@ export default function OwnerDashboard() {
           </View>
         )}
 
-        {/* Selected day detail */}
         {selectedDay && staysOnSelectedDay.length > 0 && (
           <View style={[styles.dayDetail, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}>
             <ThemedText type="defaultSemiBold" style={styles.dayDetailTitle}>{selectedDay}</ThemedText>
@@ -254,60 +279,6 @@ export default function OwnerDashboard() {
           </View>
         )}
       </ScrollView>
-
-      {/* FAB backdrop */}
-      {fabOpen && (
-        <TouchableWithoutFeedback onPress={toggleFab}>
-          <View style={styles.backdrop} />
-        </TouchableWithoutFeedback>
-      )}
-
-      {/* FAB speed-dial */}
-      <View style={[styles.fabContainer, { bottom: insets.bottom + 24 }]}>
-        {fabOpen &&
-          FAB_ITEMS.map((item, index) => {
-            const translateY = fabAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, -(index + 1) * 64],
-            });
-            const opacity = fabAnim.interpolate({
-              inputRange: [0, 0.5, 1],
-              outputRange: [0, 0, 1],
-            });
-            return (
-              <Animated.View
-                key={item.route}
-                style={[styles.fabItemWrap, { transform: [{ translateY }], opacity }]}
-              >
-                <TouchableOpacity
-                  style={[styles.fabItemLabel, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}
-                  onPress={() => handleFabItem(item.route)}
-                  activeOpacity={0.8}
-                >
-                  <ThemedText style={styles.fabItemLabelText}>{item.label}</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.fabItemBtn, { backgroundColor: colors.tint + 'ee' }]}
-                  onPress={() => handleFabItem(item.route)}
-                  activeOpacity={0.8}
-                >
-                  <IconSymbol name={item.icon as never} size={18} color="#fff" />
-                </TouchableOpacity>
-              </Animated.View>
-            );
-          })}
-
-        {/* Main FAB */}
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.tint }]}
-          onPress={toggleFab}
-          activeOpacity={0.85}
-        >
-          <Animated.View style={{ transform: [{ rotate: fabRotation }] }}>
-            <IconSymbol name="plus" size={24} color="#fff" />
-          </Animated.View>
-        </TouchableOpacity>
-      </View>
     </ThemedView>
   );
 }
@@ -338,100 +309,47 @@ function StatCard({ icon, value, label, color, colors, onPress }: StatCardProps)
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
+  header: { paddingHorizontal: 20, paddingBottom: 16 },
   greeting: { fontSize: 28, fontWeight: '700' },
   sub: { fontSize: 14, marginTop: 2 },
   scroll: { paddingHorizontal: 20 },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   statCard: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1, alignItems: 'center', gap: 4 },
   statValue: { fontSize: 22, fontWeight: '700' },
   statLabel: { fontSize: 10, textAlign: 'center' },
 
+  // Action buttons
+  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  actionCard: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 6,
+  },
+  actionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  actionTitle: { fontSize: 14 },
+  actionSub: { fontSize: 12 },
+
   // Upcoming stays
   upcomingList: { gap: 8, marginBottom: 4 },
-  stayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
+  stayRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
   colorBar: { width: 4, alignSelf: 'stretch' },
   stayInfo: { flex: 1, padding: 12, gap: 2 },
   stayGuest: { fontSize: 14 },
   stayMeta: { fontSize: 12 },
 
-  // Mini calendar
+  // Calendar
+  calendarNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  navBtn: { padding: 8 },
+  monthLabel: { fontSize: 16 },
   calendarWrap: { padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 12 },
-  dayDetail: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    gap: 10,
-    marginBottom: 4,
-  },
+  dayDetail: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10, marginBottom: 4 },
   dayDetailTitle: { fontSize: 14, marginBottom: 2 },
   dayStayRow: { paddingLeft: 10, borderLeftWidth: 3, gap: 2 },
-
-  // FAB
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-  },
-  fabContainer: {
-    position: 'absolute',
-    right: 20,
-    alignItems: 'flex-end',
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  fabItemWrap: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  fabItemBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  fabItemLabel: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  fabItemLabelText: { fontSize: 13, fontWeight: '600' },
 });
