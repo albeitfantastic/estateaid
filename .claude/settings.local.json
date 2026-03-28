@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/svenk/local_projects/EstateAid -type d ! -path */node_modules/* ! -path */.git/* ! -path */.expo/* ! -path */.agents/* ! -path */.claude/*)",
+      "Bash(ls:*)",
+      "Bash(npx expo:*)",
+      "Bash(npx tsc:*)",
+      "Bash(cd:*)"
+    ]
+  }
+}

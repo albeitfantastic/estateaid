@@ -1,41 +1,72 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    background: '#FAFAF8',    // warm off-white
+    surface: '#FFFFFF',       // pure white for cards/modals
+    text: '#0E1C2D',          // deep navy-black
+    textSecondary: '#6B7A8D', // muted blue-gray
+    tint: '#1C3D5A',          // deep navy — primary action
+    accent: '#C9A96E',        // warm gold — luxury accent
+    border: '#E5E7EA',        // subtle separator
+    icon: '#6B7A8D',
+    tabIconDefault: '#6B7A8D',
+    tabIconSelected: '#1C3D5A',
+    success: '#2D7D52',
+    error: '#C0392B',
+    warning: '#D97706',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    background: '#0E1C2D',
+    surface: '#1A2F4E',
+    text: '#F0EDE8',
+    textSecondary: '#9BAAB8',
+    tint: '#C9A96E',
+    accent: '#C9A96E',
+    border: '#2A3F58',
+    icon: '#9BAAB8',
+    tabIconDefault: '#9BAAB8',
+    tabIconSelected: '#C9A96E',
+    success: '#4CAF7D',
+    error: '#E57373',
+    warning: '#FFB74D',
   },
 };
 
+export const Spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
+export const Radius = { sm: 8, md: 12, lg: 16, xl: 24, full: 9999 };
+
+/** Distinct colors for estates on the calendar (up to 8 estates) */
+export const EstateColors = [
+  '#1C3D5A', // navy
+  '#B5703A', // cognac
+  '#4A7A5C', // sage
+  '#8B5CF6', // violet
+  '#C0392B', // crimson
+  '#C9A96E', // gold
+  '#2E7D91', // teal
+  '#64748B', // slate
+] as const;
+
+/** Semantic colors for stay/ticket statuses */
+export const StatusColors = {
+  pending: '#D97706',
+  approved: '#2D7D52',
+  declined: '#C0392B',
+  alternative_proposed: '#8B5CF6',
+  question_asked: '#2E7D91',
+  cancelled: '#94A3B8',
+  open: '#D97706',
+  in_progress: '#1C3D5A',
+  resolved: '#2D7D52',
+  closed: '#94A3B8',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
