@@ -17,6 +17,7 @@ export interface Ticket {
   title: string;
   status: TicketStatus;
   priority: TicketPriority;
+  assigneeId?: string;
   messages: TicketMessage[];
   createdAt: string;
   updatedAt: string;

@@ -76,6 +76,9 @@ export default function OwnerTabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol name="person.fill" color={color} />,
         }}
       />
+      <Tabs.Screen name="plan-stay" options={{ href: null }} />
+      <Tabs.Screen name="invite" options={{ href: null }} />
+      <Tabs.Screen name="new-ticket" options={{ href: null }} />
     </Tabs>
   );
 }

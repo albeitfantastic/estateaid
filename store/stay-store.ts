@@ -25,6 +25,7 @@ interface StayState {
   cancelRequest: (requestId: string) => void;
   acceptAlternative: (requestId: string) => { success: boolean; reason?: string };
   declineAlternative: (requestId: string) => void;
+  createDirectStay: (stay: Stay) => void;
   getRequestsByEstate: (estateId: string) => StayRequest[];
   getRequestsByGuest: (guestId: string) => StayRequest[];
   getPendingRequestsCount: (ownerEstateIds: string[]) => number;
@@ -169,6 +170,9 @@ export const useStayStore = create<StayState>()(
               : r
           ),
         })),
+
+      createDirectStay: (stay) =>
+        set((s) => ({ stays: [...s.stays, stay] })),
 
       getRequestsByEstate: (estateId) =>
         get().stayRequests.filter((r) => r.estateId === estateId),

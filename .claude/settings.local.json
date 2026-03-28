@@ -5,7 +5,9 @@
       "Bash(ls:*)",
       "Bash(npx expo:*)",
       "Bash(npx tsc:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js\\)$\")",
+      "Bash(xargs grep:*)"
     ]
   }
 }
