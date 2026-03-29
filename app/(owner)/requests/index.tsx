@@ -14,6 +14,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
+import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange } from '@/lib/date-utils';
 
@@ -31,6 +32,7 @@ export default function OwnerRequests() {
   const estateIds = useMemo(() => estates.map((e) => e.id), [estates]);
   const stayRequests = useStayStore((s) => s.stayRequests);
   const profileById = useProfileStore((s) => s.byId);
+  const invitations = useInvitationStore((s) => s.invitations);
   const allRequests = useMemo(
     () =>
       stayRequests
@@ -63,7 +65,10 @@ export default function OwnerRequests() {
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
           {allRequests.map((req) => {
             const estate = estates.find((e) => e.id === req.estateId);
-            const guestName = resolveUserDisplayName(req.guestId, profileById);
+            const emailHint = invitations.find(
+              (i) => i.guestId === req.guestId && i.guestEmail
+            )?.guestEmail;
+            const guestName = resolveUserDisplayName(req.guestId, profileById, emailHint);
             return (
               <TouchableOpacity
                 key={req.id}

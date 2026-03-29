@@ -14,7 +14,18 @@
       "Bash(find /c/Users/svenk/local_projects/EstateAid -name *overview* -o -name *stay*)",
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
       "Bash(grep -l \"tier\\\\|premium\\\\|subscription\\\\|paywall\\\\|pricing\" /c/Users/svenk/local_projects/EstateAid/app/**/*.tsx)",
-      "WebFetch(domain:www.revenuecat.com)"
+      "WebFetch(domain:www.revenuecat.com)",
+      "Bash(find /c/Users/svenk/local_projects/EstateAid -maxdepth 3 -name types.ts -o -name index.ts -path */types/*)",
+      "Bash(find C:Userssvenklocal_projectsEstateAid -path */node_modules -prune -o -name types.ts -o -name index.ts -type f -print)",
+      "Bash(grep -E \"\\(^|/\\)types\\\\.\\(ts|d\\\\.ts\\)$\")",
+      "WebFetch(domain:mcp.supabase.com)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(grep -r \"from\\(''''.*''''\\)\" store/*.ts lib/*.ts --include=\"*.ts\")",
+      "Bash(grep -rho \"from\\(''''[^'''']*''''\\)\" store/*.ts lib/*.ts --include=\"*.ts\")",
+      "Bash(npx supabase:*)",
+      "Bash(npx supabase db push 2>&1)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
