@@ -126,7 +126,9 @@ export default function GuestCalendar() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <ThemedText type="title" style={styles.title}>Availability</ThemedText>
+        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+        </TouchableOpacity>
       </View>
 
       {acceptedEstates.length === 0 ? (

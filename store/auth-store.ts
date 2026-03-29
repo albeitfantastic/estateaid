@@ -39,7 +39,7 @@ export const useAuthStore = create<AuthState>()(
       setThemePreference: (theme) => set({ themePreference: theme }),
     }),
     {
-      name: '@estateaid/auth/v5',
+      name: '@estateaid/auth/v1',
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();

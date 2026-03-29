@@ -30,7 +30,7 @@ export default function StaysOverview() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
-  const { stayRequests, stays, cancelRequest, acceptAlternative, declineAlternative } = useStayStore();
+  const { stayRequests, stays, cancelRequest, deleteStay, acceptAlternative, declineAlternative } = useStayStore();
   const todayStr = today();
 
   const acceptedEstateIds = useMemo(
@@ -162,6 +162,28 @@ export default function StaysOverview() {
               <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Cancel request</ThemedText>
             </TouchableOpacity>
           )}
+
+          {interactive && req.status === 'approved' && (
+            <TouchableOpacity
+              style={styles.cancelLink}
+              onPress={() =>
+                Alert.alert('Cancel Stay', 'Are you sure you want to cancel this confirmed stay?', [
+                  { text: 'Keep', style: 'cancel' },
+                  {
+                    text: 'Cancel Stay',
+                    style: 'destructive',
+                    onPress: () => {
+                      const linked = stays.find((s) => s.stayRequestId === req.id);
+                      if (linked) deleteStay(linked.id);
+                      cancelRequest(req.id);
+                    },
+                  },
+                ])
+              }
+            >
+              <ThemedText style={{ color: colors.error, fontSize: 13 }}>Cancel stay</ThemedText>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -194,8 +216,12 @@ export default function StaysOverview() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <ThemedText type="title" style={styles.title}>Stays</ThemedText>
-        {acceptedEstateIds.length > 0 && (
+        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+         <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+        </TouchableOpacity>
+      <ThemedText type="title" style={styles.title}>Stays</ThemedText>
+
+      {acceptedEstateIds.length > 0 && (
           <TouchableOpacity
             style={[styles.planBtn, { backgroundColor: colors.tint }]}
             onPress={() => router.push('/(guest)/stays/plan' as never)}
@@ -259,6 +285,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     gap: 12,
   },
+  back: { padding: 4 },
   title: { flex: 1, fontSize: 28, fontWeight: '700' },
   planBtn: {
     flexDirection: 'row',

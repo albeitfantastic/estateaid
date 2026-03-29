@@ -23,7 +23,7 @@ export default function GuestEditStay() {
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
-  const { stayRequests, updateRequest, requestStay, getBlockedRanges } = useStayStore();
+  const { stayRequests, stays, updateRequest, requestStay, cancelRequest } = useStayStore();
 
   const req = useMemo(
     () => stayRequests.find((r) => r.id === requestId),
@@ -41,10 +41,18 @@ export default function GuestEditStay() {
   );
   const dotColor = EstateColors[estateIndex >= 0 ? estateIndex % EstateColors.length : 0];
 
-  const blockedRanges = useMemo(
-    () => (req ? getBlockedRanges(req.estateId) : []),
-    [req, getBlockedRanges]
-  );
+  // For approved edits exclude the guest's own current stay so they can extend/shrink freely
+  const blockedRanges = useMemo(() => {
+    if (!req) return [];
+    const isPendingReq = req.status === 'pending';
+    return stays
+      .filter(
+        (s) =>
+          s.estateId === req.estateId &&
+          (isPendingReq || s.stayRequestId !== req.id)
+      )
+      .map(({ from, to }) => ({ from, to }));
+  }, [req, stays]);
 
   const [from, setFrom] = useState<string | null>(req?.requestedFrom ?? null);
   const [to, setTo] = useState<string | null>(req?.requestedTo ?? null);
@@ -162,6 +170,25 @@ export default function GuestEditStay() {
             {isPending ? 'Update Request' : 'Send New Request'}
           </ThemedText>
         </TouchableOpacity>
+
+        {isPending && (
+          <TouchableOpacity
+            style={[styles.cancelBtn, { borderColor: colors.error }]}
+            onPress={() =>
+              Alert.alert('Cancel Request', 'Are you sure you want to cancel this stay request?', [
+                { text: 'Keep', style: 'cancel' },
+                {
+                  text: 'Cancel Request',
+                  style: 'destructive',
+                  onPress: () => { cancelRequest(req.id); router.back(); },
+                },
+              ])
+            }
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.cancelText, { color: colors.error }]}>Cancel Request</ThemedText>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </ThemedView>
   );
@@ -186,4 +213,6 @@ const styles = StyleSheet.create({
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 18, borderRadius: 14, marginTop: 8 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   disabled: { opacity: 0.45 },
+  cancelBtn: { alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, marginTop: 4 },
+  cancelText: { fontSize: 15, fontWeight: '600' },
 });
