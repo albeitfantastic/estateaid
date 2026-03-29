@@ -26,7 +26,7 @@ export default function AuthScreen() {
       setPendingInviteCode(null);
     }
     if (user.role === 'owner') {
-      router.replace('/(owner)/dashboard' as never);
+      router.replace('/(owner)/home' as never);
     } else {
       router.replace('/(guest)/home' as never);
     }

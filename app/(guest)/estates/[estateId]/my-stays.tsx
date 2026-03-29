@@ -29,7 +29,7 @@ export default function MyStays() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>My Stay Requests</ThemedText>
+        <ThemedText type="title" style={styles.title}>My Stay Status</ThemedText>
       </View>
 
       {requests.length === 0 ? (

@@ -39,7 +39,6 @@ export default function EditStay() {
   }, [allEstates, currentUser?.id, stay?.estateId]);
   const dotColor = EstateColors[estateIndex >= 0 ? estateIndex % EstateColors.length : 0];
 
-  // Blocked ranges: all other stays on the same estate
   const blockedRanges = useMemo(() => {
     if (!stay) return [];
     return stays
@@ -108,7 +107,6 @@ export default function EditStay() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Stay summary card */}
         <View style={[styles.summaryCard, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}>
           <View style={[styles.estateDot, { backgroundColor: dotColor }]} />
           <View style={styles.summaryInfo}>
@@ -126,7 +124,6 @@ export default function EditStay() {
           )}
         </View>
 
-        {/* Date picker */}
         <View style={styles.section}>
           <ThemedText style={[styles.label, { color: colors.icon }]}>Dates</ThemedText>
           <View style={[styles.pickerWrap, { borderColor: colors.icon + '33', backgroundColor: colors.background }]}>
@@ -145,7 +142,6 @@ export default function EditStay() {
           )}
         </View>
 
-        {/* Cancel stay */}
         <TouchableOpacity
           style={[styles.deleteBtn, { backgroundColor: '#ef444412', borderColor: '#ef444430' }]}
           onPress={confirmDelete}
@@ -168,7 +164,6 @@ const styles = StyleSheet.create({
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   disabled: { opacity: 0.4 },
   scroll: { paddingHorizontal: 20, gap: 24, paddingTop: 4 },
-
   summaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -183,12 +178,10 @@ const styles = StyleSheet.create({
   summaryGuest: { fontSize: 12 },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   typeBadgeText: { fontSize: 11, fontWeight: '700' },
-
   section: { gap: 10 },
   label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   pickerWrap: { padding: 16, borderRadius: 16, borderWidth: 1 },
   dateSummary: { padding: 14, borderRadius: 12, borderWidth: 1, gap: 4 },
-
   deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',

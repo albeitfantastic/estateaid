@@ -41,24 +41,31 @@ export default function OwnerTabLayout() {
       }}
     >
       <Tabs.Screen
-        name="dashboard/index"
+        name="home/index"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => <IconSymbol name="house.fill" color={color} />,
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'house.fill' : 'house'} color={color} />,
         }}
       />
       <Tabs.Screen
         name="estates"
         options={{
-          title: 'Estates',
-          tabBarIcon: ({ color }) => <IconSymbol name="building.2.fill" color={color} />,
+          title: 'Properties',
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'building.2.fill' : 'building.2'} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="calendar/index"
+        options={{
+          title: 'Calendar',
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
         }}
       />
       <Tabs.Screen
         name="requests/index"
         options={{
-          title: 'Requests',
-          tabBarIcon: ({ color }) => <IconSymbol name="tray.fill" color={color} />,
+          title: 'Inbox',
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'tray.fill' : 'tray'} color={color} />,
           tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
         }}
       />
@@ -81,16 +88,15 @@ export default function OwnerTabLayout() {
         name="stays"
         options={{
           title: 'Stays',
-          tabBarIcon: ({ color }) => <IconSymbol name="suitcase" color={color} />,
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
         }}
       />
-      <Tabs.Screen name="visitors/index" options={{ href: null }} />
+      
       <Tabs.Screen name="guests" options={{ href: null }} />
       <Tabs.Screen name="plan-stay" options={{ href: null }} />
       <Tabs.Screen name="invite" options={{ href: null }} />
       <Tabs.Screen name="tickets/new-ticket" options={{ href: null }} />
       <Tabs.Screen name="tickets/index" options={{ href: null }} />
-      <Tabs.Screen name="calendar/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
     </Tabs>
   );

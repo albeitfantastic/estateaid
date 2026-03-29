@@ -23,6 +23,7 @@ interface StayState {
   proposeAlternative: (requestId: string, from: string, to: string, ownerNote?: string) => void;
   askQuestion: (requestId: string, ownerNote: string) => void;
   cancelRequest: (requestId: string) => void;
+  updateRequest: (id: string, from: string, to: string) => void;
   acceptAlternative: (requestId: string) => { success: boolean; reason?: string };
   declineAlternative: (requestId: string) => void;
   createDirectStay: (stay: Stay) => void;
@@ -125,6 +126,24 @@ export const useStayStore = create<StayState>()(
           stayRequests: s.stayRequests.map((r) =>
             r.id === requestId
               ? { ...r, status: 'cancelled', updatedAt: new Date().toISOString() }
+              : r
+          ),
+        })),
+
+      updateRequest: (id, from, to) =>
+        set((s) => ({
+          stayRequests: s.stayRequests.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  requestedFrom: from,
+                  requestedTo: to,
+                  status: 'pending',
+                  alternativeFrom: undefined,
+                  alternativeTo: undefined,
+                  ownerNote: undefined,
+                  updatedAt: new Date().toISOString(),
+                }
               : r
           ),
         })),

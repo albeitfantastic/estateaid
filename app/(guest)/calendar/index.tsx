@@ -12,7 +12,9 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
-import { getDaysInRange, toISODate } from '@/lib/date-utils';
+import { formatDate, formatDateRange, getDaysInRange, toISODate } from '@/lib/date-utils';
+import { getEventOccurrences } from '@/lib/event-utils';
+import { useEventStore } from '@/store/event-store';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -21,57 +23,105 @@ export default function GuestCalendar() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
-
   const allInvitations = useInvitationStore((s) => s.invitations);
   const allEstates = useEstateStore((s) => s.estates);
+  const allStays = useStayStore((s) => s.stays);
+  const allEvents = useEventStore((s) => s.events);
 
   const acceptedEstates = useMemo(() => {
     const estateIds = allInvitations
-      .filter((inv) => inv.guestEmail === currentUser?.email && inv.status === 'accepted')
+      .filter(
+        (inv) =>
+          (inv.guestEmail === currentUser?.email || inv.guestId === currentUser?.id) &&
+          inv.status === 'accepted'
+      )
       .map((inv) => inv.estateId);
     return allEstates.filter((e) => estateIds.includes(e.id));
-  }, [allInvitations, allEstates, currentUser?.email]);
+  }, [allInvitations, allEstates, currentUser?.email, currentUser?.id]);
 
   const acceptedEstateIds = useMemo(() => acceptedEstates.map((e) => e.id), [acceptedEstates]);
 
   const [selectedEstateId, setSelectedEstateId] = useState<string>(acceptedEstateIds[0] ?? '');
-  const allStays = useStayStore((s) => s.stays);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [legendOpen, setLegendOpen] = useState(false);
 
-  const today = new Date();
-  const todayStr = toISODate(today);
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const now = new Date();
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
 
-  const blockedRanges = useMemo(
-    () => selectedEstateId ? allStays.filter((s) => s.estateId === selectedEstateId).map(({ from, to }) => ({ from, to })) : [],
-    [allStays, selectedEstateId]
-  );
+  function pickEstate(id: string) { setSelectedEstateId(id); setSelectedDay(null); }
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+    else setViewMonth((m) => m - 1);
+    setSelectedDay(null);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+    else setViewMonth((m) => m + 1);
+    setSelectedDay(null);
+  }
+
   const myStays = useMemo(
     () => allStays.filter((s) => s.estateId === selectedEstateId && s.guestId === currentUser?.id),
     [allStays, selectedEstateId, currentUser?.id]
   );
 
-  // Build dayInfoMap — no guest names, just availability
-  const dayInfoMap: Record<string, DayInfo> = {};
-  blockedRanges.forEach(({ from, to }) => {
-    getDaysInRange(from, to).forEach((dateStr) => {
-      dayInfoMap[dateStr] = { dateStr, availability: 'blocked' };
-    });
-  });
-  myStays.forEach(({ from, to }) => {
-    getDaysInRange(from, to).forEach((dateStr) => {
-      dayInfoMap[dateStr] = { dateStr, availability: 'my-stay' };
-    });
-  });
+  const estateStays = useMemo(
+    () => allStays.filter((s) => s.estateId === selectedEstateId),
+    [allStays, selectedEstateId]
+  );
 
-  function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
-  }
-  function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
-  }
+  const estateEvents = useMemo(
+    () => allEvents.filter((e) => e.estateId === selectedEstateId),
+    [allEvents, selectedEstateId]
+  );
+
+  const dayInfoMap = useMemo(() => {
+    const map: Record<string, DayInfo> = {};
+    estateStays.forEach(({ from, to }) => {
+      getDaysInRange(from, to).forEach((dateStr) => {
+        map[dateStr] = { dateStr, availability: 'blocked' };
+      });
+    });
+    myStays.forEach(({ from, to }) => {
+      getDaysInRange(from, to).forEach((dateStr) => {
+        map[dateStr] = { dateStr, availability: 'my-stay' };
+      });
+    });
+    const firstDay = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
+    const lastDay = toISODate(new Date(viewYear, viewMonth + 1, 0));
+    estateEvents.forEach((event) => {
+      getEventOccurrences(event, firstDay, lastDay).forEach((dateStr) => {
+        const existing = map[dateStr] ?? { dateStr };
+        map[dateStr] = {
+          ...existing,
+          dots: [
+            ...(existing.dots ?? []),
+            { color: event.color ?? colors.tint, key: event.id },
+          ],
+        };
+      });
+    });
+    return map;
+  }, [estateStays, myStays, estateEvents, viewYear, viewMonth, colors.tint]);
+
+  const selectedDayData = useMemo(() => {
+    if (!selectedDay) return null;
+    const mine = myStays.find((s) => selectedDay >= s.from && selectedDay <= s.to);
+    if (mine) return { type: 'my-stay' as const, stay: mine };
+    const isBlocked = estateStays.some((s) => selectedDay >= s.from && selectedDay <= s.to);
+    if (isBlocked) return { type: 'blocked' as const };
+    return { type: 'available' as const };
+  }, [selectedDay, myStays, estateStays]);
+
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDay) return [];
+    return estateEvents.filter((event) =>
+      getEventOccurrences(event, selectedDay, selectedDay).length > 0
+    );
+  }, [selectedDay, estateEvents]);
+
+  const selectedEstate = acceptedEstates.find((e) => e.id === selectedEstateId);
 
   return (
     <ThemedView style={styles.container}>
@@ -81,33 +131,38 @@ export default function GuestCalendar() {
 
       {acceptedEstates.length === 0 ? (
         <View style={styles.center}>
-          <ThemedText style={{ opacity: 0.5 }}>No estates to show. Accept an invitation first.</ThemedText>
+          <ThemedText style={{ opacity: 0.5 }}>No properties yet. Accept an invitation first.</ThemedText>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Estate picker */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.estateRow}>
-            {acceptedEstates.map((estate) => (
-              <TouchableOpacity
-                key={estate.id}
-                style={[
-                  styles.estatePill,
-                  { borderColor: colors.tint + '44' },
-                  selectedEstateId === estate.id && { backgroundColor: colors.tint, borderColor: colors.tint },
-                ]}
-                onPress={() => setSelectedEstateId(estate.id)}
-                activeOpacity={0.8}
-              >
-                <ThemedText
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.estateRow}
+          >
+            {acceptedEstates.map((estate) => {
+              const active = selectedEstateId === estate.id;
+              return (
+                <TouchableOpacity
+                  key={estate.id}
                   style={[
-                    styles.estatePillText,
-                    { color: selectedEstateId === estate.id ? '#fff' : colors.text },
+                    styles.estatePill,
+                    { borderColor: colors.tint + '44' },
+                    active && { backgroundColor: colors.tint, borderColor: colors.tint },
                   ]}
+                  onPress={() => pickEstate(estate.id)}
+                  activeOpacity={0.8}
                 >
-                  {estate.name}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
+                  <ThemedText style={[styles.estatePillText, { color: active ? '#fff' : colors.text }]}>
+                    {estate.name}
+                  </ThemedText>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           {/* Month navigation */}
@@ -123,21 +178,124 @@ export default function GuestCalendar() {
             </TouchableOpacity>
           </View>
 
+          {/* Day info card — between nav and grid */}
+          {selectedDay && selectedDayData && (
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor:
+                    selectedDayData.type === 'my-stay' ? '#22c55e12'
+                    : selectedDayData.type === 'blocked' ? '#ef444410'
+                    : colors.tint + '0E',
+                  borderColor:
+                    selectedDayData.type === 'my-stay' ? '#22c55e44'
+                    : selectedDayData.type === 'blocked' ? '#ef444430'
+                    : colors.tint + '33',
+                },
+              ]}
+            >
+              <View style={styles.infoCardInner}>
+                <View
+                  style={[
+                    styles.infoDot,
+                    {
+                      backgroundColor:
+                        selectedDayData.type === 'my-stay' ? '#22c55e'
+                        : selectedDayData.type === 'blocked' ? '#ef4444'
+                        : '#22c55e',
+                    },
+                  ]}
+                />
+                <View style={styles.infoText}>
+                  <ThemedText type="defaultSemiBold" style={styles.infoDate}>
+                    {formatDate(selectedDay)}
+                  </ThemedText>
+                  {selectedDayData.type === 'my-stay' && (
+                    <>
+                      <ThemedText style={[styles.infoMain, { color: '#22c55e' }]}>
+                        Your stay · {selectedEstate?.name}
+                      </ThemedText>
+                      <ThemedText style={[styles.infoSub, { color: colors.icon }]}>
+                        {formatDateRange(selectedDayData.stay.from, selectedDayData.stay.to)}
+                      </ThemedText>
+                    </>
+                  )}
+                  {selectedDayData.type === 'blocked' && (
+                    <ThemedText style={[styles.infoMain, { color: '#ef4444' }]}>
+                      Not available — property occupied
+                    </ThemedText>
+                  )}
+                  {selectedDayData.type === 'available' && (
+                    <ThemedText style={[styles.infoMain, { color: colors.icon }]}>
+                      Available — no bookings on this date
+                    </ThemedText>
+                  )}
+                  {selectedDayEvents.length > 0 && (
+                    <View style={styles.eventList}>
+                      {selectedDayEvents.map((event) => (
+                        <View key={event.id} style={styles.eventRow}>
+                          <View style={[styles.eventDot, { backgroundColor: event.color ?? colors.tint }]} />
+                          <ThemedText style={[styles.eventTitle, { color: colors.text }]}>
+                            {event.title}
+                          </ThemedText>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedDay(null)} style={styles.infoDismiss}>
+                <IconSymbol name="xmark" size={13} color={colors.icon} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Calendar grid */}
           <View style={[styles.calendarWrap, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}>
-            <MonthGrid year={viewYear} month={viewMonth} dayInfoMap={dayInfoMap} />
+            <MonthGrid
+              year={viewYear}
+              month={viewMonth}
+              dayInfoMap={dayInfoMap}
+              selectedDay={selectedDay ?? undefined}
+              onDayPress={(d) => setSelectedDay(d === selectedDay ? null : d)}
+            />
           </View>
 
-          {/* Legend */}
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendBox, { backgroundColor: '#22c55e22', borderColor: '#22c55e55' }]} />
-              <ThemedText style={[styles.legendText, { color: colors.icon }]}>My approved stay</ThemedText>
+          {/* Collapsible legend */}
+          <TouchableOpacity
+            style={styles.legendToggle}
+            onPress={() => setLegendOpen((o) => !o)}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.legendToggleLabel, { color: colors.icon }]}>Legend</ThemedText>
+            <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
+          </TouchableOpacity>
+
+          {legendOpen && (
+            <View style={[styles.legendBox, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendSwatch, { backgroundColor: '#22c55e' }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Your approved stay</ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendSwatch, { backgroundColor: '#ef444430', borderWidth: 1, borderColor: '#ef444460' }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Unavailable — booked by others</ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendSwatchRing, { borderColor: '#0a7ea4', borderWidth: 1.5 }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Today</ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 2.5 }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Selected day</ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendDot, { backgroundColor: colors.tint }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Property event</ThemedText>
+              </View>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendBox, { backgroundColor: '#ef444418', borderColor: '#ef444455' }]} />
-              <ThemedText style={[styles.legendText, { color: colors.icon }]}>Not available</ThemedText>
-            </View>
-          </View>
+          )}
         </ScrollView>
       )}
     </ThemedView>
@@ -150,15 +308,44 @@ const styles = StyleSheet.create({
   title: { fontSize: 32, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   scroll: { paddingHorizontal: 20 },
+
   estateRow: { gap: 8, paddingVertical: 4, marginBottom: 16 },
   estatePill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   estatePillText: { fontSize: 13, fontWeight: '600' },
-  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+
+  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   navBtn: { padding: 8 },
   monthLabel: { fontSize: 18 },
-  calendarWrap: { padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
-  legend: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendBox: { width: 14, height: 14, borderRadius: 4, borderWidth: 1 },
-  legendText: { fontSize: 12 },
+
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 10,
+    gap: 8,
+  },
+  infoCardInner: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  infoDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
+  infoText: { flex: 1, gap: 3 },
+  infoDate: { fontSize: 13 },
+  infoMain: { fontSize: 13, fontWeight: '600' },
+  infoSub: { fontSize: 12 },
+  infoDismiss: { padding: 4 },
+  eventList: { gap: 4, marginTop: 4 },
+  eventRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  eventDot: { width: 7, height: 7, borderRadius: 3.5 },
+  eventTitle: { fontSize: 12, fontWeight: '500' },
+
+  calendarWrap: { padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 14 },
+
+  legendToggle: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 6 },
+  legendToggleLabel: { fontSize: 13, fontWeight: '600' },
+  legendBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 12 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  legendSwatch: { width: 20, height: 20, borderRadius: 10 },
+  legendSwatchRing: { width: 20, height: 20, borderRadius: 10 },
+  legendDot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 6 },
+  legendLabel: { fontSize: 13 },
 });

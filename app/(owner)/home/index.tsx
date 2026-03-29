@@ -23,6 +23,16 @@ import { useTicketStore } from '@/store/ticket-store';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+function getStayRelativeLabel(from: string, to: string, todayStr: string): string {
+  if (from === todayStr) return 'Arriving today';
+  if (to === todayStr) return 'Departing today';
+  if (from <= todayStr && to >= todayStr) return 'Active stay';
+  const diffMs = new Date(from).getTime() - new Date(todayStr).getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 1) return 'Tomorrow';
+  return `In ${diffDays} days`;
+}
+
 export default function OwnerDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -77,6 +87,15 @@ export default function OwnerDashboard() {
     [allStays, estateIds, todayStr]
   );
 
+  const todayArrivals = useMemo(
+    () => allStays.filter((s) => estateIds.includes(s.estateId) && s.from === todayStr),
+    [allStays, estateIds, todayStr]
+  );
+  const todayDepartures = useMemo(
+    () => allStays.filter((s) => estateIds.includes(s.estateId) && s.to === todayStr),
+    [allStays, estateIds, todayStr]
+  );
+
   const estateColorMap = useMemo(() => {
     const map: Record<string, string> = {};
     estates.forEach((e, i) => { map[e.id] = EstateColors[i % EstateColors.length]; });
@@ -88,6 +107,7 @@ export default function OwnerDashboard() {
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [legendOpen, setLegendOpen] = useState(false);
 
   function prevMonth() {
     if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
@@ -174,7 +194,7 @@ export default function OwnerDashboard() {
           <StatCard
             icon="building.2.fill"
             value={estates.length}
-            label="Estates"
+            label="Properties"
             color={colors.tint}
             colors={colors}
             onPress={() => router.push('/(owner)/estates' as never)}
@@ -190,7 +210,7 @@ export default function OwnerDashboard() {
           <StatCard
             icon="tray.fill"
             value={pendingCount}
-            label="Pending"
+            label="Approvals"
             color="#f59e0b"
             colors={colors}
             onPress={() => router.push('/(owner)/requests' as never)}
@@ -206,6 +226,48 @@ export default function OwnerDashboard() {
           />*/}
         </View>
     
+        {/* Today's Priorities */}
+        {(todayArrivals.length > 0 || todayDepartures.length > 0 || pendingCount > 0) && (
+          <View style={styles.priorityRow}>
+            {todayArrivals.length > 0 && (
+              <TouchableOpacity
+                style={[styles.priorityChip, { backgroundColor: '#22c55e18', borderColor: '#22c55e33' }]}
+                onPress={() => router.push('/(owner)/stays' as never)}
+                activeOpacity={0.75}
+              >
+                <IconSymbol name="arrow.down.circle.fill" size={14} color="#22c55e" />
+                <ThemedText style={[styles.priorityText, { color: '#22c55e' }]}>
+                  {todayArrivals.length} arriving
+                </ThemedText>
+              </TouchableOpacity>
+            )}
+            {todayDepartures.length > 0 && (
+              <TouchableOpacity
+                style={[styles.priorityChip, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b33' }]}
+                onPress={() => router.push('/(owner)/stays' as never)}
+                activeOpacity={0.75}
+              >
+                <IconSymbol name="arrow.up.circle.fill" size={14} color="#f59e0b" />
+                <ThemedText style={[styles.priorityText, { color: '#f59e0b' }]}>
+                  {todayDepartures.length} departing
+                </ThemedText>
+              </TouchableOpacity>
+            )}
+            {pendingCount > 0 && (
+              <TouchableOpacity
+                style={[styles.priorityChip, { backgroundColor: colors.tint + '18', borderColor: colors.tint + '33' }]}
+                onPress={() => router.push('/(owner)/requests' as never)}
+                activeOpacity={0.75}
+              >
+                <IconSymbol name="tray.fill" size={14} color={colors.tint} />
+                <ThemedText style={[styles.priorityText, { color: colors.tint }]}>
+                  {pendingCount} pending
+                </ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* Action buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -250,22 +312,32 @@ export default function OwnerDashboard() {
             {upcomingStays.map((stay) => {
               const estate = estates.find((e) => e.id === stay.estateId);
               const guest = SEED_USERS.find((u) => u.id === stay.guestId);
+              const isOwnerStay = stay.guestId === currentUser?.id;
+              const guestLabel = isOwnerStay ? `${currentUser?.name.split(' ')[0]} (you)` : (guest?.name ?? stay.guestId);
               const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
+              const relLabel = getStayRelativeLabel(stay.from, stay.to, todayStr);
+              const isActive = stay.from <= todayStr && stay.to >= todayStr;
+              const relColor = isActive ? '#22c55e' : colors.tint;
               return (
-                <View
+                <TouchableOpacity
                   key={stay.id}
                   style={[styles.stayRow, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}
+                  onPress={() => router.push('/(owner)/stays' as never)}
+                  activeOpacity={0.75}
                 >
                   <View style={[styles.colorBar, { backgroundColor: dotColor }]} />
                   <View style={styles.stayInfo}>
                     <ThemedText type="defaultSemiBold" style={styles.stayGuest}>
-                      {guest?.name ?? stay.guestId}
+                      {guestLabel}
                     </ThemedText>
                     <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
                       {estate?.name} · {formatDateRange(stay.from, stay.to)}
                     </ThemedText>
                   </View>
-                </View>
+                  <View style={[styles.relBadge, { backgroundColor: relColor + '15' }]}>
+                    <ThemedText style={[styles.relBadgeText, { color: relColor }]}>{relLabel}</ThemedText>
+                  </View>
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -294,20 +366,32 @@ export default function OwnerDashboard() {
         </View>
 
         {(estates.length > 0 || estateEvents.length > 0) && (
-          <View style={styles.legend}>
-            {estates.map((e, i) => (
-              <View key={e.id} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: EstateColors[i % EstateColors.length] }]} />
-                <ThemedText style={[styles.legendText, { color: colors.icon }]} numberOfLines={1}>{e.name}</ThemedText>
+          <>
+            <TouchableOpacity
+              style={styles.legendToggle}
+              onPress={() => setLegendOpen((o) => !o)}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.legendToggleText, { color: colors.icon }]}>Legend</ThemedText>
+              <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
+            </TouchableOpacity>
+            {legendOpen && (
+              <View style={styles.legend}>
+                {estates.map((e, i) => (
+                  <View key={e.id} style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: EstateColors[i % EstateColors.length] }]} />
+                    <ThemedText style={[styles.legendText, { color: colors.icon }]} numberOfLines={1}>{e.name}</ThemedText>
+                  </View>
+                ))}
+                {estateEvents.map((ev) => (
+                  <View key={ev.id} style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: ev.color ?? '#64748B' }]} />
+                    <ThemedText style={[styles.legendText, { color: colors.icon }]} numberOfLines={1}>{ev.title}</ThemedText>
+                  </View>
+                ))}
               </View>
-            ))}
-            {estateEvents.map((ev) => (
-              <View key={ev.id} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: ev.color ?? '#64748B' }]} />
-                <ThemedText style={[styles.legendText, { color: colors.icon }]} numberOfLines={1}>{ev.title}</ThemedText>
-              </View>
-            ))}
-          </View>
+            )}
+          </>
         )}
 
         {selectedDay && (
@@ -522,6 +606,11 @@ const styles = StyleSheet.create({
   actionTitle: { fontSize: 14 },
   actionSub: { fontSize: 12 },
 
+  // Today's priorities
+  priorityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  priorityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  priorityText: { fontSize: 12, fontWeight: '600' },
+
   // Upcoming stays
   upcomingList: { gap: 8, marginBottom: 4 },
   stayRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
@@ -529,12 +618,16 @@ const styles = StyleSheet.create({
   stayInfo: { flex: 1, padding: 12, gap: 2 },
   stayGuest: { fontSize: 14 },
   stayMeta: { fontSize: 12 },
+  relBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 10 },
+  relBadgeText: { fontSize: 10, fontWeight: '700' },
 
   // Calendar
   calendarNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   navBtn: { padding: 8 },
   monthLabel: { fontSize: 16 },
   calendarWrap: { padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
+  legendToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 6 },
+  legendToggleText: { fontSize: 12, fontWeight: '600' },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },

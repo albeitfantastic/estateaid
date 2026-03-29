@@ -29,7 +29,7 @@ export default function Index() {
   }
 
   if (currentUser.role === 'owner') {
-    return <Redirect href={'/(owner)/dashboard' as never} />;
+    return <Redirect href={'/(owner)/home' as never} />;
   }
 
   return <Redirect href={'/(guest)/home' as never} />;

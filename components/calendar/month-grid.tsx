@@ -18,9 +18,10 @@ interface MonthGridProps {
   month: number; // 0-based
   dayInfoMap: Record<string, DayInfo>;
   onDayPress?: (dateStr: string) => void;
+  selectedDay?: string;
 }
 
-export function MonthGrid({ year, month, dayInfoMap, onDayPress }: MonthGridProps) {
+export function MonthGrid({ year, month, dayInfoMap, onDayPress, selectedDay }: MonthGridProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const todayStr = toISODate(new Date());
@@ -58,6 +59,7 @@ export function MonthGrid({ year, month, dayInfoMap, onDayPress }: MonthGridProp
               isPast={isPast}
               dots={info?.dots}
               availability={info?.availability}
+              selected={selectedDay === dateStr}
               onPress={onDayPress ? () => onDayPress(dateStr) : undefined}
             />
           );

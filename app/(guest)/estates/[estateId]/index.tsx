@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -7,15 +8,18 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { useStayStore } from '@/store/stay-store';
+import { addDays, today } from '@/lib/date-utils';
 
 const HUB_ITEMS = [
-  { label: 'Request a Stay', icon: 'calendar', route: 'request-stay' },
-  { label: 'My Stays', icon: 'checkmark.circle.fill', route: 'my-stays' },
-  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq' },
-  { label: 'Documents', icon: 'doc.fill', route: 'documents' },
-  { label: 'Contacts', icon: 'phone.fill', route: 'contacts' },
-  { label: 'My Tickets', icon: 'exclamationmark.triangle.fill', route: 'tickets' },
+  { label: 'Plan a Stay', icon: 'calendar', route: 'request-stay', alwaysOn: true },
+  { label: 'My Stays', icon: 'checkmark.circle.fill', route: 'my-stays', alwaysOn: true },
+  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', alwaysOn: false },
+  { label: 'Documents', icon: 'doc.fill', route: 'documents', alwaysOn: false },
+  { label: 'Contacts', icon: 'phone.fill', route: 'contacts', alwaysOn: false },
+  { label: 'My Tickets', icon: 'exclamationmark.triangle.fill', route: 'tickets', alwaysOn: false },
 ] as const;
 
 export default function GuestEstateHub() {
@@ -25,6 +29,19 @@ export default function GuestEstateHub() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const allStays = useStayStore((s) => s.stays);
+  const todayStr = today();
+
+  const hasContextAccess = useMemo(() => {
+    return allStays.some(
+      (s) =>
+        s.estateId === estateId &&
+        s.guestId === currentUser?.id &&
+        todayStr >= addDays(s.from, -3) &&
+        todayStr <= addDays(s.to, 1)
+    );
+  }, [allStays, estateId, currentUser?.id, todayStr]);
 
   if (!estate) {
     return (
@@ -56,18 +73,47 @@ export default function GuestEstateHub() {
           </ThemedText>
         )}
         <View style={styles.tiles}>
-          {HUB_ITEMS.map((item) => (
-            <TouchableOpacity
-              key={item.route}
-              style={[styles.tile, { backgroundColor: colors.tint + '11', borderColor: colors.tint + '22' }]}
-              onPress={() => router.push(`/(guest)/estates/${estateId}/${item.route}` as never)}
-              activeOpacity={0.75}
-            >
-              <IconSymbol name={item.icon} size={28} color={colors.tint} />
-              <ThemedText type="defaultSemiBold" style={styles.tileLabel}>{item.label}</ThemedText>
-            </TouchableOpacity>
-          ))}
+          {HUB_ITEMS.map((item) => {
+            const unlocked = item.alwaysOn || hasContextAccess;
+            return (
+              <TouchableOpacity
+                key={item.route}
+                style={[
+                  styles.tile,
+                  { backgroundColor: colors.tint + '11', borderColor: colors.tint + '22' },
+                  !unlocked && styles.tileLocked,
+                ]}
+                onPress={() => {
+                  if (!unlocked) return;
+                  router.push(`/(guest)/estates/${estateId}/${item.route}` as never);
+                }}
+                activeOpacity={unlocked ? 0.75 : 1}
+              >
+                <IconSymbol name={item.icon} size={28} color={unlocked ? colors.tint : colors.icon} />
+                <ThemedText
+                  type="defaultSemiBold"
+                  style={[styles.tileLabel, !unlocked && { color: colors.icon }]}
+                >
+                  {item.label}
+                </ThemedText>
+                {!unlocked && (
+                  <View style={styles.lockBadge}>
+                    <IconSymbol name="lock.fill" size={10} color={colors.icon} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
+
+        {!hasContextAccess && (
+          <View style={[styles.hint, { backgroundColor: colors.icon + '0E' }]}>
+            <IconSymbol name="lock.fill" size={13} color={colors.icon} />
+            <ThemedText style={[styles.hintText, { color: colors.icon }]}>
+              FAQ, Documents, Contacts and Tickets unlock 3 days before your stay.
+            </ThemedText>
+          </View>
+        )}
       </ScrollView>
     </ThemedView>
   );
@@ -87,4 +133,8 @@ const styles = StyleSheet.create({
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: { width: '47%', padding: 20, borderRadius: 16, borderWidth: 1, alignItems: 'center', gap: 10 },
   tileLabel: { fontSize: 14, textAlign: 'center' },
+  tileLocked: { opacity: 0.38 },
+  lockBadge: { position: 'absolute', bottom: 8, right: 8 },
+  hint: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 14, borderRadius: 12, marginTop: 16 },
+  hintText: { flex: 1, fontSize: 12, lineHeight: 17 },
 });

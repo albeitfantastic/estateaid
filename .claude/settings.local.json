@@ -9,7 +9,10 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx|js\\)$\")",
       "Bash(xargs grep:*)",
       "Bash(ls C:/Users/svenk/local_projects/EstateAid/app/\\\\\\(owner\\\\\\)/guests/)",
-      "Bash(ls C:/Users/svenk/local_projects/EstateAid/app/\\\\\\(owner\\\\\\)/stays/)"
+      "Bash(ls C:/Users/svenk/local_projects/EstateAid/app/\\\\\\(owner\\\\\\)/stays/)",
+      "WebFetch(domain:chatgpt.com)",
+      "Bash(find /c/Users/svenk/local_projects/EstateAid -name *overview* -o -name *stay*)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
     ]
   }
 }

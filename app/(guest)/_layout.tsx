@@ -40,46 +40,50 @@ export default function GuestTabLayout() {
         }),
       }}
     >
-     
-     <Tabs.Screen
-        name="dashboard/index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => <IconSymbol name="house.fill" color={color} />,
-        }}
-      />
-
-
       <Tabs.Screen
         name="home/index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol name="house.fill" color={color} />,
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'house.fill' : 'house'} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="invitations/index"
+       <Tabs.Screen
+        name="estates"
         options={{
-          title: 'Invitations',
-          tabBarIcon: ({ color }) => <IconSymbol name="envelope.fill" color={color} />,
-          tabBarBadge: pendingInvitations.length > 0 ? pendingInvitations.length : undefined,
+          title: 'Properties',
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'building.2.fill' : 'building.2'} color={color} />,
         }}
       />
       <Tabs.Screen
         name="calendar/index"
         options={{
           title: 'Calendar',
-          tabBarIcon: ({ color }) => <IconSymbol name="calendar" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol name="calendar" color={color} weight={focused ? 'semibold' : 'regular'} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="profile/index"
+        name="stays"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol name="person.fill" color={color} />,
+          title: 'Stays',
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
         }}
       />
-      <Tabs.Screen name="estates" options={{ href: null }} />
+        <Tabs.Screen
+        name="invitations/index"
+        options={{
+          title: 'Invites',
+          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'envelope.fill' : 'envelope'} color={color} />,
+        }}
+      />
+
+      
+      <Tabs.Screen name="requests/index" options={{ href: null }} />
+      <Tabs.Screen name="profile/index" options={{ href: null }} />
+      
     </Tabs>
-  );
+  
+    );
+    
 }

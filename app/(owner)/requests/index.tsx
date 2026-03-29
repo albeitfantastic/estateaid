@@ -44,7 +44,7 @@ export default function OwnerRequests() {
       <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Requests</ThemedText>
+        <ThemedText type="title" style={styles.title}>Inbox</ThemedText>
         {allRequests.length > 0 && (
           <View style={[styles.badge, { backgroundColor: colors.tint }]}>
             <ThemedText style={styles.badgeText}>{allRequests.length}</ThemedText>

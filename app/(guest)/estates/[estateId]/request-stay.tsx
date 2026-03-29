@@ -53,7 +53,7 @@ export default function RequestStay() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Request a Stay</ThemedText>
+        <ThemedText type="title" style={styles.title}>Plan a Stay</ThemedText>
       </View>
 
       <ScrollView

@@ -26,10 +26,14 @@ export default function GuestEstatesList() {
 
   const acceptedEstates = useMemo(() => {
     const estateIds = allInvitations
-      .filter((inv) => inv.guestEmail === currentUser?.email && inv.status === 'accepted')
+      .filter(
+        (inv) =>
+          (inv.guestEmail === currentUser?.email || inv.guestId === currentUser?.id) &&
+          inv.status === 'accepted'
+      )
       .map((inv) => inv.estateId);
     return allEstates.filter((e) => estateIds.includes(e.id));
-  }, [allInvitations, allEstates, currentUser?.email]);
+  }, [allInvitations, allEstates, currentUser?.email, currentUser?.id]);
 
   return (
     <ThemedView style={styles.container}>
@@ -37,7 +41,7 @@ export default function GuestEstatesList() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>My Estates</ThemedText>
+        <ThemedText type="title" style={styles.title}>Properties</ThemedText>
       </View>
 
       <ScrollView

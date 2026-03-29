@@ -31,7 +31,7 @@ export default function OwnerEstates() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Estates</ThemedText>
+        <ThemedText type="title" style={styles.title}>Properties</ThemedText>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: colors.tint }]}
           onPress={() => router.push('/(owner)/estates/new' as never)}
