@@ -2,19 +2,19 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    background: '#FAFAF8',    // warm off-white
-    surface: '#FFFFFF',       // pure white for cards/modals
-    text: '#0E1C2D',          // deep navy-black
-    textSecondary: '#6B7A8D', // muted blue-gray
-    tint: '#1C3D5A',          // deep navy — primary action
+    background: '#F5F0E8',    // warm cream
+    surface: '#FBF8F3',       // lighter cream for cards
+    text: '#3B2F2F',          // dark coffee brown
+    textSecondary: '#8C7A6B', // muted coffee
+    tint: '#6B4C3B',          // rich coffee — primary action
     accent: '#C9A96E',        // warm gold — luxury accent
-    border: '#E5E7EA',        // subtle separator
-    icon: '#6B7A8D',
-    tabIconDefault: '#6B7A8D',
-    tabIconSelected: '#1C3D5A',
-    success: '#2D7D52',
-    error: '#C0392B',
-    warning: '#D97706',
+    border: '#E0D6C8',        // creamy separator
+    icon: '#8C7A6B',
+    tabIconDefault: '#8C7A6B',
+    tabIconSelected: '#6B4C3B',
+    success: '#5E8C61',
+    error: '#B04A3A',
+    warning: '#C48B2C',
   },
   dark: {
     background: '#0E1C2D',

@@ -6,3 +6,4 @@ export * from './faq';
 export * from './document';
 export * from './contact';
 export * from './ticket';
+export * from './event';

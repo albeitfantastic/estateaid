@@ -11,8 +11,10 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useStayStore } from '@/store/stay-store';
+import { useEventStore } from '@/store/event-store';
 import { SEED_USERS } from '@/store/seed-data';
-import { getDaysInRange, formatDateRange } from '@/lib/date-utils';
+import { getDaysInRange, formatDateRange, toISODate } from '@/lib/date-utils';
+import { getEventOccurrences, describeRecurrence } from '@/lib/event-utils';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -27,17 +29,24 @@ export default function OwnerCalendar() {
     [allEstates, currentUser?.id]
   );
   const stays = useStayStore((s) => s.stays);
+  const allEvents = useEventStore((s) => s.events);
+  const estateIds = useMemo(() => estates.map((e) => e.id), [estates]);
+  const estateEvents = useMemo(
+    () => allEvents.filter((ev) => estateIds.includes(ev.estateId)),
+    [allEvents, estateIds]
+  );
 
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  // Build color map: estateId → color
   const estateColorMap: Record<string, string> = {};
   estates.forEach((e, i) => { estateColorMap[e.id] = EstateColors[i % EstateColors.length]; });
 
-  // Build dayInfoMap
+  const monthStart = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
+  const monthEnd = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${new Date(viewYear, viewMonth + 1, 0).getDate()}`;
+
   const dayInfoMap: Record<string, DayInfo> = {};
   stays.forEach((stay) => {
     const color = estateColorMap[stay.estateId];
@@ -48,9 +57,20 @@ export default function OwnerCalendar() {
     });
   });
 
-  // Get stays on selected day
+  estateEvents.forEach((ev) => {
+    const occurrences = getEventOccurrences(ev, monthStart, monthEnd);
+    const dotColor = ev.color ?? '#64748B';
+    occurrences.forEach((dateStr) => {
+      if (!dayInfoMap[dateStr]) dayInfoMap[dateStr] = { dateStr, dots: [] };
+      dayInfoMap[dateStr].dots = [...(dayInfoMap[dateStr].dots ?? []), { color: dotColor, key: ev.id + dateStr }];
+    });
+  });
+
   const staysOnDay = selectedDay
     ? stays.filter((s) => selectedDay >= s.from && selectedDay <= s.to)
+    : [];
+  const eventsOnDay = selectedDay
+    ? estateEvents.filter((ev) => getEventOccurrences(ev, selectedDay, selectedDay).length > 0)
     : [];
 
   function prevMonth() {
@@ -91,8 +111,7 @@ export default function OwnerCalendar() {
           />
         </View>
 
-        {/* Legend */}
-        {estates.length > 0 && (
+        {(estates.length > 0 || estateEvents.length > 0) && (
           <View style={styles.legend}>
             {estates.map((e, i) => (
               <View key={e.id} style={styles.legendItem}>
@@ -100,12 +119,17 @@ export default function OwnerCalendar() {
                 <ThemedText style={[styles.legendText, { color: colors.icon }]} numberOfLines={1}>{e.name}</ThemedText>
               </View>
             ))}
+            {estateEvents.map((ev) => (
+              <View key={ev.id} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: ev.color ?? '#64748B' }]} />
+                <ThemedText style={[styles.legendText, { color: colors.icon }]} numberOfLines={1}>{ev.title}</ThemedText>
+              </View>
+            ))}
           </View>
         )}
       </ScrollView>
 
-      {/* Day detail bottom sheet */}
-      {selectedDay && staysOnDay.length > 0 && (
+      {selectedDay && (
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}>
           <View style={styles.sheetHeader}>
             <ThemedText type="defaultSemiBold" style={styles.sheetTitle}>{selectedDay}</ThemedText>
@@ -113,6 +137,9 @@ export default function OwnerCalendar() {
               <IconSymbol name="xmark" size={18} color={colors.icon} />
             </TouchableOpacity>
           </View>
+          {staysOnDay.length === 0 && eventsOnDay.length === 0 && (
+            <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>Nothing scheduled</ThemedText>
+          )}
           {staysOnDay.map((stay) => {
             const estate = estates.find((e) => e.id === stay.estateId);
             const guest = SEED_USERS.find((u) => u.id === stay.guestId);
@@ -122,6 +149,17 @@ export default function OwnerCalendar() {
                 <ThemedText type="defaultSemiBold">{guest?.name ?? stay.guestId}</ThemedText>
                 <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
                   {estate?.name} · {formatDateRange(stay.from, stay.to)}
+                </ThemedText>
+              </View>
+            );
+          })}
+          {eventsOnDay.map((ev) => {
+            const estate = estates.find((e) => e.id === ev.estateId);
+            return (
+              <View key={ev.id} style={[styles.stayRow, { borderLeftColor: ev.color ?? '#64748B' }]}>
+                <ThemedText type="defaultSemiBold">{ev.title}</ThemedText>
+                <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
+                  {estate?.name} · {describeRecurrence(ev)}
                 </ThemedText>
               </View>
             );

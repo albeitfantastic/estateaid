@@ -62,7 +62,7 @@ export default function OwnerTabLayout() {
           tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
         }}
       />
-      <Tabs.Screen
+      {/*<Tabs.Screen
         name="calendar/index"
         options={{
           title: 'Calendar',
@@ -75,6 +75,14 @@ export default function OwnerTabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color }) => <IconSymbol name="person.fill" color={color} />,
         }}
+      
+      />*/}
+      <Tabs.Screen
+        name="stays"
+        options={{
+          title: 'Stays',
+          tabBarIcon: ({ color }) => <IconSymbol name="suitcase" color={color} />,
+        }}
       />
       <Tabs.Screen name="visitors/index" options={{ href: null }} />
       <Tabs.Screen name="guests" options={{ href: null }} />
@@ -82,7 +90,8 @@ export default function OwnerTabLayout() {
       <Tabs.Screen name="invite" options={{ href: null }} />
       <Tabs.Screen name="tickets/new-ticket" options={{ href: null }} />
       <Tabs.Screen name="tickets/index" options={{ href: null }} />
-      <Tabs.Screen name="stays" options={{ href: null }} />
+      <Tabs.Screen name="calendar/index" options={{ href: null }} />
+      <Tabs.Screen name="profile/index" options={{ href: null }} />
     </Tabs>
   );
 }

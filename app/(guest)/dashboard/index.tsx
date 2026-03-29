@@ -23,7 +23,7 @@ import { useTicketStore } from '@/store/ticket-store';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export default function OwnerDashboard() {
+export default function GuestDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -40,41 +40,34 @@ export default function OwnerDashboard() {
   const allEvents = useEventStore((s) => s.events);
   const todayStr = today();
 
-  const estates = useMemo(
-    () => allEstates.filter((e) => e.ownerId === currentUser?.id),
-    [allEstates, currentUser?.id]
-  );
+  const estates = useMemo(() => {
+    const ids = allInvitations
+      .filter((inv) => inv.guestEmail === currentUser?.email && inv.status === 'accepted')
+      .map((inv) => inv.estateId);
+    return allEstates.filter((e) => ids.includes(e.id));
+  }, [allInvitations, allEstates, currentUser?.email]);
   const estateIds = useMemo(() => estates.map((e) => e.id), [estates]);
 
   const pendingCount = useMemo(
-    () => allStayRequests.filter((r) => estateIds.includes(r.estateId) && r.status === 'pending').length,
-    [allStayRequests, estateIds]
+    () => allStayRequests.filter((r) => r.guestId === currentUser?.id && r.status === 'pending').length,
+    [allStayRequests, currentUser?.id]
   );
   const openTicketsCount = useMemo(
     () => allTickets.filter((t) => estateIds.includes(t.estateId) && t.status !== 'resolved' && t.status !== 'closed').length,
     [allTickets, estateIds]
   );
   const activeStays = useMemo(
-    () => allStays.filter((st) => estateIds.includes(st.estateId) && st.from <= todayStr && st.to >= todayStr),
-    [allStays, estateIds, todayStr]
+    () => allStays.filter((st) => st.guestId === currentUser?.id && st.from <= todayStr && st.to >= todayStr),
+    [allStays, currentUser?.id, todayStr]
   );
-
-  const guestsCount = useMemo(() => {
-    const ids = new Set(
-      allInvitations
-        .filter((inv) => estateIds.includes(inv.estateId) && inv.status === 'accepted' && inv.guestId)
-        .map((inv) => inv.guestId!)
-    );
-    return ids.size;
-  }, [allInvitations, estateIds]);
 
   const upcomingStays = useMemo(
     () =>
       allStays
-        .filter((s) => estateIds.includes(s.estateId) && s.to >= todayStr)
+        .filter((s) => s.guestId === currentUser?.id && s.to >= todayStr)
         .sort((a, b) => a.from.localeCompare(b.from))
         .slice(0, 5),
-    [allStays, estateIds, todayStr]
+    [allStays, currentUser?.id, todayStr]
   );
 
   const estateColorMap = useMemo(() => {
@@ -177,23 +170,16 @@ export default function OwnerDashboard() {
             label="Estates"
             color={colors.tint}
             colors={colors}
-            onPress={() => router.push('/(owner)/estates' as never)}
+            onPress={() => router.push('/(guest)/estates' as never)}
           />
-          <StatCard
-            icon="person.2.fill"
-            value={guestsCount}
-            label="Guests"
-            color="#22c55e"
-            colors={colors}
-            onPress={() => router.push('/(owner)/guests' as never)}
-          />
+        
           <StatCard
             icon="tray.fill"
             value={pendingCount}
             label="Pending"
             color="#f59e0b"
             colors={colors}
-            onPress={() => router.push('/(owner)/requests' as never)}
+            onPress={() => router.push('/(guest)/requests' as never)}
           />
           {/*}
           <StatCard
@@ -202,7 +188,7 @@ export default function OwnerDashboard() {
             label="Tickets"
             color="#ef4444"
             colors={colors}
-            onPress={() => router.push('/(owner)/tickets' as never)}
+            onPress={() => router.push('/(guest)/tickets' as never)}
           />*/}
         </View>
     
@@ -210,34 +196,24 @@ export default function OwnerDashboard() {
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.actionCard, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}
-            onPress={() => router.push('/(owner)/plan-stay' as never)}
+            onPress={() => router.push('/(guest)/plan-stay' as never)}
             activeOpacity={0.75}
           >
             <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
               <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
             </View>
-            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>Plan a Stay</ThemedText>
-            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>Schedule guests</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>Request a Stay</ThemedText>
+            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>Browse estates</ThemedText>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}
-            onPress={() => router.push('/(owner)/invite' as never)}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
-              <IconSymbol name="envelope.fill" size={22} color={colors.tint} />
-            </View>
-            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>Invite User</ThemedText>
-            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>Send access codes</ThemedText>
-          </TouchableOpacity>
+          
         </View>
 
         {/* Upcoming Stays */}
         <SectionHeader
           title="Upcoming Stays"
           actionLabel="See All"
-          onAction={() => router.push('/(owner)/stays' as never)}
+          onAction={() => router.push('/(guest)/home' as never)}
         />
         {upcomingStays.length === 0 ? (
           <EmptyState
@@ -510,13 +486,14 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 10, textAlign: 'center' },
 
   // Action buttons
-  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8, justifyContent: 'center' },
   actionCard: {
-    flex: 1,
+    width: '48%',
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
     gap: 6,
+    alignItems: 'center',
   },
   actionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   actionTitle: { fontSize: 14 },

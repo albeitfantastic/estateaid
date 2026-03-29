@@ -12,6 +12,7 @@ import { useEstateStore } from '@/store/estate-store';
 const HUB_ITEMS = [
   { label: 'Guests', icon: 'person.2.fill', route: 'guests' },
   { label: 'Stay Requests', icon: 'calendar', route: 'stays' },
+  { label: 'Events', icon: 'calendar.badge.clock', route: 'events' },
   { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq' },
   { label: 'Documents', icon: 'doc.fill', route: 'documents' },
   { label: 'Contacts', icon: 'phone.fill', route: 'contacts' },

@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
 import { useMemo } from 'react';
+import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -27,6 +27,8 @@ export default function GuestTabLayout() {
   );
 
   return (
+    
+
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
@@ -38,6 +40,16 @@ export default function GuestTabLayout() {
         }),
       }}
     >
+     
+     <Tabs.Screen
+        name="dashboard/index"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => <IconSymbol name="house.fill" color={color} />,
+        }}
+      />
+
+
       <Tabs.Screen
         name="home/index"
         options={{
@@ -67,6 +79,7 @@ export default function GuestTabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol name="person.fill" color={color} />,
         }}
       />
+      <Tabs.Screen name="estates" options={{ href: null }} />
     </Tabs>
   );
 }

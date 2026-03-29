@@ -28,13 +28,17 @@ export default function OwnerEstates() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <ThemedText type="title" style={styles.title}>My Estates</ThemedText>
+        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+        </TouchableOpacity>
+        <ThemedText type="title" style={styles.title}>Estates</ThemedText>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: colors.tint }]}
           onPress={() => router.push('/(owner)/estates/new' as never)}
           activeOpacity={0.8}
         >
-          <IconSymbol name="plus" size={20} color="#fff" />
+          <IconSymbol name="plus" size={18} color="#fff" />
+          <ThemedText style={styles.addBtnText}>Add New</ThemedText>
         </TouchableOpacity>
       </View>
 
@@ -65,21 +69,19 @@ export default function OwnerEstates() {
 }
 
 const styles = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 10 },
+  title: { flex: 1, fontSize: 28, fontWeight: '700' },
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  title: { fontSize: 32, fontWeight: '700' },
-  addBtn: {
+  saddBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+
   },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  back: { padding: 4 },
   list: { paddingHorizontal: 20, paddingTop: 8 },
 });
