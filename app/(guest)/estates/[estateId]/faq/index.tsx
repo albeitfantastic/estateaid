@@ -1,4 +1,4 @@
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,6 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFaqStore } from '@/store/faq-store';
-import { useEstateRole } from '@/lib/estate-role';
 
 export default function GuestFaq() {
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
@@ -19,17 +18,8 @@ export default function GuestFaq() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const allFaqs = useFaqStore((s) => s.faqs);
-  const { deleteFaq } = useFaqStore();
   const faqs = useMemo(() => allFaqs.filter((f) => f.estateId === estateId), [allFaqs, estateId]);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const isAdmin = useEstateRole(estateId) === 'admin';
-
-  function confirmDelete(id: string) {
-    Alert.alert('Delete FAQ', 'Delete this FAQ entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteFaq(id) },
-    ]);
-  }
 
   return (
     <ThemedView style={styles.container}>
@@ -38,15 +28,6 @@ export default function GuestFaq() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>FAQ</ThemedText>
-        {isAdmin && (
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.tint }]}
-            onPress={() => router.push(`/(guest)/estates/${estateId}/faq/new` as never)}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="plus" size={18} color="#fff" />
-          </TouchableOpacity>
-        )}
       </View>
 
       {faqs.length === 0 ? (
@@ -61,24 +42,7 @@ export default function GuestFaq() {
                 activeOpacity={0.8}
               >
                 <ThemedText type="defaultSemiBold" style={styles.question}>{faq.question}</ThemedText>
-                {isAdmin ? (
-                  <View style={styles.adminActions}>
-                    <TouchableOpacity
-                      onPress={() => router.push(`/(guest)/estates/${estateId}/faq/${faq.id}/edit` as never)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <IconSymbol name="pencil" size={15} color={colors.tint} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => confirmDelete(faq.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <IconSymbol name="trash" size={15} color={colors.error} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <IconSymbol name={expanded === faq.id ? 'xmark' : 'plus'} size={16} color={colors.icon} />
-                )}
+                <IconSymbol name={expanded === faq.id ? 'xmark' : 'plus'} size={16} color={colors.icon} />
               </TouchableOpacity>
               {expanded === faq.id && (
                 <View style={styles.answerSection}>
@@ -98,8 +62,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12, gap: 12 },
   back: { padding: 4 },
   title: { flex: 1, fontSize: 28, fontWeight: '700' },
-  addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  adminActions: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   list: { paddingHorizontal: 20, gap: 10 },
   card: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
   questionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },

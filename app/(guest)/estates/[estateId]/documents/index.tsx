@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,7 +11,6 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useDocumentStore } from '@/store/document-store';
-import { useEstateRole } from '@/lib/estate-role';
 import { DocumentCategory } from '@/types';
 
 const CATEGORY_LABELS: Record<DocumentCategory, string> = { guide: 'Guides', manual: 'Manuals', rule: 'House Rules', emergency: 'Emergency', other: 'Other' };
@@ -24,17 +23,8 @@ export default function GuestDocuments() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const allDocs = useDocumentStore((s) => s.documents);
-  const { deleteDocument } = useDocumentStore();
   const docs = useMemo(() => allDocs.filter((d) => d.estateId === estateId), [allDocs, estateId]);
   const grouped = CATEGORY_ORDER.map((cat) => ({ cat, docs: docs.filter((d) => d.category === cat) })).filter((g) => g.docs.length > 0);
-  const isAdmin = useEstateRole(estateId) === 'admin';
-
-  function confirmDelete(id: string, title: string) {
-    Alert.alert('Delete Document', `Delete "${title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteDocument(id) },
-    ]);
-  }
 
   return (
     <ThemedView style={styles.container}>
@@ -43,15 +33,6 @@ export default function GuestDocuments() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>Documents</ThemedText>
-        {isAdmin && (
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.tint }]}
-            onPress={() => router.push(`/(guest)/estates/${estateId}/documents/upload` as never)}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="plus" size={18} color="#fff" />
-          </TouchableOpacity>
-        )}
       </View>
       {docs.length === 0 ? (
         <EmptyState icon="doc.fill" title="No documents" subtitle="The owner hasn't uploaded any documents yet." />
@@ -72,16 +53,7 @@ export default function GuestDocuments() {
                     <ThemedText type="defaultSemiBold" numberOfLines={1}>{doc.title}</ThemedText>
                     {doc.description && <ThemedText style={[styles.sub, { color: colors.icon }]} numberOfLines={1}>{doc.description}</ThemedText>}
                   </View>
-                  {isAdmin ? (
-                    <TouchableOpacity
-                      onPress={() => confirmDelete(doc.id, doc.title)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <IconSymbol name="trash" size={16} color={colors.error} />
-                    </TouchableOpacity>
-                  ) : (
-                    <IconSymbol name="chevron.right" size={16} color={colors.icon} />
-                  )}
+                  <IconSymbol name="chevron.right" size={16} color={colors.icon} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -97,7 +69,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12, gap: 12 },
   back: { padding: 4 },
   title: { flex: 1, fontSize: 28, fontWeight: '700' },
-  addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, padding: 14, borderBottomWidth: 1, gap: 12 },
   info: { flex: 1, gap: 2 },
   sub: { fontSize: 12 },

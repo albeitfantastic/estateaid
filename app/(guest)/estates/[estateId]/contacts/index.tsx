@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,7 +11,6 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useContactStore } from '@/store/contact-store';
-import { useEstateRole } from '@/lib/estate-role';
 import { ContactCategory } from '@/types';
 
 const CATEGORY_ORDER: ContactCategory[] = ['emergency', 'staff', 'service', 'utility', 'neighbor', 'other'];
@@ -24,17 +23,8 @@ export default function GuestContacts() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const allContacts = useContactStore((s) => s.contacts);
-  const { deleteContact } = useContactStore();
   const contacts = useMemo(() => allContacts.filter((c) => c.estateId === estateId), [allContacts, estateId]);
   const grouped = CATEGORY_ORDER.map((cat) => ({ cat, contacts: contacts.filter((c) => c.category === cat) })).filter((g) => g.contacts.length > 0);
-  const isAdmin = useEstateRole(estateId) === 'admin';
-
-  function confirmDelete(id: string, name: string) {
-    Alert.alert('Delete Contact', `Delete "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteContact(id) },
-    ]);
-  }
 
   return (
     <ThemedView style={styles.container}>
@@ -43,15 +33,6 @@ export default function GuestContacts() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>Contacts</ThemedText>
-        {isAdmin && (
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.tint }]}
-            onPress={() => router.push(`/(guest)/estates/${estateId}/contacts/new` as never)}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="plus" size={18} color="#fff" />
-          </TouchableOpacity>
-        )}
       </View>
       {contacts.length === 0 ? (
         <EmptyState icon="phone.fill" title="No contacts" subtitle="The owner hasn't added any contacts yet." />
@@ -78,16 +59,6 @@ export default function GuestContacts() {
                         <IconSymbol name="envelope.fill" size={20} color={colors.tint} />
                       </TouchableOpacity>
                     )}
-                    {isAdmin && (
-                      <>
-                        <TouchableOpacity onPress={() => router.push(`/(guest)/estates/${estateId}/contacts/${contact.id}/edit` as never)}>
-                          <IconSymbol name="pencil" size={18} color={colors.tint} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => confirmDelete(contact.id, contact.name)}>
-                          <IconSymbol name="trash" size={18} color={colors.error} />
-                        </TouchableOpacity>
-                      </>
-                    )}
                   </View>
                 </View>
               ))}
@@ -104,7 +75,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12, gap: 12 },
   back: { padding: 4 },
   title: { flex: 1, fontSize: 28, fontWeight: '700' },
-  addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, padding: 14, borderBottomWidth: 1, gap: 12 },
   info: { flex: 1, gap: 2 },
   role: { fontSize: 13 },
