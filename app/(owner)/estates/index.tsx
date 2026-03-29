@@ -12,6 +12,8 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { useInvitationStore } from '@/store/invitation-store';
+import { getEstateRole } from '@/lib/estate-role';
 
 export default function OwnerEstates() {
   const router = useRouter();
@@ -21,9 +23,25 @@ export default function OwnerEstates() {
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
+  const allInvitations = useInvitationStore((s) => s.invitations);
+
+  const invitedEstateIds = useMemo(() => {
+    if (!currentUser) return [] as string[];
+    return allInvitations
+      .filter(
+        (inv) =>
+          inv.status === 'accepted' &&
+          (inv.guestId === currentUser.id || inv.guestEmail === currentUser.email)
+      )
+      .map((inv) => inv.estateId);
+  }, [allInvitations, currentUser]);
+
   const estates = useMemo(
-    () => allEstates.filter((e) => e.ownerId === (currentUser?.id ?? '')),
-    [allEstates, currentUser?.id]
+    () =>
+      allEstates.filter(
+        (e) => e.ownerId === (currentUser?.id ?? '') || invitedEstateIds.includes(e.id)
+      ),
+    [allEstates, currentUser?.id, invitedEstateIds]
   );
 
   return (
@@ -60,13 +78,27 @@ export default function OwnerEstates() {
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 20 }]}
           showsVerticalScrollIndicator={false}
         >
-          {estates.map((estate) => (
-            <EstateCard
-              key={estate.id}
-              estate={estate}
-              onPress={() => router.push(`/(owner)/estates/${estate.id}` as never)}
-            />
-          ))}
+          {estates.map((estate) => {
+            const isOwned = estate.ownerId === currentUser?.id;
+            const invRole = isOwned
+              ? null
+              : getEstateRole(allInvitations, estate.id, currentUser!.id, currentUser?.email);
+            return (
+              <View key={estate.id}>
+                <EstateCard
+                  estate={estate}
+                  onPress={() => router.push(`/(owner)/estates/${estate.id}` as never)}
+                />
+                {invRole && (
+                  <View style={[styles.roleBadge, { backgroundColor: invRole === 'admin' ? colors.tint + '22' : colors.icon + '15' }]}>
+                    <ThemedText style={[styles.roleBadgeText, { color: invRole === 'admin' ? colors.tint : colors.icon }]}>
+                      {invRole === 'admin' ? 'Admin' : 'Guest'}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </ScrollView>
       )}
     </ThemedView>
@@ -89,4 +121,6 @@ const styles = StyleSheet.create({
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   back: { padding: 4 },
   list: { paddingHorizontal: 20, paddingTop: 8 },
+  roleBadge: { alignSelf: 'flex-start', marginTop: -6, marginBottom: 8, marginLeft: 20, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
+  roleBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
 });

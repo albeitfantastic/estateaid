@@ -27,7 +27,19 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=REDACTED npx supabase db dump --schema public --linked)",
+      "Bash(SUPABASE_ACCESS_TOKEN=REDACTED npx supabase db dump --linked)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(grep:*)",
+      "Bash(xargs -0 grep -n \"\\\\.role\\\\|role:\")",
+      "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/events/new.tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/events/new.tsx\")",
+      "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/events/[eventId].tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/events/[eventId].tsx\")",
+      "Bash(mkdir -p \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/faq/[faqId]\")",
+      "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/faq/new.tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/faq/new.tsx\")",
+      "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/faq/[faqId]/edit.tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/faq/[faqId]/edit.tsx\")",
+      "Bash(mkdir -p \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/contacts/[contactId]\")",
+      "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/contacts/new.tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/contacts/new.tsx\")"
     ]
   }
 }
