@@ -2,14 +2,40 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FaqItem } from '@/types';
+import { supabase } from '@/lib/supabase';
+
+function fromDb(row: Record<string, unknown>): FaqItem {
+  return {
+    id: row.id as string,
+    estateId: row.estate_id as string,
+    question: row.question as string,
+    answer: (row.answer ?? '') as string,
+    order: (row.order ?? 0) as number,
+    createdAt: (row.created_at ?? '') as string,
+    updatedAt: (row.updated_at ?? '') as string,
+  };
+}
+
+function toDb(f: FaqItem) {
+  return {
+    id: f.id,
+    estate_id: f.estateId,
+    question: f.question,
+    answer: f.answer,
+    order: f.order,
+    created_at: f.createdAt,
+    updated_at: f.updatedAt,
+  };
+}
 
 interface FaqState {
   faqs: FaqItem[];
   setFaqs: (faqs: FaqItem[]) => void;
-  addFaq: (faq: FaqItem) => void;
-  updateFaq: (id: string, patch: Partial<FaqItem>) => void;
-  deleteFaq: (id: string) => void;
-  reorderFaqs: (estateId: string, orderedIds: string[]) => void;
+  fetchFromSupabase: () => Promise<void>;
+  addFaq: (faq: FaqItem) => Promise<void>;
+  updateFaq: (id: string, patch: Partial<FaqItem>) => Promise<void>;
+  deleteFaq: (id: string) => Promise<void>;
+  reorderFaqs: (estateId: string, orderedIds: string[]) => Promise<void>;
   getFaqsByEstate: (estateId: string) => FaqItem[];
 }
 
@@ -18,22 +44,45 @@ export const useFaqStore = create<FaqState>()(
     (set, get) => ({
       faqs: [],
       setFaqs: (faqs) => set({ faqs }),
-      addFaq: (faq) => set((s) => ({ faqs: [...s.faqs, faq] })),
-      updateFaq: (id, patch) =>
+      fetchFromSupabase: async () => {
+        const { data } = await supabase.from('faqs').select('*');
+        if (data) set({ faqs: data.map(fromDb) });
+      },
+      addFaq: async (faq) => {
+        set((s) => ({ faqs: [...s.faqs, faq] }));
+        const { error } = await supabase.from('faqs').insert(toDb(faq));
+        if (error) set((s) => ({ faqs: s.faqs.filter((f) => f.id !== faq.id) }));
+      },
+      updateFaq: async (id, patch) => {
         set((s) => ({
           faqs: s.faqs.map((f) =>
             f.id === id ? { ...f, ...patch, updatedAt: new Date().toISOString() } : f
           ),
-        })),
-      deleteFaq: (id) => set((s) => ({ faqs: s.faqs.filter((f) => f.id !== id) })),
-      reorderFaqs: (estateId, orderedIds) =>
+        }));
+        const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (patch.question !== undefined) dbPatch.question = patch.question;
+        if (patch.answer !== undefined) dbPatch.answer = patch.answer;
+        if (patch.order !== undefined) dbPatch.order = patch.order;
+        await supabase.from('faqs').update(dbPatch).eq('id', id);
+      },
+      deleteFaq: async (id) => {
+        set((s) => ({ faqs: s.faqs.filter((f) => f.id !== id) }));
+        await supabase.from('faqs').delete().eq('id', id);
+      },
+      reorderFaqs: async (estateId, orderedIds) => {
         set((s) => ({
           faqs: s.faqs.map((f) => {
             if (f.estateId !== estateId) return f;
             const idx = orderedIds.indexOf(f.id);
             return idx >= 0 ? { ...f, order: idx } : f;
           }),
-        })),
+        }));
+        await Promise.all(
+          orderedIds.map((id, idx) =>
+            supabase.from('faqs').update({ order: idx }).eq('id', id)
+          )
+        );
+      },
       getFaqsByEstate: (estateId) =>
         get()
           .faqs.filter((f) => f.estateId === estateId)

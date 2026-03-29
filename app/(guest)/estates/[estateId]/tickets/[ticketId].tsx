@@ -11,8 +11,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useTicketStore } from '@/store/ticket-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { generateId } from '@/lib/id';
 import { formatDate } from '@/lib/date-utils';
 
@@ -24,6 +24,7 @@ export default function GuestTicketThread() {
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
   const { tickets, addMessage } = useTicketStore();
+  const profileById = useProfileStore((s) => s.byId);
   const ticket = tickets.find((t) => t.id === ticketId);
   const [reply, setReply] = useState('');
   const scrollRef = useRef<ScrollView>(null);
@@ -53,12 +54,14 @@ export default function GuestTicketThread() {
         <ScrollView ref={scrollRef} contentContainerStyle={[styles.messages, { paddingBottom: 16 }]} onContentSizeChange={() => scrollRef.current?.scrollToEnd()}>
           {ticket.messages.map((msg) => {
             const isMe = msg.authorId === currentUser?.id;
-            const author = SEED_USERS.find((u) => u.id === msg.authorId);
+            const authorName = isMe
+              ? (currentUser?.name ?? 'You')
+              : resolveUserDisplayName(msg.authorId, profileById);
             return (
               <View key={msg.id} style={[styles.msgRow, isMe && styles.msgRowRight]}>
-                {!isMe && <Avatar name={author?.name ?? 'Owner'} size={32} />}
+                {!isMe && <Avatar name={authorName} size={32} />}
                 <View style={[styles.bubble, { backgroundColor: isMe ? colors.tint : colors.tint + '18' }, isMe && styles.bubbleRight]}>
-                  {!isMe && <ThemedText style={styles.authorName}>{author?.name ?? 'Owner'}</ThemedText>}
+                  {!isMe && <ThemedText style={styles.authorName}>{authorName}</ThemedText>}
                   <ThemedText style={[styles.msgText, isMe && { color: '#fff' }]}>{msg.body}</ThemedText>
                   <ThemedText style={[styles.msgTime, isMe ? { color: '#fff8' } : { color: colors.icon }]}>
                     {formatDate(msg.createdAt.slice(0, 10))}

@@ -11,8 +11,8 @@ import { Colors, EstateColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 
 export default function EditStay() {
@@ -24,14 +24,16 @@ export default function EditStay() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const { stays, updateStayDates, deleteStay } = useStayStore();
+  const profileById = useProfileStore((s) => s.byId);
 
   const stay = stays.find((s) => s.id === stayId);
   const estate = allEstates.find((e) => e.id === stay?.estateId);
   const isOwner = stay?.guestId === currentUser?.id;
-  const guest = isOwner ? null : SEED_USERS.find((u) => u.id === stay?.guestId);
   const guestLabel = isOwner
-    ? `${currentUser?.name.split(' ')[0]} (you)`
-    : (guest?.name ?? stay?.guestId ?? '');
+    ? `${currentUser?.name?.split(' ')[0] ?? 'You'} (you)`
+    : stay?.guestId
+      ? resolveUserDisplayName(stay.guestId, profileById)
+      : '';
 
   const estateIndex = useMemo(() => {
     const ownerEstates = allEstates.filter((e) => e.ownerId === currentUser?.id);

@@ -12,10 +12,10 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
-import { generateId } from '@/lib/id';
+import { generateUuidV4 } from '@/lib/id';
 
 export default function PlanStay() {
   const router = useRouter();
@@ -23,6 +23,7 @@ export default function PlanStay() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
+  const profileById = useProfileStore((s) => s.byId);
   const allEstates = useEstateStore((s) => s.estates);
   const { createDirectStay, getBlockedRanges } = useStayStore();
   const { getInvitationsByEstate } = useInvitationStore();
@@ -51,9 +52,16 @@ export default function PlanStay() {
       (inv) => inv.status === 'accepted' && inv.guestId
     );
     const guestIds = [...new Set(accepted.map((inv) => inv.guestId!))];
-    const guests = SEED_USERS.filter((u) => guestIds.includes(u.id));
+    const guests = guestIds.map((id) => {
+      const inv = accepted.find((i) => i.guestId === id);
+      return {
+        id,
+        name: resolveUserDisplayName(id, profileById, inv?.guestEmail),
+        email: inv?.guestEmail ?? '',
+      };
+    });
     return [...ownerEntry, ...guests];
-  }, [selectedEstateId, currentUser, getInvitationsByEstate]);
+  }, [selectedEstateId, currentUser, getInvitationsByEstate, profileById]);
 
   function pickEstate(id: string) {
     setSelectedEstateId(id);
@@ -68,21 +76,25 @@ export default function PlanStay() {
     );
   }
 
-  function submit() {
+  async function submit() {
     if (!selectedEstateId) { Alert.alert('Required', 'Please select a property.'); return; }
     if (selectedGuestIds.length === 0) { Alert.alert('Required', 'Please select at least one guest.'); return; }
     if (!from || !to) { Alert.alert('Required', 'Please select check-in and check-out dates.'); return; }
 
-    selectedGuestIds.forEach((guestId) => {
-      createDirectStay({
-        id: generateId(),
+    for (const guestId of selectedGuestIds) {
+      const { error } = await createDirectStay({
+        id: generateUuidV4(),
         stayRequestId: '',
         estateId: selectedEstateId,
         guestId,
         from,
         to,
       });
-    });
+      if (error) {
+        Alert.alert('Could not save stay', error);
+        return;
+      }
+    }
 
     const count = selectedGuestIds.length;
     Alert.alert('Stay Planned', `${count} stay${count > 1 ? 's' : ''} added to the calendar.`);
@@ -206,7 +218,7 @@ export default function PlanStay() {
 
         <TouchableOpacity
           style={[styles.submitBtn, { backgroundColor: colors.tint }, !canSubmit && styles.disabled]}
-          onPress={submit}
+          onPress={() => void submit()}
           disabled={!canSubmit}
           activeOpacity={0.8}
         >

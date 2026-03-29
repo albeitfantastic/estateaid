@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EstateCard } from '@/components/ui/estate-card';
@@ -15,6 +15,7 @@ import { useEstateStore } from '@/store/estate-store';
 
 export default function OwnerEstates() {
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -28,9 +29,13 @@ export default function OwnerEstates() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
+        {navigation.canGoBack() ? (
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.back} />
+        )}
         <ThemedText type="title" style={styles.title}>Properties</ThemedText>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: colors.tint }]}

@@ -13,8 +13,8 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { formatDateRange } from '@/lib/date-utils';
 
 export default function OwnerRequests() {
@@ -30,6 +30,7 @@ export default function OwnerRequests() {
   );
   const estateIds = useMemo(() => estates.map((e) => e.id), [estates]);
   const stayRequests = useStayStore((s) => s.stayRequests);
+  const profileById = useProfileStore((s) => s.byId);
   const allRequests = useMemo(
     () =>
       stayRequests
@@ -62,7 +63,7 @@ export default function OwnerRequests() {
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
           {allRequests.map((req) => {
             const estate = estates.find((e) => e.id === req.estateId);
-            const guest = SEED_USERS.find((u) => u.id === req.guestId);
+            const guestName = resolveUserDisplayName(req.guestId, profileById);
             return (
               <TouchableOpacity
                 key={req.id}
@@ -70,9 +71,9 @@ export default function OwnerRequests() {
                 onPress={() => router.push(`/(owner)/estates/${req.estateId}/stays/${req.id}` as never)}
                 activeOpacity={0.8}
               >
-                <Avatar name={guest?.name ?? req.guestId} size={44} color={colors.tint} />
+                <Avatar name={guestName} size={44} color={colors.tint} />
                 <View style={styles.info}>
-                  <ThemedText type="defaultSemiBold">{guest?.name ?? req.guestId}</ThemedText>
+                  <ThemedText type="defaultSemiBold">{guestName}</ThemedText>
                   <ThemedText style={[styles.estate, { color: colors.tint }]}>{estate?.name}</ThemedText>
                   <ThemedText style={[styles.dates, { color: colors.icon }]}>
                     {formatDateRange(req.requestedFrom, req.requestedTo)}

@@ -517,15 +517,7 @@ const EVENTS: EstateEvent[] = [
 ];
 
 // ── seedStores ────────────────────────────────────────────────────────────────
-export function seedStores(): void {
-  useEstateStore.getState().setEstates(ESTATES);
-  useInvitationStore.getState().setInvitations(INVITATIONS);
-  useStayStore.getState().setStayRequests(STAY_REQUESTS);
-  useStayStore.getState().setStays(STAYS);
-  useFaqStore.getState().setFaqs(FAQS);
-  useDocumentStore.getState().setDocuments(DOCUMENTS);
-  useContactStore.getState().setContacts(CONTACTS);
-  useTicketStore.getState().setTickets(TICKETS);
-  useEventStore.getState().setEvents(EVENTS);
-}
+// Seed data is no longer used — data is loaded from Supabase.
+// SEED_USERS is kept for backward-compatible name lookups until a profile cache is added.
+export function seedStores(): void {}
 

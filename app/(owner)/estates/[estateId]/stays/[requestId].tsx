@@ -11,8 +11,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 
 export default function ReviewStayRequest() {
@@ -22,9 +22,10 @@ export default function ReviewStayRequest() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { stayRequests, approveStay, declineStay, proposeAlternative, askQuestion, hasConflict } = useStayStore();
+  const profileById = useProfileStore((s) => s.byId);
 
   const req = stayRequests.find((r) => r.id === requestId);
-  const guest = req ? SEED_USERS.find((u) => u.id === req.guestId) : undefined;
+  const guestName = req ? resolveUserDisplayName(req.guestId, profileById) : '';
 
   const [ownerNote, setOwnerNote] = useState(req?.ownerNote ?? '');
   const [altFrom, setAltFrom] = useState<string | null>(req?.alternativeFrom ?? null);
@@ -81,10 +82,9 @@ export default function ReviewStayRequest() {
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
         {/* Guest info */}
         <View style={[styles.guestCard, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}>
-          <Avatar name={guest?.name ?? req.guestId} size={48} color={colors.tint} />
+          <Avatar name={guestName} size={48} color={colors.tint} />
           <View style={styles.guestInfo}>
-            <ThemedText type="defaultSemiBold" style={styles.guestName}>{guest?.name ?? req.guestId}</ThemedText>
-            <ThemedText style={[styles.guestEmail, { color: colors.icon }]}>{guest?.email}</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.guestName}>{guestName}</ThemedText>
           </View>
           <StatusBadge status={req.status} />
         </View>

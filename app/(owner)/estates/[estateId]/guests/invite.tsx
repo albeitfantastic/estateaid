@@ -1,4 +1,4 @@
-import { Linking, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,22 +11,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { generateId, generateInviteCode } from '@/lib/id';
-
-const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
-
-function buildShareText(estateName: string, code: string, note?: string): string {
-  const noteSection = note ? `\n\n"${note}"` : '';
-  return (
-    `🏡 You're invited to ${estateName} on EstateAid!${noteSection}\n\n` +
-    `Your invite code: ${code}\n\n` +
-    `Download the app:\n` +
-    `iOS: ${APP_STORE_URL}\n` +
-    `Android: ${PLAY_STORE_URL}\n\n` +
-    `Enter your code after signing up as a Guest.`
-  );
-}
+import { generateInviteCode, generateUuidV4 } from '@/lib/id';
+import { APP_STORE_URL, buildFullInviteMessage, buildWhatsAppInviteMessage } from '@/lib/invite-messages';
 
 export default function InviteGuest() {
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
@@ -42,10 +28,10 @@ export default function InviteGuest() {
   const [note, setNote] = useState('');
   const [createdCode, setCreatedCode] = useState<string | null>(null);
 
-  function createInvite() {
+  async function createInvite() {
     const code = generateInviteCode();
-    sendInvitation({
-      id: generateId(),
+    const { error } = await sendInvitation({
+      id: generateUuidV4(),
       estateId,
       ownerId: currentUser!.id,
       inviteCode: code,
@@ -53,16 +39,34 @@ export default function InviteGuest() {
       status: 'pending',
       createdAt: new Date().toISOString(),
     });
+    if (error) {
+      Alert.alert('Could not create invite', error);
+      return;
+    }
     setCreatedCode(code);
   }
 
   function shareVia(platform: 'whatsapp' | 'telegram' | 'native') {
     if (!createdCode || !estate) return;
-    const text = buildShareText(estate.name, createdCode, note.trim() || undefined);
+    const noteOpt = note.trim() || undefined;
 
     if (platform === 'whatsapp') {
-      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
-    } else if (platform === 'telegram') {
+      const wa = buildWhatsAppInviteMessage({
+        estateName: estate.name,
+        inviteCode: createdCode,
+        note: noteOpt,
+      });
+      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(wa)}`);
+      return;
+    }
+
+    const text = buildFullInviteMessage({
+      estateName: estate.name,
+      inviteCode: createdCode,
+      note: noteOpt,
+      footerLine: 'Enter your code after signing up as a Guest.',
+    });
+    if (platform === 'telegram') {
       Linking.openURL(
         `https://t.me/share/url?url=${encodeURIComponent(APP_STORE_URL)}&text=${encodeURIComponent(text)}`
       );
@@ -114,7 +118,7 @@ export default function InviteGuest() {
 
             <TouchableOpacity
               style={[styles.createBtn, { backgroundColor: colors.tint }]}
-              onPress={createInvite}
+              onPress={() => void createInvite()}
               activeOpacity={0.85}
             >
               <IconSymbol name="key.fill" size={18} color="#fff" />
@@ -128,9 +132,22 @@ export default function InviteGuest() {
               <ThemedText style={[styles.codeLabel, { color: colors.icon }]}>INVITE CODE</ThemedText>
               <ThemedText style={[styles.code, { color: colors.tint }]}>{createdCode}</ThemedText>
               <ThemedText style={[styles.codeHint, { color: colors.icon }]}>
-                Share this code with your guest. It can only be used once.
+                Share this code with your guest. Each code can only be used once.
               </ThemedText>
             </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                setCreatedCode(null);
+                setNote('');
+              }}
+              activeOpacity={0.75}
+              style={{ alignSelf: 'center', paddingVertical: 8 }}
+            >
+              <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 15 }}>
+                Generate another code
+              </ThemedText>
+            </TouchableOpacity>
 
             {/* Share via */}
             <ThemedText style={[styles.shareLabel, { color: colors.icon }]}>Share via</ThemedText>

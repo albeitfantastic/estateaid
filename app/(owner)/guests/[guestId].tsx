@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { SEED_USERS } from '@/store/seed-data';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 
 export default function GuestDetail() {
   const { guestId } = useLocalSearchParams<{ guestId: string }>();
@@ -23,6 +23,7 @@ export default function GuestDetail() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const { invitations, revokeInvitation, updateInvitationRole } = useInvitationStore();
+  const profileById = useProfileStore((s) => s.byId);
 
   const estates = useMemo(
     () => allEstates.filter((e) => e.ownerId === currentUser?.id),
@@ -44,8 +45,8 @@ export default function GuestDetail() {
     [invitations, guestId, estateIds]
   );
 
-  const user = SEED_USERS.find((u) => u.id === guestId);
-  const displayName = user?.name ?? guestId;
+  const emailHint = guestInvitations.find((i) => i.guestEmail)?.guestEmail;
+  const displayName = resolveUserDisplayName(guestId, profileById, emailHint);
   const initial = displayName.charAt(0).toUpperCase();
 
   function confirmRevoke(invId: string, estateName: string) {
@@ -118,8 +119,8 @@ export default function GuestDetail() {
           </View>
           <View style={styles.profileInfo}>
             <ThemedText type="defaultSemiBold" style={styles.profileName}>{displayName}</ThemedText>
-            {user?.email && (
-              <ThemedText style={[styles.profileEmail, { color: colors.icon }]}>{user.email}</ThemedText>
+            {!!emailHint && (
+              <ThemedText style={[styles.profileEmail, { color: colors.icon }]}>{emailHint}</ThemedText>
             )}
           </View>
         </View>

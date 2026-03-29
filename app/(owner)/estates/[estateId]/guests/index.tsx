@@ -1,4 +1,4 @@
-import { Linking, ScrollView, Share, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { Alert, ScrollView, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,9 +12,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-
-const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
+import { buildFullInviteMessage } from '@/lib/invite-messages';
 
 export default function GuestsList() {
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
@@ -36,15 +34,14 @@ export default function GuestsList() {
 
   function shareCode(code: string, note?: string) {
     if (!estate) return;
-    const noteSection = note ? `\n\n"${note}"` : '';
-    const text =
-      `🏡 You're invited to ${estate.name} on EstateAid!${noteSection}\n\n` +
-      `Your invite code: ${code}\n\n` +
-      `Download the app:\n` +
-      `iOS: ${APP_STORE_URL}\n` +
-      `Android: ${PLAY_STORE_URL}\n\n` +
-      `Enter your code after signing up as a Guest.`;
-    Share.share({ message: text });
+    Share.share({
+      message: buildFullInviteMessage({
+        estateName: estate.name,
+        inviteCode: code,
+        note,
+        footerLine: 'Enter your code after signing up as a Guest.',
+      }),
+    });
   }
 
   return (

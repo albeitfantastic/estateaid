@@ -11,8 +11,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { formatDateRange } from '@/lib/date-utils';
 
 const TABS = ['Pending', 'All'] as const;
@@ -24,6 +24,7 @@ export default function StayRequestsList() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [tab, setTab] = useState<'Pending' | 'All'>('Pending');
+  const profileById = useProfileStore((s) => s.byId);
   const { getRequestsByEstate, hasConflict } = useStayStore();
   const all = getRequestsByEstate(estateId);
   const requests = tab === 'Pending' ? all.filter((r) => r.status === 'pending') : all;
@@ -54,7 +55,7 @@ export default function StayRequestsList() {
       ) : (
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
           {requests.map((req) => {
-            const guest = SEED_USERS.find((u) => u.id === req.guestId);
+            const guestName = resolveUserDisplayName(req.guestId, profileById);
             const conflict = req.status === 'pending' && hasConflict(estateId, req.requestedFrom, req.requestedTo, req.id);
             return (
               <TouchableOpacity
@@ -63,9 +64,9 @@ export default function StayRequestsList() {
                 onPress={() => router.push(`/(owner)/estates/${estateId}/stays/${req.id}` as never)}
                 activeOpacity={0.8}
               >
-                <Avatar name={guest?.name ?? req.guestId} size={44} color={colors.tint} />
+                <Avatar name={guestName} size={44} color={colors.tint} />
                 <View style={styles.info}>
-                  <ThemedText type="defaultSemiBold">{guest?.name ?? req.guestId}</ThemedText>
+                  <ThemedText type="defaultSemiBold">{guestName}</ThemedText>
                   <ThemedText style={[styles.dates, { color: colors.icon }]}>
                     {formatDateRange(req.requestedFrom, req.requestedTo)}
                   </ThemedText>

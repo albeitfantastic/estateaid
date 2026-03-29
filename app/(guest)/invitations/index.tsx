@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { SEED_USERS } from '@/store/seed-data';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { formatDate } from '@/lib/date-utils';
 
 export default function GuestInvitations() {
@@ -26,6 +26,16 @@ export default function GuestInvitations() {
   const [redeemError, setRedeemError] = useState('');
 
   const invitations = getPendingInvitationsForGuest(currentUser?.id ?? '', currentUser?.email);
+  const profileById = useProfileStore((s) => s.byId);
+  const ownerLabels = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const inv of invitations) {
+      if (!m[inv.ownerId]) {
+        m[inv.ownerId] = resolveUserDisplayName(inv.ownerId, profileById);
+      }
+    }
+    return m;
+  }, [invitations, profileById]);
 
   function accept(id: string) {
     respondToInvitation(id, 'accepted', currentUser?.id);
@@ -34,14 +44,18 @@ export default function GuestInvitations() {
     respondToInvitation(id, 'declined');
   }
 
-  function handleRedeem() {
+  async function handleRedeem() {
     if (!currentUser) return;
-    const result = redeemCode(codeInput, currentUser.id);
+    const result = await redeemCode(codeInput, currentUser.id);
     if (result.success) {
       const estate = getEstateById(result.invitation!.estateId);
       setCodeInput('');
       setRedeemError('');
       Alert.alert('Access granted!', `You now have access to ${estate?.name ?? 'the estate'}.`);
+    } else if (result.reason === 'fetch_error') {
+      setRedeemError('Could not verify the code. Check your connection or try again.');
+    } else if (result.reason === 'update_failed') {
+      setRedeemError('This code could not be applied. It may have just been used—try again or ask your host for a new code.');
     } else {
       setRedeemError('Code not found or already used. Check the code and try again.');
     }
@@ -76,7 +90,7 @@ export default function GuestInvitations() {
             />
             <TouchableOpacity
               style={[styles.redeemBtn, { backgroundColor: codeInput.length === 8 ? colors.tint : colors.border ?? colors.icon + '33' }]}
-              onPress={handleRedeem}
+              onPress={() => void handleRedeem()}
               disabled={codeInput.length !== 8}
               activeOpacity={0.85}
             >
@@ -103,7 +117,7 @@ export default function GuestInvitations() {
           <View style={styles.list}>
             {invitations.map((inv) => {
               const estate = getEstateById(inv.estateId);
-              const owner = SEED_USERS.find((u) => u.id === inv.ownerId);
+              const ownerName = ownerLabels[inv.ownerId] ?? 'Owner';
               return (
                 <View
                   key={inv.id}
@@ -117,7 +131,7 @@ export default function GuestInvitations() {
                       {estate?.name ?? 'Unknown Estate'}
                     </ThemedText>
                     <ThemedText style={[styles.meta, { color: colors.icon }]}>
-                      {estate?.location} · From {owner?.name ?? 'Owner'}
+                      {estate?.location} · From {ownerName}
                     </ThemedText>
                     {inv.message && (
                       <ThemedText style={[styles.message, { color: colors.text }]} numberOfLines={3}>

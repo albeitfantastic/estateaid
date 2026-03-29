@@ -11,8 +11,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useTicketStore } from '@/store/ticket-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { generateId } from '@/lib/id';
 import { formatDate } from '@/lib/date-utils';
 import { TicketStatus } from '@/types';
@@ -27,6 +27,7 @@ export default function OwnerTicketThread() {
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
   const { tickets, addMessage, updateTicketStatus } = useTicketStore();
+  const profileById = useProfileStore((s) => s.byId);
   const ticket = tickets.find((t) => t.id === ticketId);
   const [reply, setReply] = useState('');
   const [showStatusPicker, setShowStatusPicker] = useState(false);
@@ -41,7 +42,7 @@ export default function OwnerTicketThread() {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
 
-  const guest = SEED_USERS.find((u) => u.id === ticket.guestId);
+  const guestName = resolveUserDisplayName(ticket.guestId, profileById);
 
   return (
     <ThemedView style={styles.container}>
@@ -51,7 +52,7 @@ export default function OwnerTicketThread() {
         </TouchableOpacity>
         <View style={styles.headerText}>
           <ThemedText type="defaultSemiBold" style={styles.ticketTitle} numberOfLines={1}>{ticket.title}</ThemedText>
-          <ThemedText style={[styles.guestName, { color: colors.icon }]}>{guest?.name}</ThemedText>
+          <ThemedText style={[styles.guestName, { color: colors.icon }]}>{guestName}</ThemedText>
         </View>
         <TouchableOpacity onPress={() => setShowStatusPicker((v) => !v)}>
           <StatusBadge status={ticket.status} />
@@ -81,12 +82,14 @@ export default function OwnerTicketThread() {
         <ScrollView ref={scrollRef} contentContainerStyle={[styles.messages, { paddingBottom: 16 }]} onContentSizeChange={() => scrollRef.current?.scrollToEnd()}>
           {ticket.messages.map((msg) => {
             const isOwner = msg.authorId === currentUser?.id;
-            const author = SEED_USERS.find((u) => u.id === msg.authorId);
+            const authorName = isOwner
+              ? (currentUser?.name ?? 'You')
+              : resolveUserDisplayName(msg.authorId, profileById);
             return (
               <View key={msg.id} style={[styles.msgRow, isOwner && styles.msgRowRight]}>
-                {!isOwner && <Avatar name={author?.name ?? 'Guest'} size={32} />}
+                {!isOwner && <Avatar name={authorName} size={32} />}
                 <View style={[styles.bubble, { backgroundColor: isOwner ? colors.tint : colors.tint + '18' }, isOwner && styles.bubbleRight]}>
-                  {!isOwner && <ThemedText style={styles.authorName}>{author?.name ?? 'Guest'}</ThemedText>}
+                  {!isOwner && <ThemedText style={styles.authorName}>{authorName}</ThemedText>}
                   <ThemedText style={[styles.msgText, isOwner && { color: '#fff' }]}>{msg.body}</ThemedText>
                   <ThemedText style={[styles.msgTime, isOwner ? { color: '#fff8' } : { color: colors.icon }]}>
                     {formatDate(msg.createdAt.slice(0, 10))}

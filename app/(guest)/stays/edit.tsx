@@ -13,7 +13,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
-import { generateId } from '@/lib/id';
+import { generateUuidV4 } from '@/lib/id';
 
 export default function GuestEditStay() {
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
@@ -73,22 +73,22 @@ export default function GuestEditStay() {
     );
   }
 
-  const isPending = req.status === 'pending';
+  const stayRequest = req;
+  const isPending = stayRequest.status === 'pending';
   const canSubmit = !!from && !!to;
 
-  function submit() {
+  async function submit() {
     if (!from || !to || !currentUser) return;
 
     if (isPending) {
-      updateRequest(req.id, from, to);
+      updateRequest(stayRequest.id, from, to);
       Alert.alert('Request Updated', 'Your stay request has been updated and is pending approval.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } else {
-      // Approved — create a new pending request; existing stay stays active
-      requestStay({
-        id: generateId(),
-        estateId: req.estateId,
+      const { error } = await requestStay({
+        id: generateUuidV4(),
+        estateId: stayRequest.estateId,
         guestId: currentUser.id,
         requestedFrom: from,
         requestedTo: to,
@@ -96,6 +96,10 @@ export default function GuestEditStay() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+      if (error) {
+        Alert.alert('Could not send request', error);
+        return;
+      }
       Alert.alert(
         'Request Sent',
         'A new request has been sent to the owner. Your current confirmed stay remains active until the new request is approved.',
@@ -161,7 +165,7 @@ export default function GuestEditStay() {
 
         <TouchableOpacity
           style={[styles.submitBtn, { backgroundColor: colors.tint }, !canSubmit && styles.disabled]}
-          onPress={submit}
+          onPress={() => void submit()}
           disabled={!canSubmit}
           activeOpacity={0.8}
         >

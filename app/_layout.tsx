@@ -1,11 +1,14 @@
 import { Theme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { seedStores } from '@/store/seed-data';
+import { loadAllStores } from '@/lib/load-all-stores';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/auth-store';
 
 const LightNavTheme: Theme = {
   dark: false,
@@ -40,17 +43,39 @@ const DarkNavTheme: Theme = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const { bootstrapSession, clearUser } = useAuthStore();
 
   useEffect(() => {
-    if (__DEV__) {
-      seedStores();
+    let cancelled = false;
+    WebBrowser.maybeCompleteAuthSession();
+
+    async function afterSession() {
+      if (cancelled) return;
+      const user = useAuthStore.getState().currentUser;
+      if (user) await loadAllStores();
     }
+
+    void bootstrapSession().then(afterSession);
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        clearUser();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkNavTheme : LightNavTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="auth" />
         <Stack.Screen name="(onboarding)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(owner)" />

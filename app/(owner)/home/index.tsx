@@ -17,7 +17,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useEventStore } from '@/store/event-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { SEED_USERS } from '@/store/seed-data';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useTicketStore } from '@/store/ticket-store';
 
@@ -39,7 +39,7 @@ export default function OwnerDashboard() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
-  const { themePreference, setThemePreference, clearUser, selectedTier } = useAuthStore();
+  const { themePreference, setThemePreference, signOut, selectedTier } = useAuthStore();
   const isDark = themePreference === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
   const allEstates = useEstateStore((s) => s.estates);
@@ -49,6 +49,7 @@ export default function OwnerDashboard() {
   const allInvitations = useInvitationStore((s) => s.invitations);
   const allEvents = useEventStore((s) => s.events);
   const todayStr = today();
+  const profileById = useProfileStore((s) => s.byId);
 
   const estates = useMemo(
     () => allEstates.filter((e) => e.ownerId === currentUser?.id),
@@ -131,8 +132,8 @@ export default function OwnerDashboard() {
   const dayInfoMap = useMemo(() => {
     const map: Record<string, DayInfo> = {};
     allStays.forEach((stay) => {
-      const color = estateColorMap[stay.estateId];
-      if (!color) return;
+      if (!stay.from || !stay.to) return;
+      const color = estateColorMap[stay.estateId] ?? colors.tint;
       getDaysInRange(stay.from, stay.to).forEach((dateStr) => {
         if (!map[dateStr]) map[dateStr] = { dateStr, dots: [] };
         map[dateStr].dots = [...(map[dateStr].dots ?? []), { color, key: stay.id }];
@@ -146,7 +147,7 @@ export default function OwnerDashboard() {
       });
     });
     return map;
-  }, [allStays, estateColorMap, estateEvents, monthStart, monthEnd]);
+  }, [allStays, estateColorMap, estateEvents, monthStart, monthEnd, colors.tint]);
 
   const staysOnSelectedDay = selectedDay
     ? allStays.filter((s) => selectedDay >= s.from && selectedDay <= s.to && estateIds.includes(s.estateId))
@@ -182,7 +183,7 @@ export default function OwnerDashboard() {
         isDark={isDark}
         selectedTier={selectedTier}
         onToggleDark={(v) => setThemePreference(v ? 'dark' : 'light')}
-        onSwitchRole={() => { clearUser(); router.replace('/(auth)' as never); }}
+        onSwitchRole={() => { signOut(); router.replace('/(auth)' as never); }}
       />
 
       <ScrollView
@@ -311,9 +312,10 @@ export default function OwnerDashboard() {
           <View style={styles.upcomingList}>
             {upcomingStays.map((stay) => {
               const estate = estates.find((e) => e.id === stay.estateId);
-              const guest = SEED_USERS.find((u) => u.id === stay.guestId);
               const isOwnerStay = stay.guestId === currentUser?.id;
-              const guestLabel = isOwnerStay ? `${currentUser?.name.split(' ')[0]} (you)` : (guest?.name ?? stay.guestId);
+              const guestLabel = isOwnerStay
+                ? `${currentUser?.name?.split(' ')[0] ?? 'You'} (you)`
+                : resolveUserDisplayName(stay.guestId, profileById);
               const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
               const relLabel = getStayRelativeLabel(stay.from, stay.to, todayStr);
               const isActive = stay.from <= todayStr && stay.to >= todayStr;
@@ -407,11 +409,14 @@ export default function OwnerDashboard() {
             )}
             {staysOnSelectedDay.map((stay) => {
               const estate = estates.find((e) => e.id === stay.estateId);
-              const guest = SEED_USERS.find((u) => u.id === stay.guestId);
               const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
+              const guestLabel =
+                stay.guestId === currentUser?.id
+                  ? (currentUser?.name ?? 'You')
+                  : resolveUserDisplayName(stay.guestId, profileById);
               return (
                 <View key={stay.id} style={[styles.dayStayRow, { borderLeftColor: dotColor }]}>
-                  <ThemedText type="defaultSemiBold">{guest?.name ?? stay.guestId}</ThemedText>
+                  <ThemedText type="defaultSemiBold">{guestLabel}</ThemedText>
                   <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
                     {estate?.name} · {formatDateRange(stay.from, stay.to)}
                   </ThemedText>

@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import { useMemo } from 'react';
 import { Platform } from 'react-native';
 
@@ -53,12 +53,19 @@ export default function OwnerTabLayout() {
           title: 'Properties',
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'building.2.fill' : 'building.2'} color={color} />,
         }}
+        listeners={{
+          tabPress: () => {
+            router.replace('/(owner)/estates' as never);
+          },
+        }}
       />
       <Tabs.Screen
         name="calendar/index"
         options={{
           title: 'Calendar',
-          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol name="calendar" color={color} weight={focused ? 'semibold' : 'regular'} />
+          ),
         }}
       />
       <Tabs.Screen

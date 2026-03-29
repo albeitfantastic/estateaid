@@ -12,8 +12,8 @@ import { Colors, EstateColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { today, formatDateRange } from '@/lib/date-utils';
 
 export default function StaysIndex() {
@@ -24,6 +24,7 @@ export default function StaysIndex() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allStays = useStayStore((s) => s.stays);
+  const profileById = useProfileStore((s) => s.byId);
   const todayStr = today();
 
   const estates = useMemo(
@@ -55,8 +56,9 @@ export default function StaysIndex() {
   function renderStayRow(stay: typeof ownerStays[0], editable: boolean) {
     const estate = estates.find((e) => e.id === stay.estateId);
     const isOwner = stay.guestId === currentUser?.id;
-    const guest = isOwner ? null : SEED_USERS.find((u) => u.id === stay.guestId);
-    const guestLabel = isOwner ? `${currentUser?.name.split(' ')[0]} (you)` : (guest?.name ?? stay.guestId);
+    const guestLabel = isOwner
+      ? `${currentUser?.name?.split(' ')[0] ?? 'You'} (you)`
+      : resolveUserDisplayName(stay.guestId, profileById);
     const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
 
     return (

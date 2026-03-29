@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +20,7 @@ import { useEventStore } from '@/store/event-store';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function GuestCalendar() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -307,6 +309,7 @@ export default function GuestCalendar() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 20, paddingBottom: 8 },
+  back: { padding: 4 },
   title: { fontSize: 32, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   scroll: { paddingHorizontal: 20 },

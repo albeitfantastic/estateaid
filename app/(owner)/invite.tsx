@@ -1,4 +1,4 @@
-import { Linking, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,10 +12,8 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { InvitationRole } from '@/types';
-import { generateId, generateInviteCode } from '@/lib/id';
-
-const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
+import { generateInviteCode, generateUuidV4 } from '@/lib/id';
+import { APP_STORE_URL, buildFullInviteMessage, buildWhatsAppInviteMessage } from '@/lib/invite-messages';
 
 const ROLES: { value: InvitationRole; label: string }[] = [
   { value: 'guest', label: 'Guest' },
@@ -30,23 +28,21 @@ interface GeneratedInvite {
   code: string;
 }
 
-function buildShareText(estateName: string, code: string, role: InvitationRole, note?: string): string {
-  const noteSection = note ? `\n\n"${note}"` : '';
-  return (
-    `🏡 You're invited to ${estateName} on EstateAid as ${role}!${noteSection}\n\n` +
-    `Your invite code: ${code}\n\n` +
-    `Download the app:\n` +
-    `iOS: ${APP_STORE_URL}\n` +
-    `Android: ${PLAY_STORE_URL}\n\n` +
-    `Enter your code after signing up.`
-  );
-}
-
 function shareVia(platform: 'whatsapp' | 'telegram' | 'native', estateName: string, code: string, role: InvitationRole, note?: string) {
-  const text = buildShareText(estateName, code, role, note);
   if (platform === 'whatsapp') {
-    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
-  } else if (platform === 'telegram') {
+    const wa = buildWhatsAppInviteMessage({ estateName, inviteCode: code, role, note });
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(wa)}`);
+    return;
+  }
+  const text = buildFullInviteMessage({
+    estateName,
+    inviteCode: code,
+    role,
+    note,
+    footerLine:
+      role === 'guest' ? 'Enter your code after signing up as a Guest.' : 'Enter your code after signing up.',
+  });
+  if (platform === 'telegram') {
     Linking.openURL(
       `https://t.me/share/url?url=${encodeURIComponent(APP_STORE_URL)}&text=${encodeURIComponent(text)}`
     );
@@ -89,12 +85,13 @@ export default function InviteUser() {
     setEstateRoles((prev) => ({ ...prev, [estateId]: role }));
   }
 
-  function generateCodes() {
+  async function generateCodes() {
     const now = new Date().toISOString();
-    const invites: GeneratedInvite[] = Object.entries(estateRoles).map(([estateId, role]) => {
+    const invites: GeneratedInvite[] = [];
+    for (const [estateId, role] of Object.entries(estateRoles)) {
       const code = generateInviteCode();
-      sendInvitation({
-        id: generateId(),
+      const { error } = await sendInvitation({
+        id: generateUuidV4(),
         estateId,
         ownerId: currentUser!.id,
         inviteCode: code,
@@ -103,9 +100,13 @@ export default function InviteUser() {
         status: 'pending',
         createdAt: now,
       });
+      if (error) {
+        Alert.alert('Could not save invite', error);
+        return;
+      }
       const estate = estates.find((e) => e.id === estateId)!;
-      return { estateName: estate.name, estateId, role, code };
-    });
+      invites.push({ estateName: estate.name, estateId, role, code });
+    }
     setCreatedInvites(invites);
   }
 
@@ -222,7 +223,7 @@ export default function InviteUser() {
 
             <TouchableOpacity
               style={[styles.generateBtn, { backgroundColor: colors.tint }, !canGenerate && styles.disabled]}
-              onPress={generateCodes}
+              onPress={() => void generateCodes()}
               disabled={!canGenerate}
               activeOpacity={0.85}
             >
@@ -282,6 +283,16 @@ export default function InviteUser() {
                 </View>
               </View>
             ))}
+
+            <TouchableOpacity
+              onPress={() => setCreatedInvites([])}
+              activeOpacity={0.75}
+              style={{ alignSelf: 'center', paddingVertical: 12 }}
+            >
+              <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 15 }}>
+                Create more invite codes
+              </ThemedText>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -24,10 +24,19 @@ export default function RedeemScreen() {
 
   function proceed(withCode?: string) {
     if (withCode) {
-      setPendingInviteCode(withCode.toUpperCase().trim());
+      const normalized = withCode.toUpperCase().trim();
+      if (normalized.length !== 8 || !/^[A-Z0-9]{8}$/.test(normalized)) {
+        Alert.alert('Invalid code', 'Enter the 8-character code from your host (letters and numbers).');
+        return;
+      }
+      setPendingInviteCode(normalized);
     }
     completeOnboarding();
-    router.replace('/(auth)' as never);
+    if (withCode) {
+      router.replace('/(guest)/home' as never);
+    } else {
+      router.replace('/(auth)' as never);
+    }
   }
 
   const isValidLength = code.replace(/\s/g, '').length === 8;

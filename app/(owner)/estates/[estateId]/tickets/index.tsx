@@ -10,8 +10,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useTicketStore } from '@/store/ticket-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { formatDate } from '@/lib/date-utils';
 
 const PRIORITY_COLORS: Record<string, string> = { low: '#94a3b8', normal: '#0a7ea4', high: '#f59e0b', urgent: '#ef4444' };
@@ -23,6 +23,7 @@ export default function OwnerTickets() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const allTickets = useTicketStore((s) => s.tickets);
+  const profileById = useProfileStore((s) => s.byId);
   const tickets = useMemo(() => allTickets.filter((t) => t.estateId === estateId), [allTickets, estateId]);
 
   return (
@@ -39,7 +40,7 @@ export default function OwnerTickets() {
       ) : (
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
           {tickets.map((ticket) => {
-            const guest = SEED_USERS.find((u) => u.id === ticket.guestId);
+            const guestName = resolveUserDisplayName(ticket.guestId, profileById);
             return (
               <TouchableOpacity
                 key={ticket.id}
@@ -51,7 +52,7 @@ export default function OwnerTickets() {
                 <View style={styles.info}>
                   <ThemedText type="defaultSemiBold" numberOfLines={1}>{ticket.title}</ThemedText>
                   <ThemedText style={[styles.meta, { color: colors.icon }]}>
-                    {guest?.name ?? ticket.guestId} · {formatDate(ticket.createdAt.slice(0, 10))}
+                    {guestName} · {formatDate(ticket.createdAt.slice(0, 10))}
                   </ThemedText>
                   <ThemedText style={[styles.msgCount, { color: colors.icon }]}>
                     {ticket.messages.length} message{ticket.messages.length !== 1 ? 's' : ''}

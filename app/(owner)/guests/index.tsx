@@ -13,10 +13,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { SEED_USERS } from '@/store/seed-data';
-
-const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
+import { buildFullInviteMessage } from '@/lib/invite-messages';
 
 export default function GuestsIndex() {
   const router = useRouter();
@@ -26,6 +24,7 @@ export default function GuestsIndex() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const { invitations, revokeInvitation } = useInvitationStore();
+  const profileById = useProfileStore((s) => s.byId);
 
   const estates = useMemo(
     () => allEstates.filter((e) => e.ownerId === currentUser?.id),
@@ -70,14 +69,17 @@ export default function GuestsIndex() {
     const inv = invitations.find((i) => i.id === invId);
     if (!inv) return;
     const estate = estates.find((e) => e.id === inv.estateId);
-    const noteSection = inv.message ? `\n\n"${inv.message}"` : '';
     const role = inv.role ?? 'guest';
-    const text =
-      `🏡 You're invited to ${estate?.name} on EstateAid as ${role}!${noteSection}\n\n` +
-      `Your invite code: ${inv.inviteCode}\n\n` +
-      `iOS: ${APP_STORE_URL}\n` +
-      `Android: ${PLAY_STORE_URL}`;
-    Share.share({ message: text });
+    Share.share({
+      message: buildFullInviteMessage({
+        estateName: estate?.name ?? 'your property',
+        inviteCode: inv.inviteCode,
+        role,
+        note: inv.message,
+        footerLine:
+          role === 'guest' ? 'Enter your code after signing up as a Guest.' : 'Enter your code after signing up.',
+      }),
+    });
   }
 
   const isEmpty = activeGuests.length === 0 && pendingInvites.length === 0;
@@ -115,8 +117,10 @@ export default function GuestsIndex() {
             <>
               <SectionHeader title={`${activeGuests.length} Guest${activeGuests.length !== 1 ? 's' : ''}`} />
               {activeGuests.map(([guestId, accesses]) => {
-                const user = SEED_USERS.find((u) => u.id === guestId);
-                const displayName = user?.name ?? guestId;
+                const emailHint = invitations.find(
+                  (i) => i.guestId === guestId && i.guestEmail
+                )?.guestEmail;
+                const displayName = resolveUserDisplayName(guestId, profileById, emailHint);
                 const initial = displayName.charAt(0).toUpperCase();
                 return (
                   <TouchableOpacity
@@ -130,8 +134,8 @@ export default function GuestsIndex() {
                     </View>
                     <View style={styles.rowInfo}>
                       <ThemedText type="defaultSemiBold" style={styles.guestName}>{displayName}</ThemedText>
-                      {user?.email && (
-                        <ThemedText style={[styles.guestEmail, { color: colors.icon }]}>{user.email}</ThemedText>
+                      {!!emailHint && (
+                        <ThemedText style={[styles.guestEmail, { color: colors.icon }]}>{emailHint}</ThemedText>
                       )}
                       <View style={styles.accessPills}>
                         {accesses.map(({ estateId, role }) => {

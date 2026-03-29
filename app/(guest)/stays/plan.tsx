@@ -14,7 +14,7 @@ import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
-import { generateId } from '@/lib/id';
+import { generateUuidV4 } from '@/lib/id';
 
 export default function GuestPlanStay() {
   const router = useRouter();
@@ -58,10 +58,10 @@ export default function GuestPlanStay() {
     setTo(null);
   }
 
-  function submit() {
+  async function submit() {
     if (!selectedEstateId || !from || !to) return;
-    requestStay({
-      id: generateId(),
+    const { error } = await requestStay({
+      id: generateUuidV4(),
       estateId: selectedEstateId,
       guestId: currentUser!.id,
       requestedFrom: from,
@@ -71,6 +71,10 @@ export default function GuestPlanStay() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+    if (error) {
+      Alert.alert('Could not send request', error);
+      return;
+    }
     Alert.alert('Request Sent', 'Your stay request has been sent to the owner.');
     router.back();
   }
@@ -157,7 +161,7 @@ export default function GuestPlanStay() {
 
         <TouchableOpacity
           style={[styles.submitBtn, { backgroundColor: colors.tint }, !canSubmit && styles.disabled]}
-          onPress={submit}
+          onPress={() => void submit()}
           disabled={!canSubmit}
           activeOpacity={0.8}
         >

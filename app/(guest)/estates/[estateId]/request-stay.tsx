@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
-import { generateId } from '@/lib/id';
+import { generateUuidV4 } from '@/lib/id';
 
 export default function RequestStay() {
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
@@ -30,10 +30,10 @@ export default function RequestStay() {
   const blockedRanges = getBlockedRanges(estateId);
   const conflictWarning = from && to ? hasConflict(estateId, from, to) : false;
 
-  function submit() {
+  async function submit() {
     if (!from || !to) { Alert.alert('Required', 'Please select check-in and check-out dates.'); return; }
-    requestStay({
-      id: generateId(),
+    const { error } = await requestStay({
+      id: generateUuidV4(),
       estateId,
       guestId: currentUser!.id,
       requestedFrom: from,
@@ -43,6 +43,10 @@ export default function RequestStay() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+    if (error) {
+      Alert.alert('Could not send request', error);
+      return;
+    }
     Alert.alert('Request Sent', 'Your stay request has been sent to the owner.');
     router.back();
   }
@@ -101,7 +105,7 @@ export default function RequestStay() {
 
         <TouchableOpacity
           style={[styles.submitBtn, { backgroundColor: colors.tint }, (!from || !to) && styles.disabled]}
-          onPress={submit}
+          onPress={() => void submit()}
           disabled={!from || !to}
           activeOpacity={0.8}
         >

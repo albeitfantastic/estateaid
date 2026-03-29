@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+
+import { APP_STORE_URL } from '@/lib/invite-messages';
+import { useAuthStore } from '@/store/auth-store';
 
 const C = {
   bg: '#FAFAF8',
@@ -13,14 +16,21 @@ const C = {
   surface: '#FFFFFF',
 };
 
-const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
-
 export default function RatingScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ role?: string | string[] }>();
+  const rawRole = params.role;
+  const role = Array.isArray(rawRole) ? rawRole[0] : rawRole;
+  const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
   const [selected, setSelected] = useState<number | null>(null);
 
   function proceed() {
-    router.push('/(onboarding)/paywall' as never);
+    if (role === 'guest') {
+      router.push('/(onboarding)/redeem' as never);
+      return;
+    }
+    completeOnboarding();
+    router.replace('/(owner)/home' as never);
   }
 
   return (

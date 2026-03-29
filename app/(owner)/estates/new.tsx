@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -12,7 +12,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
-import { generateId } from '@/lib/id';
+import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
 
 export default function NewEstate() {
@@ -28,6 +28,7 @@ export default function NewEstate() {
   const [description, setDescription] = useState('');
   const [timeZone, setTimeZone] = useState('Europe/London');
   const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [saving, setSaving] = useState(false);
 
   async function pickPhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -41,21 +42,35 @@ export default function NewEstate() {
     }
   }
 
-  function submit() {
+  async function submit() {
     if (!isRequired(name)) { Alert.alert('Required', 'Please enter an estate name.'); return; }
     if (!isRequired(location)) { Alert.alert('Required', 'Please enter a location.'); return; }
+    if (!currentUser) {
+      Alert.alert('Not signed in', 'Please sign in again.');
+      return;
+    }
 
-    addEstate({
-      id: generateId(),
-      ownerId: currentUser!.id,
-      name: name.trim(),
-      location: location.trim(),
-      description: description.trim() || undefined,
-      coverImageUrl: coverImageUrl || undefined,
-      timeZone: timeZone.trim(),
-      createdAt: new Date().toISOString(),
-    });
-    router.back();
+    setSaving(true);
+    try {
+      const { error } = await addEstate({
+        id: generateUuidV4(),
+        ownerId: currentUser.id,
+        name: name.trim(),
+        location: location.trim(),
+        description: description.trim() || undefined,
+        coverImageUrl: coverImageUrl || undefined,
+        timeZone: timeZone.trim(),
+        createdAt: new Date().toISOString(),
+      });
+
+      if (error) {
+        Alert.alert('Could not save property', error);
+        return;
+      }
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -65,8 +80,12 @@ export default function NewEstate() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>New Estate</ThemedText>
-        <TouchableOpacity onPress={submit} style={styles.saveBtn}>
-          <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+        <TouchableOpacity onPress={() => void submit()} style={styles.saveBtn} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator color={colors.tint} size="small" />
+          ) : (
+            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+          )}
         </TouchableOpacity>
       </View>
 

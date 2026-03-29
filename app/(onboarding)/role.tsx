@@ -2,8 +2,6 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
-import { useAuthStore } from '@/store/auth-store';
-
 const C = {
   bg: '#FAFAF8',
   navy: '#1C3D5A',
@@ -16,14 +14,13 @@ const C = {
 
 export default function RoleScreen() {
   const router = useRouter();
-  const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
 
   function chooseOwner() {
-    router.push('/(onboarding)/rating' as never);
+    router.push({ pathname: '/(onboarding)/rating', params: { role: 'owner' } } as never);
   }
 
   function chooseGuest() {
-    router.push('/(onboarding)/redeem' as never);
+    router.push({ pathname: '/(onboarding)/rating', params: { role: 'guest' } } as never);
   }
 
   return (

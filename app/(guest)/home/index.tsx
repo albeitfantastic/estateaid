@@ -14,7 +14,6 @@ import { formatDateRange, today } from '@/lib/date-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { SEED_USERS } from '@/store/seed-data';
 import { useStayStore } from '@/store/stay-store';
 
 export default function GuestHome() {
@@ -23,7 +22,7 @@ export default function GuestHome() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
-  const { themePreference, setThemePreference, clearUser, selectedTier } = useAuthStore();
+  const { themePreference, setThemePreference, signOut, selectedTier } = useAuthStore();
   const isDark = themePreference === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
   const allEstates = useEstateStore((s) => s.estates);
@@ -34,10 +33,14 @@ export default function GuestHome() {
 
   const estates = useMemo(() => {
     const ids = allInvitations
-      .filter((inv) => inv.guestEmail === currentUser?.email && inv.status === 'accepted')
+      .filter(
+        (inv) =>
+          (inv.guestEmail === currentUser?.email || inv.guestId === currentUser?.id) &&
+          inv.status === 'accepted'
+      )
       .map((inv) => inv.estateId);
     return allEstates.filter((e) => ids.includes(e.id));
-  }, [allInvitations, allEstates, currentUser?.email]);
+  }, [allInvitations, allEstates, currentUser?.email, currentUser?.id]);
 
   const pendingCount = useMemo(
     () => allStayRequests.filter((r) => r.guestId === currentUser?.id && r.status === 'pending').length,
@@ -86,7 +89,7 @@ export default function GuestHome() {
         isDark={isDark}
         selectedTier={selectedTier}
         onToggleDark={(v) => setThemePreference(v ? 'dark' : 'light')}
-        onSwitchRole={() => { clearUser(); router.replace('/(auth)' as never); }}
+        onSwitchRole={() => { signOut(); router.replace('/(auth)' as never); }}
       />
 
       <ScrollView
@@ -141,7 +144,6 @@ export default function GuestHome() {
           <View style={styles.upcomingList}>
             {upcomingStays.map((stay) => {
               const estate = estates.find((e) => e.id === stay.estateId);
-              const guest = SEED_USERS.find((u) => u.id === stay.guestId);
               const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
               return (
                 <View
@@ -151,7 +153,7 @@ export default function GuestHome() {
                   <View style={[styles.colorBar, { backgroundColor: dotColor }]} />
                   <View style={styles.stayInfo}>
                     <ThemedText type="defaultSemiBold" style={styles.stayGuest}>
-                      {guest?.name ?? stay.guestId}
+                      {currentUser?.name ?? 'You'}
                     </ThemedText>
                     <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
                       {estate?.name} · {formatDateRange(stay.from, stay.to)}
