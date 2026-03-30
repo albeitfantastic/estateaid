@@ -7,20 +7,37 @@ import { supabase } from '@/lib/supabase';
 export type OwnerTier = 'starter' | 'premium';
 export type ThemePreference = 'light' | 'dark';
 
+/** Onboarding flag is scoped to this user id so a new account on the same device is not skipped. */
+export function isOnboardingCompleteForCurrentUser(s: {
+  currentUser: User | null;
+  hasCompletedOnboarding: boolean;
+  onboardingCompletedForUserId: string | null;
+}): boolean {
+  const id = s.currentUser?.id;
+  if (!id) return false;
+  return s.hasCompletedOnboarding && s.onboardingCompletedForUserId === id;
+}
+
 interface AuthState {
   currentUser: User | null;
   isHydrated: boolean;
   hasCompletedOnboarding: boolean;
+  /** User id for which `hasCompletedOnboarding` applies; must match `currentUser.id` to skip onboarding. */
+  onboardingCompletedForUserId: string | null;
   selectedTier: OwnerTier | null;
   pendingInviteCode: string | null;
   themePreference: ThemePreference;
+  /** Persisted; when false, skip push registration and clear server token. */
+  notificationsEnabled: boolean;
   setUser: (user: User) => void;
+  patchUser: (partial: Partial<Pick<User, 'name' | 'avatarUrl' | 'role'>>) => void;
   clearUser: () => void;
   setHydrated: () => void;
   completeOnboarding: (tier?: OwnerTier) => void;
   resetOnboarding: () => void;
   setPendingInviteCode: (code: string | null) => void;
   setThemePreference: (theme: ThemePreference) => void;
+  setNotificationsEnabled: (enabled: boolean) => void;
   bootstrapSession: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -31,17 +48,29 @@ export const useAuthStore = create<AuthState>()(
       currentUser: null,
       isHydrated: false,
       hasCompletedOnboarding: false,
+      onboardingCompletedForUserId: null,
       selectedTier: null,
       pendingInviteCode: null,
       themePreference: 'light',
+      notificationsEnabled: true,
       setUser: (user) => set({ currentUser: user }),
+      patchUser: (partial) =>
+        set((s) => {
+          if (!s.currentUser) return {};
+          return { currentUser: { ...s.currentUser, ...partial } };
+        }),
       clearUser: () => set({ currentUser: null }),
       setHydrated: () => set({ isHydrated: true }),
       completeOnboarding: (tier) =>
-        set({ hasCompletedOnboarding: true, ...(tier ? { selectedTier: tier } : {}) }),
-      resetOnboarding: () => set({ hasCompletedOnboarding: false }),
+        set((s) => ({
+          hasCompletedOnboarding: true,
+          onboardingCompletedForUserId: s.currentUser?.id ?? s.onboardingCompletedForUserId,
+          ...(tier ? { selectedTier: tier } : {}),
+        })),
+      resetOnboarding: () => set({ hasCompletedOnboarding: false, onboardingCompletedForUserId: null }),
       setPendingInviteCode: (code) => set({ pendingInviteCode: code }),
       setThemePreference: (theme) => set({ themePreference: theme }),
+      setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       bootstrapSession: async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -80,9 +109,11 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         hasCompletedOnboarding: state.hasCompletedOnboarding,
+        onboardingCompletedForUserId: state.onboardingCompletedForUserId,
         selectedTier: state.selectedTier,
         pendingInviteCode: state.pendingInviteCode,
         themePreference: state.themePreference,
+        notificationsEnabled: state.notificationsEnabled,
       }),
     }
   )

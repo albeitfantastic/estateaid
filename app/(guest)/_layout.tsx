@@ -81,7 +81,7 @@ export default function GuestTabLayout() {
       
       <Tabs.Screen name="requests/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
-      
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   
     );

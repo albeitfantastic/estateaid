@@ -33,6 +33,15 @@ export async function registerPushToken(userId: string): Promise<void> {
   }
 }
 
+/** Remove push token from profile (e.g. user disabled notifications). */
+export async function clearPushToken(userId: string): Promise<void> {
+  try {
+    await supabase.from('profiles').update({ push_token: null }).eq('id', userId);
+  } catch {
+    /* best-effort */
+  }
+}
+
 /** Fetch another user's push token from Supabase. Returns null if unavailable. */
 export async function getPushToken(userId: string): Promise<string | null> {
   const { data } = await supabase

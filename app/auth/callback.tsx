@@ -5,7 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { createSessionFromUrl } from '@/lib/auth-linking';
 import { loadAllStores } from '@/lib/load-all-stores';
-import { useAuthStore } from '@/store/auth-store';
+import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 
 /**
  * Matches Supabase emailRedirectTo path …/auth/callback so Expo Router does not show
@@ -22,10 +22,17 @@ export default function AuthCallbackScreen() {
         await createSessionFromUrl(href);
       }
       await useAuthStore.getState().bootstrapSession();
-      const user = useAuthStore.getState().currentUser;
+      const state = useAuthStore.getState();
+      const user = state.currentUser;
       if (user) {
         await loadAllStores();
-        router.replace(user.role === 'owner' ? '/(owner)/home' : '/(guest)/home');
+        if (!isOnboardingCompleteForCurrentUser(state)) {
+          router.replace('/(onboarding)/q1' as never);
+        } else if (user.role === 'owner' || user.role === 'admin') {
+          router.replace('/(owner)/home' as never);
+        } else {
+          router.replace('/(guest)/home' as never);
+        }
       } else {
         router.replace('/(auth)' as never);
       }

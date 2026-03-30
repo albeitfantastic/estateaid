@@ -105,6 +105,7 @@ export default function OwnerTabLayout() {
       <Tabs.Screen name="tickets/new-ticket" options={{ href: null }} />
       <Tabs.Screen name="tickets/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

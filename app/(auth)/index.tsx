@@ -22,7 +22,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { authRedirectUri, ensureProfileRowForAuthUser, savePendingSignupProfile, signInWithOAuth } from '@/lib/auth-linking';
 import { loadAllStores } from '@/lib/load-all-stores';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/auth-store';
+import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { User, type UserRole } from '@/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -126,6 +126,10 @@ export default function AuthScreen() {
       if (!r.success) {
         Alert.alert('Invite code', 'We could not apply your invite code. Open Invitations and enter it again.');
       }
+    }
+    if (!isOnboardingCompleteForCurrentUser(useAuthStore.getState())) {
+      router.replace('/(onboarding)/q1' as never);
+      return;
     }
     router.replace(user.role === 'guest' ? '/(guest)/home' : '/(owner)/home' as never);
   }

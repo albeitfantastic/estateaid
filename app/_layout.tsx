@@ -7,7 +7,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { loadAllStores } from '@/lib/load-all-stores';
-import { registerPushToken } from '@/lib/notifications';
+import { clearPushToken, registerPushToken } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -46,12 +46,16 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const { bootstrapSession, clearUser } = useAuthStore();
   const currentUserId = useAuthStore((s) => s.currentUser?.id);
+  const notificationsEnabled = useAuthStore((s) => s.notificationsEnabled);
 
-  // Register / refresh push token whenever a user signs in
   useEffect(() => {
     if (!currentUserId) return;
-    void registerPushToken(currentUserId);
-  }, [currentUserId]);
+    if (notificationsEnabled) {
+      void registerPushToken(currentUserId);
+    } else {
+      void clearPushToken(currentUserId);
+    }
+  }, [currentUserId, notificationsEnabled]);
 
   useEffect(() => {
     let cancelled = false;
