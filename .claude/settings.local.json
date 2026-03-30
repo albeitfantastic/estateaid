@@ -28,8 +28,8 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(echo:*)",
-      "Bash(SUPABASE_ACCESS_TOKEN=REDACTED npx supabase db dump --schema public --linked)",
-      "Bash(SUPABASE_ACCESS_TOKEN=REDACTED npx supabase db dump --linked)",
+      "Bash(npx supabase db dump --schema public --linked)",
+      "Bash(npx supabase db dump --linked)",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(grep:*)",
       "Bash(xargs -0 grep -n \"\\\\.role\\\\|role:\")",
@@ -47,7 +47,13 @@
       "Bash(find /c/Users/svenk/local_projects/EstateAid -name *.sh -o -name *.env* -o -name secrets*)",
       "Bash(mkdir -p /c/Users/svenk/.claude/secrets)",
       "Bash(/c/Users/svenk/.claude/secrets/supabase_pat:*)",
-      "Bash(chmod 600 /c/Users/svenk/.claude/secrets/supabase_pat)"
+      "Bash(chmod 600 /c/Users/svenk/.claude/secrets/supabase_pat)",
+      "Bash(git stash:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --tree-filter ':*)",
+      "Bash(xargs -r git update-ref -d)",
+      "Bash(git reflog:*)",
+      "Bash(git gc:*)",
+      "Bash(git update-ref:*)"
     ]
   }
 }
