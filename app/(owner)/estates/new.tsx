@@ -1,11 +1,12 @@
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { FocusInput } from '@/components/ui/focus-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -29,6 +30,10 @@ export default function NewEstate() {
   const [timeZone, setTimeZone] = useState('Europe/London');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [saving, setSaving] = useState(false);
+
+  if (currentUser?.role === 'admin') {
+    return <Redirect href={'/(owner)/estates' as never} />;
+  }
 
   async function pickPhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -114,56 +119,21 @@ export default function NewEstate() {
           )}
         </TouchableOpacity>
 
-        <Field label="Name *" colors={colors}>
-          <TextInput
-            style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
-            placeholder="e.g. Villa Serena"
-            placeholderTextColor={colors.icon}
-            value={name}
-            onChangeText={setName}
-          />
-        </Field>
-        <Field label="Location *" colors={colors}>
-          <TextInput
-            style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
-            placeholder="e.g. Tuscany, Italy"
-            placeholderTextColor={colors.icon}
-            value={location}
-            onChangeText={setLocation}
-          />
-        </Field>
-        <Field label="Time Zone" colors={colors}>
-          <TextInput
-            style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
-            placeholder="e.g. Europe/Rome"
-            placeholderTextColor={colors.icon}
-            value={timeZone}
-            onChangeText={setTimeZone}
-          />
-        </Field>
-        <Field label="Description" colors={colors}>
-          <TextInput
-            style={[styles.input, styles.multiline, { color: colors.text, borderColor: colors.icon + '44' }]}
-            placeholder="Optional description for your guests…"
-            placeholderTextColor={colors.icon}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </Field>
+        <FocusInput label="Name *" placeholder="e.g. Villa Serena" value={name} onChangeText={setName} />
+        <FocusInput label="Location *" placeholder="e.g. Tuscany, Italy" value={location} onChangeText={setLocation} />
+        <FocusInput label="Time Zone" placeholder="e.g. Europe/Rome" value={timeZone} onChangeText={setTimeZone} />
+        <FocusInput
+          label="Description"
+          placeholder="Optional description for your guests…"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          style={styles.multiline}
+        />
       </ScrollView>
     </ThemedView>
-  );
-}
-
-function Field({ label, children, colors }: { label: string; children: React.ReactNode; colors: typeof Colors.light }) {
-  return (
-    <View style={styles.field}>
-      <ThemedText style={[styles.label, { color: colors.icon }]}>{label}</ThemedText>
-      {children}
-    </View>
   );
 }
 
@@ -181,7 +151,7 @@ const styles = StyleSheet.create({
   saveBtn: { padding: 4 },
   form: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
   photoWrap: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     overflow: 'hidden',
@@ -189,17 +159,8 @@ const styles = StyleSheet.create({
   },
   photo: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
   multiline: {
-    height: 100,
-    paddingTop: 12,
+    height: 110,
+    paddingTop: 14,
   },
 });

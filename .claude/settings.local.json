@@ -39,7 +39,15 @@
       "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/faq/new.tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/faq/new.tsx\")",
       "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/faq/[faqId]/edit.tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/faq/[faqId]/edit.tsx\")",
       "Bash(mkdir -p \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/contacts/[contactId]\")",
-      "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/contacts/new.tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/contacts/new.tsx\")"
+      "Bash(cp \"/c/Users/svenk/local_projects/EstateAid/app/\\(owner\\)/estates/[estateId]/contacts/new.tsx\" \"/c/Users/svenk/local_projects/EstateAid/app/\\(guest\\)/estates/[estateId]/contacts/new.tsx\")",
+      "Bash(supabase --version)",
+      "Bash(curl:*)",
+      "Bash(npx eas:*)",
+      "Bash(find /c/Users/svenk -name *.sh -not -path */node_modules/*)",
+      "Bash(find /c/Users/svenk/local_projects/EstateAid -name *.sh -o -name *.env* -o -name secrets*)",
+      "Bash(mkdir -p /c/Users/svenk/.claude/secrets)",
+      "Bash(/c/Users/svenk/.claude/secrets/supabase_pat:*)",
+      "Bash(chmod 600 /c/Users/svenk/.claude/secrets/supabase_pat)"
     ]
   }
 }

@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EstateContact } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { dedupeById } from '@/lib/dedup-by-id';
 
 function fromDb(row: Record<string, unknown>): EstateContact {
   return {
@@ -52,7 +53,7 @@ export const useContactStore = create<ContactState>()(
       setContacts: (contacts) => set({ contacts }),
       fetchFromSupabase: async () => {
         const { data } = await supabase.from('estate_contacts').select('*');
-        if (data) set({ contacts: data.map(fromDb) });
+        if (data) set({ contacts: dedupeById(data).map(fromDb) });
       },
       addContact: async (contact) => {
         set((s) => ({ contacts: [...s.contacts, contact] }));

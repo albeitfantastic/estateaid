@@ -55,23 +55,25 @@ export default function OwnerEstates() {
           <View style={styles.back} />
         )}
         <ThemedText type="title" style={styles.title}>Properties</ThemedText>
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.tint }]}
-          onPress={() => router.push('/(owner)/estates/new' as never)}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="plus" size={18} color="#fff" />
-          <ThemedText style={styles.addBtnText}>Add New</ThemedText>
-        </TouchableOpacity>
+        {currentUser?.role !== 'admin' && (
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: colors.tint }]}
+            onPress={() => router.push('/(owner)/estates/new' as never)}
+            activeOpacity={0.8}
+          >
+            <IconSymbol name="plus" size={18} color="#fff" />
+            <ThemedText style={styles.addBtnText}>Add New</ThemedText>
+          </TouchableOpacity>
+        )}
       </View>
 
       {estates.length === 0 ? (
         <EmptyState
           icon="building.2.fill"
           title="No estates yet"
-          subtitle="Add your first vacation home to get started."
-          actionLabel="Add Estate"
-          onAction={() => router.push('/(owner)/estates/new' as never)}
+          subtitle={currentUser?.role === 'admin' ? "You haven't been invited to manage any estates yet." : "Add your first vacation home to get started."}
+          actionLabel={currentUser?.role === 'admin' ? undefined : "Add Estate"}
+          onAction={currentUser?.role === 'admin' ? undefined : () => router.push('/(owner)/estates/new' as never)}
         />
       ) : (
         <ScrollView
@@ -117,10 +119,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
 
   },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  addBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20,
+    shadowColor: '#5C3D2E', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.22, shadowRadius: 8, elevation: 4,
+  },
+  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14, fontFamily: 'sans-serif' },
   back: { padding: 4 },
   list: { paddingHorizontal: 20, paddingTop: 8 },
-  roleBadge: { alignSelf: 'flex-start', marginTop: -6, marginBottom: 8, marginLeft: 20, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
-  roleBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  roleBadge: { alignSelf: 'flex-start', marginTop: -8, marginBottom: 8, marginLeft: 20, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
+  roleBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.0, fontFamily: 'sans-serif' },
 });

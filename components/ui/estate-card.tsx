@@ -18,7 +18,7 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: '#2A1F18' }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -63,10 +63,14 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 14,
     overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 3,
   },
   image: {
     width: '100%',
@@ -90,6 +94,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 17,
     flex: 1,
+    fontFamily: 'serif',
   },
   badge: {
     paddingHorizontal: 8,

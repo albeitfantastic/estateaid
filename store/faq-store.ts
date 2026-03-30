@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FaqItem } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { dedupeById } from '@/lib/dedup-by-id';
 
 function fromDb(row: Record<string, unknown>): FaqItem {
   return {
@@ -46,7 +47,7 @@ export const useFaqStore = create<FaqState>()(
       setFaqs: (faqs) => set({ faqs }),
       fetchFromSupabase: async () => {
         const { data } = await supabase.from('faqs').select('*');
-        if (data) set({ faqs: data.map(fromDb) });
+        if (data) set({ faqs: dedupeById(data).map(fromDb) });
       },
       addFaq: async (faq) => {
         set((s) => ({ faqs: [...s.faqs, faq] }));

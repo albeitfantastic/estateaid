@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EstateEvent } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { dedupeById } from '@/lib/dedup-by-id';
 
 function fromDb(row: Record<string, unknown>): EstateEvent {
   return {
@@ -49,7 +50,7 @@ export const useEventStore = create<EventState>()(
       setEvents: (events) => set({ events }),
       fetchFromSupabase: async () => {
         const { data } = await supabase.from('estate_events').select('*');
-        if (data) set({ events: data.map(fromDb) });
+        if (data) set({ events: dedupeById(data).map(fromDb) });
       },
       addEvent: async (event) => {
         set((s) => ({ events: [...s.events, event] }));

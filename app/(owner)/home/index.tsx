@@ -594,22 +594,22 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20 },
 
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  statCard: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1, alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 22, fontWeight: '700' },
-  statLabel: { fontSize: 10, textAlign: 'center' },
+  statCard: {
+    flex: 1, padding: 12, borderRadius: 16, borderWidth: 1, alignItems: 'center', gap: 4,
+    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  statValue: { fontSize: 22, fontWeight: '700', fontFamily: 'serif' },
+  statLabel: { fontSize: 10, textAlign: 'center', fontFamily: 'sans-serif', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   // Action buttons
   actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
   actionCard: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 6,
+    flex: 1, borderRadius: 18, borderWidth: 1, padding: 16, gap: 6,
+    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   actionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  actionTitle: { fontSize: 14 },
-  actionSub: { fontSize: 12 },
+  actionTitle: { fontSize: 14, fontFamily: 'sans-serif', fontWeight: '600' },
+  actionSub: { fontSize: 12, fontFamily: 'sans-serif' },
 
   // Today's priorities
   priorityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
@@ -618,7 +618,10 @@ const styles = StyleSheet.create({
 
   // Upcoming stays
   upcomingList: { gap: 8, marginBottom: 4 },
-  stayRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
+  stayRow: {
+    flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, overflow: 'hidden',
+    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  },
   colorBar: { width: 4, alignSelf: 'stretch' },
   stayInfo: { flex: 1, padding: 12, gap: 2 },
   stayGuest: { fontSize: 14 },

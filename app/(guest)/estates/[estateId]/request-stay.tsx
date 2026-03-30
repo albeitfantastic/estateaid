@@ -10,9 +10,11 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
+import { useEstateStore } from '@/store/estate-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
+import { getPushToken, sendPush } from '@/lib/notifications';
 
 export default function RequestStay() {
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
@@ -21,6 +23,7 @@ export default function RequestStay() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
+  const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
   const { requestStay, getBlockedRanges, hasConflict } = useStayStore();
 
   const [from, setFrom] = useState<string | null>(null);
@@ -46,6 +49,17 @@ export default function RequestStay() {
     if (error) {
       Alert.alert('Could not send request', error);
       return;
+    }
+    // Notify the estate owner — fire-and-forget
+    if (estate?.ownerId) {
+      void getPushToken(estate.ownerId).then((token) =>
+        sendPush(
+          token,
+          'New Stay Request',
+          `${currentUser!.name} requested a stay at ${estate.name}.`,
+          { estateId }
+        )
+      );
     }
     Alert.alert('Request Sent', 'Your stay request has been sent to the owner.');
     router.back();

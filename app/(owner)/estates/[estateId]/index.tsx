@@ -151,7 +151,7 @@ export default function EstateHub() {
               <TouchableOpacity
                 key={item.route}
                 style={[styles.tile, { backgroundColor: colors.tint + '11', borderColor: colors.tint + '22' }]}
-                onPress={() => router.push(`/(guest)/estates/${estateId}/${item.route}` as never)}
+                onPress={() => router.push(`/(owner)/estates/${estateId}/${item.route}` as never)}
                 activeOpacity={0.75}
               >
                 <IconSymbol name={item.icon} size={28} color={colors.tint} />
@@ -246,10 +246,13 @@ const styles = StyleSheet.create({
   grid: { paddingHorizontal: 20, paddingTop: 8 },
   description: { fontSize: 14, lineHeight: 20, marginBottom: 20 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  tile: { width: '47%', padding: 20, borderRadius: 16, borderWidth: 1, alignItems: 'center', gap: 10 },
-  tileLabel: { fontSize: 14, textAlign: 'center' },
+  tile: {
+    width: '47%', padding: 20, borderRadius: 18, borderWidth: 1, alignItems: 'center', gap: 10,
+    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  tileLabel: { fontSize: 14, textAlign: 'center', fontFamily: 'sans-serif', fontWeight: '500' },
   tileLocked: { opacity: 0.38 },
   lockBadge: { position: 'absolute', bottom: 8, right: 8 },
-  hint: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 14, borderRadius: 12, marginTop: 16 },
-  hintText: { flex: 1, fontSize: 12, lineHeight: 17 },
+  hint: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 14, borderRadius: 14, marginTop: 16 },
+  hintText: { flex: 1, fontSize: 12, lineHeight: 17, fontFamily: 'sans-serif' },
 });

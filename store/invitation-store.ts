@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Invitation, InvitationStatus, InvitationRole } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { dedupeById } from '@/lib/dedup-by-id';
+import { getPushToken, sendPush } from '@/lib/notifications';
 
 function fromDb(row: Record<string, unknown>): Invitation {
   return {
@@ -61,7 +63,7 @@ export const useInvitationStore = create<InvitationState>()(
       fetchFromSupabase: async () => {
         const { data, error } = await supabase.from('invitations').select('*');
         if (!error && data != null) {
-          set({ invitations: data.map(fromDb) });
+          set({ invitations: dedupeById(data).map(fromDb) });
         }
       },
       sendInvitation: async (invitation) => {
@@ -101,6 +103,14 @@ export const useInvitationStore = create<InvitationState>()(
           ),
         }));
         void supabase.from('invitations').update({ role }).eq('id', id);
+        // Notify the invitee — fire-and-forget
+        const inv = get().invitations.find((i) => i.id === id);
+        if (inv?.guestId) {
+          const roleLabel = role === 'admin' ? 'Estate Manager' : role === 'owner' ? 'Owner' : 'Guest';
+          void getPushToken(inv.guestId).then((token) =>
+            sendPush(token, 'Role Updated', `Your role has been updated to ${roleLabel}.`)
+          );
+        }
       },
       redeemCode: async (code, guestId) => {
         const norm = code.toUpperCase().trim();

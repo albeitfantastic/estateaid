@@ -2,30 +2,32 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    background: '#F5F0E8',    // warm cream
-    surface: '#FBF8F3',       // lighter cream for cards
-    text: '#3B2F2F',          // dark coffee brown
-    textSecondary: '#8C7A6B', // muted coffee
-    tint: '#6B4C3B',          // rich coffee — primary action
-    accent: '#C9A96E',        // warm gold — luxury accent
-    border: '#E0D6C8',        // creamy separator
-    icon: '#8C7A6B',
-    tabIconDefault: '#8C7A6B',
-    tabIconSelected: '#6B4C3B',
-    success: '#5E8C61',
+    background: '#EDE8E0',    // warm linen
+    surface: '#F5F1EB',       // card surface
+    text: '#2A1F18',          // deep espresso
+    textSecondary: '#8C7B6E', // muted warm
+    tint: '#5C3D2E',          // primary brown
+    accent: '#C9A96E',        // warm gold
+    brownMid: '#A0785A',      // mid brown — links, secondary accents
+    border: '#D4C8BB',        // linen separator
+    icon: '#8C7B6E',
+    tabIconDefault: '#8C7B6E',
+    tabIconSelected: '#5C3D2E',
+    success: '#4A7C59',
     error: '#B04A3A',
     warning: '#C48B2C',
   },
   dark: {
-    background: '#0E1C2D',
-    surface: '#1A2F4E',
-    text: '#F0EDE8',
-    textSecondary: '#9BAAB8',
+    background: '#1A1310',
+    surface: '#2A1F18',
+    text: '#F0EBE3',
+    textSecondary: '#9B8C7E',
     tint: '#C9A96E',
     accent: '#C9A96E',
-    border: '#2A3F58',
-    icon: '#9BAAB8',
-    tabIconDefault: '#9BAAB8',
+    brownMid: '#C9A96E',
+    border: '#4A3728',
+    icon: '#9B8C7E',
+    tabIconDefault: '#9B8C7E',
     tabIconSelected: '#C9A96E',
     success: '#4CAF7D',
     error: '#E57373',

@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ticket, TicketMessage, TicketStatus } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { dedupeById } from '@/lib/dedup-by-id';
 
 function fromDb(row: Record<string, unknown>): Ticket {
   return {
@@ -53,7 +54,7 @@ export const useTicketStore = create<TicketState>()(
       setTickets: (tickets) => set({ tickets }),
       fetchFromSupabase: async () => {
         const { data } = await supabase.from('tickets').select('*');
-        if (data) set({ tickets: data.map(fromDb) });
+        if (data) set({ tickets: dedupeById(data).map(fromDb) });
       },
       createTicket: async (ticket) => {
         set((s) => ({ tickets: [...s.tickets, ticket] }));

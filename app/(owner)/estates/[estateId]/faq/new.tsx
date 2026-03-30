@@ -1,9 +1,10 @@
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { FocusInput } from '@/components/ui/focus-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -43,14 +44,8 @@ export default function NewFaq() {
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
-        <View style={styles.field}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Question *</ThemedText>
-          <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]} placeholder="What guests often ask…" placeholderTextColor={colors.icon} value={question} onChangeText={setQuestion} multiline numberOfLines={2} textAlignVertical="top" />
-        </View>
-        <View style={styles.field}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Answer *</ThemedText>
-          <TextInput style={[styles.input, styles.answerInput, { color: colors.text, borderColor: colors.icon + '44' }]} placeholder="Your detailed answer…" placeholderTextColor={colors.icon} value={answer} onChangeText={setAnswer} multiline numberOfLines={6} textAlignVertical="top" />
-        </View>
+        <FocusInput label="Question *" placeholder="What guests often ask…" value={question} onChangeText={setQuestion} multiline numberOfLines={2} textAlignVertical="top" style={styles.multiInput} />
+        <FocusInput label="Answer *" placeholder="Your detailed answer…" value={answer} onChangeText={setAnswer} multiline numberOfLines={6} textAlignVertical="top" style={styles.answerInput} />
       </ScrollView>
     </ThemedView>
   );
@@ -62,8 +57,6 @@ const styles = StyleSheet.create({
   back: { padding: 4 },
   title: { flex: 1, fontSize: 24, fontWeight: '700' },
   form: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
-  field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, paddingTop: 12 },
-  answerInput: { height: 140 },
+  multiInput: { height: 70, paddingTop: 14 },
+  answerInput: { height: 150, paddingTop: 14 },
 });

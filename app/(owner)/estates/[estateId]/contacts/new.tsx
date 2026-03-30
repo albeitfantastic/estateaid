@@ -1,9 +1,10 @@
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { FocusInput } from '@/components/ui/focus-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -51,21 +52,16 @@ export default function NewContact() {
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
-        {([['Name *', name, setName, 'e.g. Giovanni Ferraro'], ['Role *', role, setRole, 'e.g. Caretaker'], ['Phone', phone, setPhone, '+39 055 123 4567'], ['Email', email, setEmail, 'contact@example.com']] as [string, string, (v: string) => void, string][]).map(([label, value, setter, placeholder]) => (
-          <View key={label} style={styles.field}>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>{label}</ThemedText>
-            <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]} placeholder={placeholder} placeholderTextColor={colors.icon} value={value} onChangeText={setter} keyboardType={label === 'Phone' ? 'phone-pad' : label === 'Email' ? 'email-address' : 'default'} autoCapitalize={label === 'Email' || label === 'Phone' ? 'none' : 'sentences'} />
-          </View>
-        ))}
-        <View style={styles.field}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Notes</ThemedText>
-          <TextInput style={[styles.input, styles.multi, { color: colors.text, borderColor: colors.icon + '44' }]} placeholder="Additional notes…" placeholderTextColor={colors.icon} value={notes} onChangeText={setNotes} multiline numberOfLines={3} textAlignVertical="top" />
-        </View>
+        <FocusInput label="Name *" placeholder="e.g. Giovanni Ferraro" value={name} onChangeText={setName} />
+        <FocusInput label="Role *" placeholder="e.g. Caretaker" value={role} onChangeText={setRole} />
+        <FocusInput label="Phone" placeholder="+39 055 123 4567" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoCapitalize="none" />
+        <FocusInput label="Email" placeholder="contact@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <FocusInput label="Notes" placeholder="Additional notes…" value={notes} onChangeText={setNotes} multiline numberOfLines={3} textAlignVertical="top" style={styles.multi} />
         <View style={styles.field}>
           <ThemedText style={[styles.label, { color: colors.icon }]}>Category</ThemedText>
           <View style={styles.pills}>
             {CATEGORIES.map((cat) => (
-              <TouchableOpacity key={cat} style={[styles.pill, { borderColor: colors.tint + '55' }, category === cat && { backgroundColor: colors.tint }]} onPress={() => setCategory(cat)}>
+              <TouchableOpacity key={cat} style={[styles.pill, { borderColor: category === cat ? colors.tint : colors.border }, category === cat && { backgroundColor: colors.tint }]} onPress={() => setCategory(cat)}>
                 <ThemedText style={[styles.pillText, { color: category === cat ? '#fff' : colors.text }]}>{CATEGORY_LABELS[cat]}</ThemedText>
               </TouchableOpacity>
             ))}
@@ -83,10 +79,9 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontSize: 24, fontWeight: '700' },
   form: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
   field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  multi: { height: 80, paddingTop: 12 },
+  label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: 'sans-serif' },
+  multi: { height: 90, paddingTop: 14 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  pillText: { fontSize: 13, fontWeight: '500' },
+  pill: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
+  pillText: { fontSize: 13, fontWeight: '600', fontFamily: 'sans-serif' },
 });

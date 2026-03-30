@@ -1,15 +1,17 @@
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { FocusInput } from '@/components/ui/focus-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { isRequired } from '@/lib/validators';
 
@@ -19,6 +21,7 @@ export default function EditEstate() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const currentUser = useAuthStore((s) => s.currentUser);
   const { getEstateById, updateEstate } = useEstateStore();
   const estate = getEstateById(estateId);
 
@@ -27,6 +30,10 @@ export default function EditEstate() {
   const [description, setDescription] = useState(estate?.description ?? '');
   const [timeZone, setTimeZone] = useState(estate?.timeZone ?? '');
   const [coverImageUrl, setCoverImageUrl] = useState(estate?.coverImageUrl ?? '');
+
+  if (currentUser?.role === 'admin' || (estate && estate.ownerId !== currentUser?.id)) {
+    return <Redirect href={`/(owner)/estates/${estateId}` as never} />;
+  }
 
   if (!estate) {
     return (
@@ -98,35 +105,10 @@ export default function EditEstate() {
           )}
         </TouchableOpacity>
 
-        {([
-          ['Name *', name, setName, 'e.g. Villa Serena'],
-          ['Location *', location, setLocation, 'e.g. Tuscany, Italy'],
-          ['Time Zone', timeZone, setTimeZone, 'e.g. Europe/Rome'],
-        ] as [string, string, (v: string) => void, string][]).map(([label, value, setter, placeholder]) => (
-          <View key={label} style={styles.field}>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>{label}</ThemedText>
-            <TextInput
-              style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
-              placeholder={placeholder}
-              placeholderTextColor={colors.icon}
-              value={value}
-              onChangeText={setter}
-            />
-          </View>
-        ))}
-        <View style={styles.field}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Description</ThemedText>
-          <TextInput
-            style={[styles.input, styles.multiline, { color: colors.text, borderColor: colors.icon + '44' }]}
-            placeholder="Optional description…"
-            placeholderTextColor={colors.icon}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
+        <FocusInput label="Name *" placeholder="e.g. Villa Serena" value={name} onChangeText={setName} />
+        <FocusInput label="Location *" placeholder="e.g. Tuscany, Italy" value={location} onChangeText={setLocation} />
+        <FocusInput label="Time Zone" placeholder="e.g. Europe/Rome" value={timeZone} onChangeText={setTimeZone} />
+        <FocusInput label="Description" placeholder="Optional description…" value={description} onChangeText={setDescription} multiline numberOfLines={4} textAlignVertical="top" style={styles.multiline} />
       </ScrollView>
     </ThemedView>
   );
@@ -140,7 +122,7 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontSize: 24, fontWeight: '700' },
   form: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
   photoWrap: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     overflow: 'hidden',
@@ -148,8 +130,5 @@ const styles = StyleSheet.create({
   },
   photo: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  multiline: { height: 100, paddingTop: 12 },
+  multiline: { height: 110, paddingTop: 14 },
 });

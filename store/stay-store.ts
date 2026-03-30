@@ -5,6 +5,7 @@ import { StayRequest, Stay } from '@/types';
 import { datesOverlap } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
 import { supabase } from '@/lib/supabase';
+import { dedupeById } from '@/lib/dedup-by-id';
 
 function requestFromDb(row: Record<string, unknown>): StayRequest {
   return {
@@ -113,10 +114,10 @@ export const useStayStore = create<StayState>()(
           supabase.from('stays').select('*'),
         ]);
         if (!reqRes.error && reqRes.data != null) {
-          set({ stayRequests: reqRes.data.map(requestFromDb) });
+          set({ stayRequests: dedupeById(reqRes.data).map(requestFromDb) });
         }
         if (!stayRes.error && stayRes.data != null) {
-          set({ stays: stayRes.data.map(stayFromDb) });
+          set({ stays: dedupeById(stayRes.data).map(stayFromDb) });
         }
       },
 

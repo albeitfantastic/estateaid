@@ -13,6 +13,9 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
+import { useAuthStore } from '@/store/auth-store';
+import { useEstateStore } from '@/store/estate-store';
+import { getPushToken, sendPush } from '@/lib/notifications';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 
 export default function ReviewStayRequest() {
@@ -23,6 +26,11 @@ export default function ReviewStayRequest() {
   const colors = Colors[colorScheme ?? 'light'];
   const { stayRequests, approveStay, declineStay, proposeAlternative, askQuestion, hasConflict } = useStayStore();
   const profileById = useProfileStore((s) => s.byId);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
+  const isReadOnly = !estate || estate.ownerId !== currentUser?.id;
+  const estateName = estate?.name ?? 'the estate';
+  const ownerName = currentUser?.name ?? 'The owner';
 
   const req = stayRequests.find((r) => r.id === requestId);
   const guestName = req ? resolveUserDisplayName(req.guestId, profileById) : '';
@@ -42,11 +50,19 @@ export default function ReviewStayRequest() {
   const conflict = hasConflict(estateId, req.requestedFrom, req.requestedTo, requestId);
   const isPending = req.status === 'pending';
 
+  function notifyGuest(title: string, body: string) {
+    if (!req) return;
+    void getPushToken(req.guestId).then((token) =>
+      sendPush(token, title, body, { estateId, requestId })
+    );
+  }
+
   function onApprove() {
     const result = approveStay(requestId, ownerNote || undefined);
     if (!result.success) {
       Alert.alert('Cannot Approve', 'These dates conflict with an existing approved stay. Please decline or propose alternative dates.');
     } else {
+      notifyGuest('Stay Approved', `Your stay request at ${estateName} was approved.`);
       router.back();
     }
   }
@@ -54,19 +70,27 @@ export default function ReviewStayRequest() {
   function onDecline() {
     Alert.alert('Decline Request', 'Decline this stay request?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Decline', style: 'destructive', onPress: () => { declineStay(requestId, ownerNote || undefined); router.back(); } },
+      {
+        text: 'Decline', style: 'destructive', onPress: () => {
+          declineStay(requestId, ownerNote || undefined);
+          notifyGuest('Stay Declined', `Your stay request at ${estateName} was declined.`);
+          router.back();
+        },
+      },
     ]);
   }
 
   function onProposeAlternative() {
     if (!altFrom || !altTo) { Alert.alert('Required', 'Please select alternative dates.'); return; }
     proposeAlternative(requestId, altFrom, altTo, ownerNote || undefined);
+    notifyGuest('Alternative Dates Proposed', `${ownerName} proposed new dates for your stay at ${estateName}.`);
     router.back();
   }
 
   function onAskQuestion() {
     if (!ownerNote.trim()) { Alert.alert('Required', 'Please enter your question.'); return; }
     askQuestion(requestId, ownerNote.trim());
+    notifyGuest('Question from Owner', `${ownerName} has a question about your stay at ${estateName}.`);
     router.back();
   }
 
@@ -80,6 +104,14 @@ export default function ReviewStayRequest() {
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
+        {isReadOnly && (
+          <View style={[styles.readOnlyBanner, { backgroundColor: colors.icon + '12', borderColor: colors.icon + '30' }]}>
+            <IconSymbol name="info.circle.fill" size={15} color={colors.icon} />
+            <ThemedText style={[styles.readOnlyText, { color: colors.icon }]}>
+              Admin view — contact the estate owner to manage this request.
+            </ThemedText>
+          </View>
+        )}
         {/* Guest info */}
         <View style={[styles.guestCard, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}>
           <Avatar name={guestName} size={48} color={colors.tint} />
@@ -130,8 +162,8 @@ export default function ReviewStayRequest() {
           />
         </View>
 
-        {/* Actions — only for pending */}
-        {isPending && (
+        {/* Actions — only for pending, and only for the estate owner */}
+        {isPending && !isReadOnly && (
           <View style={styles.actions}>
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: '#22c55e' }]}
@@ -229,4 +261,6 @@ const styles = StyleSheet.create({
   actionText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   altPicker: { padding: 16, borderRadius: 16, borderWidth: 1 },
   sendAlt: { paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 12 },
+  readOnlyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, borderWidth: 1 },
+  readOnlyText: { flex: 1, fontSize: 13, lineHeight: 18 },
 });

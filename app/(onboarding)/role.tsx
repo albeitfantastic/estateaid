@@ -1,6 +1,11 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/auth-store';
+import { UserRole } from '@/types';
 
 const C = {
   bg: '#FAFAF8',
@@ -10,17 +15,75 @@ const C = {
   muted: '#6B7A8D',
   border: '#E5E7EA',
   surface: '#FFFFFF',
+  brown: '#5C3D2E',
 };
+
+interface RoleCard {
+  role: UserRole;
+  emoji: string;
+  title: string;
+  desc: string;
+  tag: string;
+  tagColor: string;
+  tagTextColor: string;
+}
+
+const ROLES: RoleCard[] = [
+  {
+    role: 'owner',
+    emoji: '🏡',
+    title: "I'm a Property Owner",
+    desc: 'Manage estates, invite guests, approve stays and keep everything in one place.',
+    tag: 'From €5/week',
+    tagColor: C.navy,
+    tagTextColor: '#FFFFFF',
+  },
+  {
+    role: 'admin',
+    emoji: '🗝️',
+    title: "I'm an Estate Manager",
+    desc: 'Help manage properties on behalf of an owner — approve stays, handle guests and more.',
+    tag: 'Invite only',
+    tagColor: C.brown + '22',
+    tagTextColor: C.brown,
+  },
+  {
+    role: 'guest',
+    emoji: '🛎️',
+    title: "I'm a Guest",
+    desc: 'View properties you\'ve been invited to, request stays and raise any issues.',
+    tag: 'Always free',
+    tagColor: C.gold + '30',
+    tagTextColor: C.navy,
+  },
+];
 
 export default function RoleScreen() {
   const router = useRouter();
+  const { currentUser, setUser } = useAuthStore();
+  const [saving, setSaving] = useState(false);
 
-  function chooseOwner() {
-    router.push({ pathname: '/(onboarding)/rating', params: { role: 'owner' } } as never);
-  }
-
-  function chooseGuest() {
-    router.push({ pathname: '/(onboarding)/rating', params: { role: 'guest' } } as never);
+  async function chooseRole(role: UserRole) {
+    if (!currentUser) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role })
+        .eq('id', currentUser.id);
+      if (error) {
+        Alert.alert('Error', 'Could not save your role. Please try again.');
+        return;
+      }
+      setUser({ ...currentUser, role });
+      if (role === 'guest') {
+        router.push({ pathname: '/(onboarding)/rating', params: { role } } as never);
+      } else {
+        router.push({ pathname: '/(onboarding)/rating', params: { role } } as never);
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -33,38 +96,33 @@ export default function RoleScreen() {
         </Text>
 
         <View style={styles.cards}>
-          {/* Owner card */}
-          <TouchableOpacity style={styles.card} onPress={chooseOwner} activeOpacity={0.85}>
-            <View style={[styles.iconWrap, { backgroundColor: C.navy + '15' }]}>
-              <Text style={styles.iconEmoji}>🏡</Text>
-            </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardTitle}>I'm a Property Owner</Text>
-              <Text style={styles.cardDesc}>
-                Manage estates, invite guests, approve stays and keep everything in one place.
-              </Text>
-            </View>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>From €5/week</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Guest card */}
-          <TouchableOpacity style={styles.card} onPress={chooseGuest} activeOpacity={0.85}>
-            <View style={[styles.iconWrap, { backgroundColor: C.gold + '20' }]}>
-              <Text style={styles.iconEmoji}>🛎️</Text>
-            </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardTitle}>I'm a Guest</Text>
-              <Text style={styles.cardDesc}>
-                View properties you've been invited to, request stays and raise any issues.
-              </Text>
-            </View>
-            <View style={[styles.tag, styles.tagFree]}>
-              <Text style={[styles.tagText, { color: C.navy }]}>Always free</Text>
-            </View>
-          </TouchableOpacity>
+          {ROLES.map((item) => (
+            <TouchableOpacity
+              key={item.role}
+              style={styles.card}
+              onPress={() => chooseRole(item.role)}
+              disabled={saving}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.iconWrap, { backgroundColor: item.tagColor + (item.role === 'owner' ? '15' : '') }]}>
+                <Text style={styles.iconEmoji}>{item.emoji}</Text>
+              </View>
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text style={styles.cardDesc}>{item.desc}</Text>
+              </View>
+              <View style={[styles.tag, { backgroundColor: item.tagColor }]}>
+                <Text style={[styles.tagText, { color: item.tagTextColor }]}>{item.tag}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
+
+        {saving && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator color={C.navy} size="large" />
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -119,6 +177,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: C.navy + '15',
   },
   iconEmoji: {
     fontSize: 28,
@@ -138,18 +197,20 @@ const styles = StyleSheet.create({
   },
   tag: {
     alignSelf: 'flex-start',
-    backgroundColor: C.navy,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  tagFree: {
-    backgroundColor: C.gold + '30',
-  },
   tagText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
     letterSpacing: 0.3,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    inset: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.6)',
   },
 });

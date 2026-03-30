@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EstateDocument, DocumentCategory } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { dedupeById } from '@/lib/dedup-by-id';
 
 function fromDb(row: Record<string, unknown>): EstateDocument {
   return {
@@ -52,7 +53,7 @@ export const useDocumentStore = create<DocumentState>()(
       setDocuments: (documents) => set({ documents }),
       fetchFromSupabase: async () => {
         const { data } = await supabase.from('estate_documents').select('*');
-        if (data) set({ documents: data.map(fromDb) });
+        if (data) set({ documents: dedupeById(data).map(fromDb) });
       },
       addDocument: async (document) => {
         set((s) => ({ documents: [...s.documents, document] }));

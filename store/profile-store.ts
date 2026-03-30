@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { SEED_USERS } from '@/store/seed-data';
 
-export type ProfileRow = { id: string; name: string };
+export type ProfileRow = { id: string; name: string; pushToken?: string };
 
 /** Resolve a label for a user id: live profile → seed demo user → email hint → short id. */
 export function resolveUserDisplayName(
@@ -33,16 +33,17 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   setProfiles: (rows) => {
     const byId: Record<string, ProfileRow> = {};
     for (const r of rows) {
-      byId[r.id] = { id: r.id, name: r.name ?? '' };
+      byId[r.id] = { id: r.id, name: r.name ?? '', pushToken: r.pushToken };
     }
     set({ byId });
   },
   fetchFromSupabase: async () => {
-    const { data, error } = await supabase.from('profiles').select('id, name');
+    const { data, error } = await supabase.from('profiles').select('id, name, push_token');
     if (error || data == null) return;
     const rows: ProfileRow[] = data.map((row) => ({
       id: row.id as string,
       name: (row.name as string) ?? '',
+      pushToken: (row.push_token as string | null) ?? undefined,
     }));
     get().setProfiles(rows);
   },

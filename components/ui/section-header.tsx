@@ -34,13 +34,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    opacity: 0.5,
+    letterSpacing: 1.2,
+    opacity: 0.55,
+    fontFamily: 'sans-serif',
   },
   action: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'sans-serif',
   },
 });

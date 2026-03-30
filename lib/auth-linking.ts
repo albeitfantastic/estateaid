@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 
 import { supabase } from '@/lib/supabase';
@@ -34,6 +35,7 @@ function computeAuthRedirectUri(): string {
 export const authRedirectUri = computeAuthRedirectUri();
 
 const PENDING_PROFILE_KEY = '@estateaid/pending-signup-profile';
+const OAUTH_ROLE_KEY = '@estateaid/oauth-pending-role';
 
 export type PendingSignupProfile = {
   userId: string;
@@ -61,7 +63,7 @@ type AuthUserLike = {
 
 function roleFromMetadata(meta: Record<string, unknown> | null | undefined): UserRole | null {
   const r = meta?.role;
-  return r === 'owner' || r === 'guest' ? r : null;
+  return r === 'owner' || r === 'guest' || r === 'admin' ? r : null;
 }
 
 function nameFromMetadata(meta: Record<string, unknown> | null | undefined): string | null {
@@ -112,7 +114,9 @@ export async function ensureProfileRowForAuthUser(
 
   const meta = authUser.user_metadata ?? undefined;
   const name = nameFromMetadata(meta) ?? authUser.email?.split('@')[0] ?? 'User';
-  const role = roleFromMetadata(meta) ?? 'guest';
+  const oauthRole = await AsyncStorage.getItem(OAUTH_ROLE_KEY);
+  if (oauthRole) await AsyncStorage.removeItem(OAUTH_ROLE_KEY);
+  const role = roleFromMetadata(meta) ?? (oauthRole as UserRole | null) ?? 'guest';
   const now = new Date().toISOString();
   const { error: insErr } = await supabase.from('profiles').insert({
     id: authUser.id,
@@ -125,6 +129,34 @@ export async function ensureProfileRowForAuthUser(
   }
   const { data: row } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
   return { profile: row as ProfileRow };
+}
+
+/** Initiates an OAuth sign-in with Google or Apple. Saves the selected role first so
+ *  ensureProfileRowForAuthUser can assign it when creating a new profile row. */
+export async function signInWithOAuth(
+  provider: 'google' | 'apple',
+  role: UserRole
+): Promise<{ profile: ProfileRow | null; error?: string }> {
+  await AsyncStorage.setItem(OAUTH_ROLE_KEY, role);
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: authRedirectUri, skipBrowserRedirect: true },
+  });
+  if (error || !data.url) {
+    await AsyncStorage.removeItem(OAUTH_ROLE_KEY);
+    return { profile: null, error: error?.message ?? 'OAuth error' };
+  }
+  const result = await WebBrowser.openAuthSessionAsync(data.url, authRedirectUri);
+  if (result.type !== 'success') {
+    await AsyncStorage.removeItem(OAUTH_ROLE_KEY);
+    return { profile: null, error: 'cancelled' };
+  }
+  const ok = await createSessionFromUrl(result.url);
+  if (!ok) return { profile: null, error: 'Sign-in failed. Please try again.' };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { profile: null, error: 'No session.' };
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+  return { profile: profile as ProfileRow };
 }
 
 /** Parses Supabase email-confirm / magic-link URL and restores the session. */

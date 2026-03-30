@@ -1,9 +1,10 @@
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { FocusInput } from '@/components/ui/focus-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -91,7 +92,7 @@ export default function NewEvent() {
 
       <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 24 }]}>
         {/* Type picker */}
-        <ThemedText type="defaultSemiBold" style={styles.label}>Type</ThemedText>
+        <ThemedText style={[styles.label, { color: colors.icon }]}>Type</ThemedText>
         <View style={styles.typePicker}>
           {(['recurring', 'task'] as EventType[]).map((t) => (
             <TouchableOpacity
@@ -117,29 +118,13 @@ export default function NewEvent() {
         </View>
 
         {/* Title */}
-        <ThemedText type="defaultSemiBold" style={styles.label}>Title</ThemedText>
-        <TextInput
-          style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="e.g. Glass Recycling Pickup"
-          placeholderTextColor={colors.icon}
-        />
+        <FocusInput label="Title" placeholder="e.g. Glass Recycling Pickup" value={title} onChangeText={setTitle} />
 
         {/* Description */}
-        <ThemedText type="defaultSemiBold" style={styles.label}>Description (optional)</ThemedText>
-        <TextInput
-          style={[styles.input, styles.textArea, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Additional notes..."
-          placeholderTextColor={colors.icon}
-          multiline
-          numberOfLines={3}
-        />
+        <FocusInput label="Description (optional)" placeholder="Additional notes..." value={description} onChangeText={setDescription} multiline numberOfLines={3} textAlignVertical="top" style={styles.textArea} />
 
         {/* Color */}
-        <ThemedText type="defaultSemiBold" style={styles.label}>Color</ThemedText>
+        <ThemedText style={[styles.label, { color: colors.icon }]}>Color</ThemedText>
         <View style={styles.colorRow}>
           {EVENT_COLORS.map((c) => (
             <TouchableOpacity
@@ -153,7 +138,7 @@ export default function NewEvent() {
         {/* Recurring options */}
         {type === 'recurring' && (
           <>
-            <ThemedText type="defaultSemiBold" style={styles.label}>Frequency</ThemedText>
+            <ThemedText style={[styles.label, { color: colors.icon }]}>Frequency</ThemedText>
             <View style={styles.freqRow}>
               {FREQ_OPTIONS.map((opt) => (
                 <TouchableOpacity
@@ -175,7 +160,7 @@ export default function NewEvent() {
 
             {(frequency === 'weekly' || frequency === 'biweekly') && (
               <>
-                <ThemedText type="defaultSemiBold" style={styles.label}>Day of Week</ThemedText>
+                <ThemedText style={[styles.label, { color: colors.icon }]}>Day of Week</ThemedText>
                 <View style={styles.dayRow}>
                   {DAY_NAMES.map((name, i) => (
                     <TouchableOpacity
@@ -199,7 +184,7 @@ export default function NewEvent() {
 
             {frequency === 'monthly' && (
               <>
-                <ThemedText type="defaultSemiBold" style={styles.label}>Day of Month</ThemedText>
+                <ThemedText style={[styles.label, { color: colors.icon }]}>Day of Month</ThemedText>
                 <View style={styles.dayOfMonthRow}>
                   {[1, 5, 10, 15, 20, 25].map((d) => (
                     <TouchableOpacity
@@ -225,22 +210,12 @@ export default function NewEvent() {
 
         {/* Task date */}
         {type === 'task' && (
-          <>
-            <ThemedText type="defaultSemiBold" style={styles.label}>Date (YYYY-MM-DD)</ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-              value={taskDate}
-              onChangeText={setTaskDate}
-              placeholder="2026-06-15"
-              placeholderTextColor={colors.icon}
-              keyboardType="numbers-and-punctuation"
-            />
-          </>
+          <FocusInput label="Date (YYYY-MM-DD)" placeholder="2026-06-15" value={taskDate} onChangeText={setTaskDate} keyboardType="numbers-and-punctuation" />
         )}
 
         {/* Save */}
         <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: colors.tint, opacity: title.trim() ? 1 : 0.5 }]}
+          style={[styles.saveBtn, { backgroundColor: colors.tint, shadowColor: colors.tint, opacity: title.trim() ? 1 : 0.5 }]}
           onPress={save}
           disabled={!title.trim()}
           activeOpacity={0.8}
@@ -257,23 +232,22 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12, gap: 12 },
   back: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 28, fontWeight: '700' },
-  form: { paddingHorizontal: 20, gap: 6 },
-  label: { fontSize: 13, marginTop: 12, marginBottom: 4 },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
-  textArea: { minHeight: 70, textAlignVertical: 'top' },
+  form: { paddingHorizontal: 20, gap: 16 },
+  label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: 'sans-serif' },
+  textArea: { minHeight: 80, paddingTop: 14, textAlignVertical: 'top' },
   typePicker: { flexDirection: 'row', gap: 10 },
-  typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
-  typeBtnText: { fontSize: 14, fontWeight: '600' },
+  typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5 },
+  typeBtnText: { fontSize: 14, fontWeight: '600', fontFamily: 'sans-serif' },
   colorRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  colorDot: { width: 32, height: 32, borderRadius: 16 },
+  colorDot: { width: 34, height: 34, borderRadius: 17 },
   colorDotSelected: { borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4 },
   freqRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  freqBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
-  freqBtnText: { fontSize: 13, fontWeight: '600' },
+  freqBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
+  freqBtnText: { fontSize: 13, fontWeight: '600', fontFamily: 'sans-serif' },
   dayRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  dayBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
-  dayBtnText: { fontSize: 13, fontWeight: '600' },
+  dayBtn: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
+  dayBtnText: { fontSize: 13, fontWeight: '600', fontFamily: 'sans-serif' },
   dayOfMonthRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  saveBtn: { marginTop: 24, paddingVertical: 16, borderRadius: 14, alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  saveBtn: { marginTop: 8, paddingVertical: 16, borderRadius: 14, alignItems: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 5 },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'sans-serif', letterSpacing: 0.3 },
 });
