@@ -97,7 +97,7 @@ export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const dark = colorScheme === 'dark';
-  const { setUser, pendingInviteCode, setPendingInviteCode } = useAuthStore();
+  const { setUser, resetOnboarding, pendingInviteCode, setPendingInviteCode } = useAuthStore();
   const { redeemCode } = useInvitationStore();
 
   const [mode, setMode] = useState<Mode>('signin');
@@ -171,6 +171,7 @@ export default function AuthScreen() {
       const now = new Date().toISOString();
       const { error: profileError } = await supabase.from('profiles').insert({ id: data.user.id, name: name.trim(), role: 'owner', created_at: now });
       if (profileError) { Alert.alert('Profile setup failed', profileError.message); return; }
+      resetOnboarding();
       setUser({ id: data.user.id, name: name.trim(), email: data.user.email!, role: 'owner', createdAt: now });
       router.replace('/(onboarding)/q1' as never);
     } finally {

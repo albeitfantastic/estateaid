@@ -18,6 +18,7 @@ interface AuthState {
   clearUser: () => void;
   setHydrated: () => void;
   completeOnboarding: (tier?: OwnerTier) => void;
+  resetOnboarding: () => void;
   setPendingInviteCode: (code: string | null) => void;
   setThemePreference: (theme: ThemePreference) => void;
   bootstrapSession: () => Promise<void>;
@@ -38,6 +39,7 @@ export const useAuthStore = create<AuthState>()(
       setHydrated: () => set({ isHydrated: true }),
       completeOnboarding: (tier) =>
         set({ hasCompletedOnboarding: true, ...(tier ? { selectedTier: tier } : {}) }),
+      resetOnboarding: () => set({ hasCompletedOnboarding: false }),
       setPendingInviteCode: (code) => set({ pendingInviteCode: code }),
       setThemePreference: (theme) => set({ themePreference: theme }),
       bootstrapSession: async () => {
