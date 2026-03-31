@@ -53,7 +53,10 @@
       "Bash(xargs -r git update-ref -d)",
       "Bash(git reflog:*)",
       "Bash(git gc:*)",
-      "Bash(git update-ref:*)"
+      "Bash(git update-ref:*)",
+      "Bash(find /c/Users/svenk/local_projects/EstateAid/app -type d -name \"\\(onboarding\\)\")",
+      "Bash(find /c/Users/svenk/local_projects/EstateAid/app -path \"*/\\(owner\\)/*.tsx\" -type f)",
+      "Bash(find \"C:\\\\Users\\\\svenk\\\\local_projects\\\\EstateAid\\\\app\\\\\\(guest\\)\" -type f -name \"*.tsx\")"
     ]
   }
 }

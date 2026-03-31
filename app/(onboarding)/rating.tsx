@@ -25,11 +25,11 @@ export default function RatingScreen() {
   const [selected, setSelected] = useState<number | null>(null);
 
   function proceed() {
+    completeOnboarding();
     if (role === 'guest') {
-      router.push('/(onboarding)/redeem' as never);
+      router.replace('/(guest)/invitations/index' as never);
       return;
     }
-    completeOnboarding();
     router.replace('/(owner)/home' as never);
   }
 

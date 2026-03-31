@@ -10,10 +10,13 @@ import {
 } from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+
+SplashScreen.preventAutoHideAsync();
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { loadAllStores } from '@/lib/load-all-stores';
@@ -76,6 +79,12 @@ export default function RootLayout() {
   }, [currentUserId, notificationsEnabled]);
 
   useEffect(() => {
+    if (fontsLoaded) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  useEffect(() => {
     let cancelled = false;
     WebBrowser.maybeCompleteAuthSession();
 
@@ -100,8 +109,6 @@ export default function RootLayout() {
       subscription.unsubscribe();
     };
   }, []);
-
-  if (!fontsLoaded) return null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkNavTheme : LightNavTheme}>
