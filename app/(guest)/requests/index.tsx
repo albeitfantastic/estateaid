@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Colors, EstateColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatDateRange } from '@/lib/date-utils';
+import { guestEmailsMatch } from '@/lib/invite-email';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
@@ -31,7 +32,7 @@ export default function GuestRequests() {
       .filter((inv) => inv.guestEmail === currentUser?.email && inv.status === 'accepted')
       .map((inv) => inv.estateId);
     return allEstates.filter((e) => ids.includes(e.id));
-  }, [allInvitations, allEstates, currentUser?.email]);
+  }, [allInvitations, allEstates, currentUser?.email, currentUser?.id]);
 
   const estateColorMap = useMemo(() => {
     const map: Record<string, string> = {};

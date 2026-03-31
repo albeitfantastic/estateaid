@@ -12,6 +12,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Colors, EstateColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatDateRange, today } from '@/lib/date-utils';
+import { guestEmailsMatch } from '@/lib/invite-email';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
@@ -44,7 +45,7 @@ export default function GuestHome() {
     const ids = allInvitations
       .filter(
         (inv) =>
-          (inv.guestEmail === currentUser?.email || inv.guestId === currentUser?.id) &&
+          (guestEmailsMatch(inv.guestEmail, currentUser?.email) || inv.guestId === currentUser?.id) &&
           inv.status === 'accepted'
       )
       .map((inv) => inv.estateId);

@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StayRequest, Stay } from '@/types';
 import { datesOverlap } from '@/lib/date-utils';
+import { calendarBlockingRangesFromRules, rangeOverlapsRuleBlocking } from '@/lib/availability-rule-blocking';
+import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { generateUuidV4 } from '@/lib/id';
 import { supabase } from '@/lib/supabase';
 import { dedupeById } from '@/lib/dedup-by-id';
@@ -122,18 +124,25 @@ export const useStayStore = create<StayState>()(
       },
 
       hasConflict: (estateId, from, to, excludeRequestId) => {
-        return get().stays.some(
+        const stayHit = get().stays.some(
           (s) =>
             s.estateId === estateId &&
             (excludeRequestId ? s.stayRequestId !== excludeRequestId : true) &&
             datesOverlap(from, to, s.from, s.to)
         );
+        if (stayHit) return true;
+        const rules = useAvailabilityRuleStore.getState().rules;
+        return rangeOverlapsRuleBlocking(rules, estateId, from, to);
       },
 
-      getBlockedRanges: (estateId) =>
-        get()
+      getBlockedRanges: (estateId) => {
+        const stayRanges = get()
           .stays.filter((s) => s.estateId === estateId)
-          .map(({ from, to }) => ({ from, to })),
+          .map(({ from, to }) => ({ from, to }));
+        const rules = useAvailabilityRuleStore.getState().rules;
+        const ruleRanges = calendarBlockingRangesFromRules(rules, estateId);
+        return [...stayRanges, ...ruleRanges];
+      },
 
       requestStay: async (request) => {
         set((s) => ({ stayRequests: [...s.stayRequests, request] }));

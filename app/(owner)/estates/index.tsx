@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { getEstateRole } from '@/lib/estate-role';
+import { guestEmailsMatch } from '@/lib/invite-email';
 
 export default function OwnerEstates() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function OwnerEstates() {
       .filter(
         (inv) =>
           inv.status === 'accepted' &&
-          (inv.guestId === currentUser.id || inv.guestEmail === currentUser.email)
+          (inv.guestId === currentUser.id || guestEmailsMatch(inv.guestEmail, currentUser.email))
       )
       .map((inv) => inv.estateId);
   }, [allInvitations, currentUser]);

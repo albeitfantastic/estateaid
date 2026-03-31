@@ -7,6 +7,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
+import { guestEmailsMatch } from '@/lib/invite-email';
 import { useInvitationStore } from '@/store/invitation-store';
 
 export default function GuestTabLayout() {
@@ -19,8 +20,7 @@ export default function GuestTabLayout() {
     () =>
       allInvitations.filter(
         (inv) =>
-          ((currentUser?.email && inv.guestEmail === currentUser.email) ||
-            inv.guestId === currentUser?.id) &&
+          (guestEmailsMatch(inv.guestEmail, currentUser?.email) || inv.guestId === currentUser?.id) &&
           inv.status === 'pending'
       ),
     [allInvitations, currentUser?.email, currentUser?.id]

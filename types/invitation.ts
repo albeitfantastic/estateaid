@@ -6,7 +6,8 @@ export interface Invitation {
   estateId: string;
   ownerId: string;
   inviteCode: string;
-  guestEmail?: string;   // optional — code-based invites may not have an email
+  /** Required for new invites: redeem only works when session email matches (case-insensitive). */
+  guestEmail?: string;
   guestId?: string;
   role?: InvitationRole;
   status: InvitationStatus;

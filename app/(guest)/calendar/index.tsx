@@ -16,7 +16,10 @@ import { useStayStore } from '@/store/stay-store';
 import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
 import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
+import { guestEmailsMatch } from '@/lib/invite-email';
 import { useEventStore } from '@/store/event-store';
+import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
+import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -30,12 +33,13 @@ export default function GuestCalendar() {
   const allEstates = useEstateStore((s) => s.estates);
   const allStays = useStayStore((s) => s.stays);
   const allEvents = useEventStore((s) => s.events);
+  const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
 
   const acceptedEstates = useMemo(() => {
     const estateIds = allInvitations
       .filter(
         (inv) =>
-          (inv.guestEmail === currentUser?.email || inv.guestId === currentUser?.id) &&
+          (guestEmailsMatch(inv.guestEmail, currentUser?.email) || inv.guestId === currentUser?.id) &&
           inv.status === 'accepted'
       )
       .map((inv) => inv.estateId);
@@ -104,6 +108,13 @@ export default function GuestCalendar() {
         map[dateStr] = { dateStr, availability: 'my-stay' };
       });
     });
+    calendarBlockingRangesFromRules(availabilityRules, selectedEstateId).forEach(({ from, to }) => {
+      getDaysInRange(from, to).forEach((dateStr) => {
+        const existing = map[dateStr];
+        if (existing?.availability === 'my-stay') return;
+        map[dateStr] = { ...(existing ?? { dateStr }), dateStr, availability: 'blocked' };
+      });
+    });
     const firstDay = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
     const lastDay = toISODate(new Date(viewYear, viewMonth + 1, 0));
     estateEvents.forEach((event) => {
@@ -120,19 +131,19 @@ export default function GuestCalendar() {
     });
     finalizeCalendarAvailability(map, viewYear, viewMonth);
     return map;
-  }, [estateStays, myStays, estateEvents, viewYear, viewMonth, colors.tint]);
+  }, [estateStays, myStays, estateEvents, availabilityRules, selectedEstateId, viewYear, viewMonth, colors.tint]);
 
   const selectedDayData = useMemo(() => {
     if (!selectedDay) return null;
     const mine = myStays.find((s) => selectedDay >= s.from && selectedDay <= s.to);
     if (mine) return { type: 'my-stay' as const, stay: mine };
-    const isBlocked = estateStays.some(
-      (s) => s.from && s.to && selectedDay >= s.from && selectedDay <= s.to
-    );
+    const isBlocked =
+      estateStays.some((s) => s.from && s.to && selectedDay >= s.from && selectedDay <= s.to) ||
+      isDateBlockedByRules(availabilityRules, selectedEstateId, selectedDay);
     if (isBlocked) return { type: 'blocked' as const };
     if (selectedDay < today()) return { type: 'unavailable' as const };
     return { type: 'available' as const };
-  }, [selectedDay, myStays, estateStays]);
+  }, [selectedDay, myStays, estateStays, availabilityRules, selectedEstateId]);
 
   const selectedDayEvents = useMemo(() => {
     if (!selectedDay) return [];

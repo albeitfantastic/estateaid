@@ -56,6 +56,12 @@ export default function OwnerInvitations() {
       setRedeemError('Could not verify the code. Check your connection or try again.');
     } else if (result.reason === 'update_failed') {
       setRedeemError('This code could not be applied. It may have just been used—try again or ask your host for a new code.');
+    } else if (result.reason === 'wrong_invitee') {
+      setRedeemError('This code was sent to a different email. Sign in with the address your host used, or ask them for a new invite.');
+    } else if (result.reason === 'no_session_email') {
+      setRedeemError('Your account needs an email address to redeem invites. Update your profile or sign in with email.');
+    } else if (result.reason === 'invite_missing_email') {
+      setRedeemError('This invite is outdated. Ask your host to create a new invite with your email on it.');
     } else {
       setRedeemError('Code not found or already used. Check the code and try again.');
     }
@@ -75,7 +81,7 @@ export default function OwnerInvitations() {
         <View style={[styles.redeemBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <ThemedText style={[styles.redeemTitle, { color: colors.text }]}>Have an invite code?</ThemedText>
           <ThemedText style={[styles.redeemSub, { color: colors.icon }]}>
-            Enter the 8-character code shared by your host.
+            Enter the 8-character code from your host. It only works for the email they invited.
           </ThemedText>
           <View style={styles.redeemRow}>
             <TextInput

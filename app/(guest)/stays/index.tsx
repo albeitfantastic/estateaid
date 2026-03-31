@@ -15,6 +15,7 @@ import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, today } from '@/lib/date-utils';
+import { guestEmailsMatch } from '@/lib/invite-email';
 import { Stay, StayRequest } from '@/types';
 
 type UpcomingItem =
@@ -39,7 +40,7 @@ export default function StaysOverview() {
       allInvitations
         .filter(
           (inv) =>
-            (inv.guestEmail === currentUser?.email || inv.guestId === currentUser?.id) &&
+            (guestEmailsMatch(inv.guestEmail, currentUser?.email) || inv.guestId === currentUser?.id) &&
             inv.status === 'accepted'
         )
         .map((inv) => inv.estateId),

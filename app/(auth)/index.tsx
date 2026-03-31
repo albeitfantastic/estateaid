@@ -124,7 +124,15 @@ export default function AuthScreen() {
       const r = await redeemCode(pendingInviteCode, user.id);
       setPendingInviteCode(null);
       if (!r.success) {
-        Alert.alert('Invite code', 'We could not apply your invite code. Open Invitations and enter it again.');
+        const msg =
+          r.reason === 'wrong_invitee'
+            ? 'That code is tied to a different email. Sign in with the address your host used when they sent the invite.'
+            : r.reason === 'no_session_email'
+              ? 'Add an email to your account to redeem invite codes.'
+              : r.reason === 'invite_missing_email'
+                ? 'That invite is outdated. Ask your host for a new code sent to your email.'
+                : 'We could not apply your invite code. Open Invitations and enter it again.';
+        Alert.alert('Invite code', msg);
       }
     }
     if (!isOnboardingCompleteForCurrentUser(useAuthStore.getState())) {

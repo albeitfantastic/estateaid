@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
+import { isPlausibleInviteEmail, normalizeGuestEmail } from '@/lib/invite-email';
 import { generateInviteCode, generateUuidV4 } from '@/lib/id';
 import { APP_STORE_URL, buildFullInviteMessage, buildWhatsAppInviteMessage } from '@/lib/invite-messages';
 
@@ -25,16 +26,23 @@ export default function InviteGuest() {
   const { getEstateById } = useEstateStore();
   const estate = getEstateById(estateId);
 
+  const [inviteeEmail, setInviteeEmail] = useState('');
   const [note, setNote] = useState('');
   const [createdCode, setCreatedCode] = useState<string | null>(null);
 
   async function createInvite() {
+    const emailNorm = inviteeEmail.trim();
+    if (!isPlausibleInviteEmail(emailNorm)) {
+      Alert.alert('Invitee email', 'Enter a valid email for the person you are inviting. Only that account can redeem the code.');
+      return;
+    }
     const code = generateInviteCode();
     const { error } = await sendInvitation({
       id: generateUuidV4(),
       estateId,
       ownerId: currentUser!.id,
       inviteCode: code,
+      guestEmail: normalizeGuestEmail(emailNorm),
       role: 'guest',
       message: note.trim() || undefined,
       status: 'pending',
@@ -56,6 +64,7 @@ export default function InviteGuest() {
         estateName: estate.name,
         inviteCode: createdCode,
         note: noteOpt,
+        inviteeEmail: inviteeEmail.trim(),
       });
       Linking.openURL(`https://wa.me/?text=${encodeURIComponent(wa)}`);
       return;
@@ -66,6 +75,7 @@ export default function InviteGuest() {
       inviteCode: createdCode,
       note: noteOpt,
       footerLine: 'Enter your code after signing up as a Guest.',
+      inviteeEmail: inviteeEmail.trim(),
     });
     if (platform === 'telegram') {
       Linking.openURL(
@@ -99,8 +109,22 @@ export default function InviteGuest() {
             <View style={[styles.infoBox, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}>
               <IconSymbol name="info.circle.fill" size={18} color={colors.tint} />
               <ThemedText style={[styles.infoText, { color: colors.tint }]}>
-                A unique invite code will be generated. Share it with your guest via WhatsApp, Telegram, or any messaging app.
+                Enter the guest&apos;s email — only that EstateAid account can redeem the code. Share the code with them via WhatsApp, Telegram, or any messaging app.
               </ThemedText>
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText style={[styles.label, { color: colors.icon }]}>Guest email (required)</ThemedText>
+              <TextInput
+                style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
+                placeholder="guest@example.com"
+                placeholderTextColor={colors.icon}
+                value={inviteeEmail}
+                onChangeText={setInviteeEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
 
             <View style={styles.field}>
@@ -133,7 +157,7 @@ export default function InviteGuest() {
               <ThemedText style={[styles.codeLabel, { color: colors.icon }]}>INVITE CODE</ThemedText>
               <ThemedText style={[styles.code, { color: colors.tint }]}>{createdCode}</ThemedText>
               <ThemedText style={[styles.codeHint, { color: colors.icon }]}>
-                Share this code with your guest. Each code can only be used once.
+                Only {inviteeEmail.trim() || 'that email'} can redeem this code. Single use.
               </ThemedText>
             </View>
 
@@ -141,6 +165,7 @@ export default function InviteGuest() {
               onPress={() => {
                 setCreatedCode(null);
                 setNote('');
+                setInviteeEmail('');
               }}
               activeOpacity={0.75}
               style={{ alignSelf: 'center', paddingVertical: 8 }}

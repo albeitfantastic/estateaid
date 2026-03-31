@@ -25,9 +25,43 @@ export default function RatingScreen() {
   const [selected, setSelected] = useState<number | null>(null);
 
   function proceed() {
+    const guestInvitesPath = '/(guest)/invitations';
+    // #region agent log
+    fetch('http://127.0.0.1:7339/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '648fc5' },
+      body: JSON.stringify({
+        sessionId: '648fc5',
+        location: 'rating.tsx:proceed:entry',
+        message: 'onboarding rating proceed',
+        data: {
+          role,
+          rawRole,
+          roleStrictGuest: role === 'guest',
+          willUsePath: role === 'guest' ? guestInvitesPath : '/(owner)/home',
+        },
+        timestamp: Date.now(),
+        hypothesisId: 'H1',
+      }),
+    }).catch(() => {});
+    // #endregion
     completeOnboarding();
     if (role === 'guest') {
-      router.replace('/(guest)/invitations/index' as never);
+      // #region agent log
+      fetch('http://127.0.0.1:7339/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '648fc5' },
+        body: JSON.stringify({
+          sessionId: '648fc5',
+          location: 'rating.tsx:proceed:replace',
+          message: 'replacing to guest invites',
+          data: { path: guestInvitesPath, runId: 'post-fix' },
+          timestamp: Date.now(),
+          hypothesisId: 'H2',
+        }),
+      }).catch(() => {});
+      // #endregion
+      router.replace(guestInvitesPath as never);
       return;
     }
     router.replace('/(owner)/home' as never);

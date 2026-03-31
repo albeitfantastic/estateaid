@@ -12,6 +12,13 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useStayStore } from '@/store/stay-store';
+import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
+import {
+  effectiveMaxAdvanceDays,
+  effectiveMinNights,
+  violatesMaxAdvance,
+  violatesMinNights,
+} from '@/lib/availability-rule-blocking';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
 import { getPushToken, sendPush } from '@/lib/notifications';
@@ -25,6 +32,7 @@ export default function RequestStay() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
   const { requestStay, getBlockedRanges, hasConflict } = useStayStore();
+  const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
 
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
@@ -32,9 +40,43 @@ export default function RequestStay() {
 
   const blockedRanges = getBlockedRanges(estateId);
   const conflictWarning = from && to ? hasConflict(estateId, from, to) : false;
+  const nights = from && to ? nightCount(from, to) : 0;
+  const effMinNights = effectiveMinNights(availabilityRules, estateId);
+  const effMaxAdvance = effectiveMaxAdvanceDays(availabilityRules, estateId);
+  const minNightsBreak = Boolean(
+    from && to && violatesMinNights(availabilityRules, estateId, from, to, nights)
+  );
+  const maxAdvanceBreak = Boolean(from && violatesMaxAdvance(availabilityRules, estateId, from));
+  const limitHint = [
+    minNightsBreak && effMinNights != null ? `Minimum stay is ${effMinNights} nights.` : '',
+    maxAdvanceBreak && effMaxAdvance != null
+      ? `Check-in must be within ${effMaxAdvance} days from today.`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   async function submit() {
     if (!from || !to) { Alert.alert('Required', 'Please select check-in and check-out dates.'); return; }
+    if (minNightsBreak) {
+      Alert.alert(
+        'Minimum stay',
+        effMinNights != null
+          ? `This property requires at least ${effMinNights} nights.`
+          : 'Dates do not meet the minimum stay.'
+      );
+      return;
+    }
+    if (maxAdvanceBreak) {
+      const d = effMaxAdvance;
+      Alert.alert(
+        'Booking window',
+        d != null
+          ? `Check-in must be within ${d} days from today.`
+          : 'Those dates are outside the allowed booking window.'
+      );
+      return;
+    }
     const { error } = await requestStay({
       id: generateUuidV4(),
       estateId,
@@ -98,8 +140,15 @@ export default function RequestStay() {
           <View style={[styles.warning, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
             <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#f59e0b" />
             <ThemedText style={[styles.warningText, { color: '#f59e0b' }]}>
-              These dates may conflict with existing bookings. The owner will review your request.
+              These dates overlap another stay or a period that is not open for booking. You can still send a request for the owner to review.
             </ThemedText>
+          </View>
+        )}
+
+        {(minNightsBreak || maxAdvanceBreak) && limitHint.length > 0 && (
+          <View style={[styles.warning, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
+            <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#f59e0b" />
+            <ThemedText style={[styles.warningText, { color: '#f59e0b' }]}>{limitHint}</ThemedText>
           </View>
         )}
 
@@ -118,9 +167,13 @@ export default function RequestStay() {
         </View>
 
         <TouchableOpacity
-          style={[styles.submitBtn, { backgroundColor: colors.tint }, (!from || !to) && styles.disabled]}
+          style={[
+            styles.submitBtn,
+            { backgroundColor: colors.tint },
+            (!from || !to || minNightsBreak || maxAdvanceBreak) && styles.disabled,
+          ]}
           onPress={() => void submit()}
-          disabled={!from || !to}
+          disabled={!from || !to || minNightsBreak || maxAdvanceBreak}
           activeOpacity={0.8}
         >
           <ThemedText style={styles.submitText}>Send Request</ThemedText>

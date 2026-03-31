@@ -13,7 +13,15 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
+import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
+import {
+  effectiveMaxAdvanceDays,
+  effectiveMinNights,
+  violatesMaxAdvance,
+  violatesMinNights,
+} from '@/lib/availability-rule-blocking';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
+import { guestEmailsMatch } from '@/lib/invite-email';
 import { generateUuidV4 } from '@/lib/id';
 
 export default function GuestPlanStay() {
@@ -24,14 +32,15 @@ export default function GuestPlanStay() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
-  const { requestStay, getBlockedRanges } = useStayStore();
+  const { requestStay, getBlockedRanges, hasConflict } = useStayStore();
+  const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
 
   const acceptedEstateIds = useMemo(
     () =>
       allInvitations
         .filter(
           (inv) =>
-            (inv.guestEmail === currentUser?.email || inv.guestId === currentUser?.id) &&
+            (guestEmailsMatch(inv.guestEmail, currentUser?.email) || inv.guestId === currentUser?.id) &&
             inv.status === 'accepted'
         )
         .map((inv) => inv.estateId),
@@ -51,6 +60,27 @@ export default function GuestPlanStay() {
   const [note, setNote] = useState('');
 
   const blockedRanges = selectedEstateId ? getBlockedRanges(selectedEstateId) : [];
+  const nights = from && to ? nightCount(from, to) : 0;
+  const effMinNights =
+    selectedEstateId != null ? effectiveMinNights(availabilityRules, selectedEstateId) : undefined;
+  const effMaxAdvance =
+    selectedEstateId != null ? effectiveMaxAdvanceDays(availabilityRules, selectedEstateId) : undefined;
+  const conflictWarning =
+    selectedEstateId && from && to ? hasConflict(selectedEstateId, from, to) : false;
+  const minNightsBreak = Boolean(
+    selectedEstateId && from && to && violatesMinNights(availabilityRules, selectedEstateId, from, to, nights)
+  );
+  const maxAdvanceBreak = Boolean(
+    selectedEstateId && from && violatesMaxAdvance(availabilityRules, selectedEstateId, from)
+  );
+  const limitHint = [
+    minNightsBreak && effMinNights != null ? `Minimum stay is ${effMinNights} nights.` : '',
+    maxAdvanceBreak && effMaxAdvance != null
+      ? `Check-in must be within ${effMaxAdvance} days from today.`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   function pickEstate(id: string) {
     setSelectedEstateId(id);
@@ -60,6 +90,24 @@ export default function GuestPlanStay() {
 
   async function submit() {
     if (!selectedEstateId || !from || !to) return;
+    if (minNightsBreak) {
+      Alert.alert(
+        'Minimum stay',
+        effMinNights != null
+          ? `This property requires at least ${effMinNights} nights.`
+          : 'Dates do not meet the minimum stay.'
+      );
+      return;
+    }
+    if (maxAdvanceBreak) {
+      Alert.alert(
+        'Booking window',
+        effMaxAdvance != null
+          ? `Check-in must be within ${effMaxAdvance} days from today.`
+          : 'Those dates are outside the allowed booking window.'
+      );
+      return;
+    }
     const { error } = await requestStay({
       id: generateUuidV4(),
       estateId: selectedEstateId,
@@ -79,7 +127,8 @@ export default function GuestPlanStay() {
     router.back();
   }
 
-  const canSubmit = !!selectedEstateId && !!from && !!to;
+  const canSubmit =
+    !!selectedEstateId && !!from && !!to && !minNightsBreak && !maxAdvanceBreak;
 
   return (
     <ThemedView style={styles.container}>
@@ -140,6 +189,18 @@ export default function GuestPlanStay() {
                 <ThemedText style={{ color: colors.icon }}>{nightCount(from, to)} nights</ThemedText>
               </View>
             )}
+            {conflictWarning && (
+              <View style={[styles.warnBanner, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
+                <ThemedText style={[styles.warnText, { color: '#f59e0b' }]}>
+                  These dates overlap another stay or a closed period. You can still send a request for the owner to review.
+                </ThemedText>
+              </View>
+            )}
+            {(minNightsBreak || maxAdvanceBreak) && limitHint.length > 0 && (
+              <View style={[styles.warnBanner, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
+                <ThemedText style={[styles.warnText, { color: '#f59e0b' }]}>{limitHint}</ThemedText>
+              </View>
+            )}
           </View>
         )}
 
@@ -187,6 +248,8 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 14 },
   pickerWrap: { padding: 16, borderRadius: 16, borderWidth: 1 },
   summary: { padding: 14, borderRadius: 12, borderWidth: 1, gap: 4 },
+  warnBanner: { padding: 12, borderRadius: 12, borderWidth: 1 },
+  warnText: { fontSize: 13, lineHeight: 18 },
   noteInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, height: 80, paddingTop: 12 },
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 18, borderRadius: 14, marginTop: 8 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },

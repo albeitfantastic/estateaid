@@ -5,6 +5,7 @@ import { Invitation, InvitationStatus, InvitationRole } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useEstateStore } from '@/store/estate-store';
 import { dedupeById } from '@/lib/dedup-by-id';
+import { normalizeGuestEmail } from '@/lib/invite-email';
 import { getPushToken, sendPush } from '@/lib/notifications';
 
 function fromDb(row: Record<string, unknown>): Invitation {
@@ -118,8 +119,25 @@ export const useInvitationStore = create<InvitationState>()(
       },
       redeemCode: async (code, guestId) => {
         const norm = code.toUpperCase().trim();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const sessionEmail = user?.email ? normalizeGuestEmail(user.email) : '';
+        if (!sessionEmail) {
+          return { success: false, reason: 'no_session_email' as const };
+        }
+
         let inv =
           get().invitations.find((i) => i.inviteCode === norm && i.status === 'pending') ?? null;
+
+        if (inv) {
+          if (!inv.guestEmail?.trim()) {
+            return { success: false, reason: 'invite_missing_email' as const };
+          }
+          if (normalizeGuestEmail(inv.guestEmail) !== sessionEmail) {
+            return { success: false, reason: 'wrong_invitee' as const };
+          }
+        }
 
         if (!inv) {
           const { data: rpcResult, error: rpcError } = await supabase.rpc(
@@ -146,11 +164,13 @@ export const useInvitationStore = create<InvitationState>()(
               return { success: true, invitation: invAccepted };
             }
             if (p.ok === false) {
-              return {
-                success: false,
-                reason:
-                  p.reason === 'not_authenticated' ? 'fetch_error' : (p.reason ?? 'invalid_or_used'),
-              };
+              const r = p.reason;
+              if (r === 'not_authenticated') return { success: false, reason: 'fetch_error' as const };
+              if (r === 'wrong_invitee') return { success: false, reason: 'wrong_invitee' as const };
+              if (r === 'no_session_email') return { success: false, reason: 'no_session_email' as const };
+              if (r === 'invite_missing_email')
+                return { success: false, reason: 'invite_missing_email' as const };
+              return { success: false, reason: (r as string) ?? 'invalid_or_used' };
             }
           }
 
@@ -171,6 +191,12 @@ export const useInvitationStore = create<InvitationState>()(
             return { success: false, reason: 'invalid_or_used' };
           }
           inv = fromDb(data);
+          if (!inv.guestEmail?.trim()) {
+            return { success: false, reason: 'invite_missing_email' as const };
+          }
+          if (normalizeGuestEmail(inv.guestEmail) !== sessionEmail) {
+            return { success: false, reason: 'wrong_invitee' as const };
+          }
           set((s) =>
             s.invitations.some((i) => i.id === inv!.id)
               ? s
@@ -203,18 +229,24 @@ export const useInvitationStore = create<InvitationState>()(
       getInvitationsByEstate: (estateId) =>
         get().invitations.filter((inv) => inv.estateId === estateId),
       getPendingInvitationsForGuest: (guestId, guestEmail) =>
-        get().invitations.filter(
-          (inv) =>
-            ((guestEmail && inv.guestEmail === guestEmail) || inv.guestId === guestId) &&
-            inv.status === 'pending'
-        ),
+        get().invitations.filter((inv) => {
+          if (inv.status !== 'pending') return false;
+          if (inv.guestId === guestId) return true;
+          if (guestEmail && inv.guestEmail) {
+            return normalizeGuestEmail(inv.guestEmail) === normalizeGuestEmail(guestEmail);
+          }
+          return false;
+        }),
       getAcceptedEstatesForGuest: (guestId, guestEmail) =>
         get()
-          .invitations.filter(
-            (inv) =>
-              ((guestEmail && inv.guestEmail === guestEmail) || inv.guestId === guestId) &&
-              inv.status === 'accepted'
-          )
+          .invitations.filter((inv) => {
+            if (inv.status !== 'accepted') return false;
+            if (inv.guestId === guestId) return true;
+            if (guestEmail && inv.guestEmail) {
+              return normalizeGuestEmail(inv.guestEmail) === normalizeGuestEmail(guestEmail);
+            }
+            return false;
+          })
           .map((inv) => inv.estateId),
     }),
     {

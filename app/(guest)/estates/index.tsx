@@ -12,6 +12,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { guestEmailsMatch } from '@/lib/invite-email';
 import { useInvitationStore } from '@/store/invitation-store';
 
 export default function GuestEstatesList() {
@@ -28,7 +29,7 @@ export default function GuestEstatesList() {
     const estateIds = allInvitations
       .filter(
         (inv) =>
-          (inv.guestEmail === currentUser?.email || inv.guestId === currentUser?.id) &&
+          (guestEmailsMatch(inv.guestEmail, currentUser?.email) || inv.guestId === currentUser?.id) &&
           inv.status === 'accepted'
       )
       .map((inv) => inv.estateId);

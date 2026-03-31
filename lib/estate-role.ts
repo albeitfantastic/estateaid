@@ -1,3 +1,4 @@
+import { guestEmailsMatch } from '@/lib/invite-email';
 import { useAuthStore } from '@/store/auth-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { Invitation, InvitationRole } from '@/types';
@@ -16,7 +17,7 @@ export function getEstateRole(
     (inv) =>
       inv.estateId === estateId &&
       inv.status === 'accepted' &&
-      (inv.guestId === userId || (userEmail && inv.guestEmail === userEmail))
+      (inv.guestId === userId || guestEmailsMatch(inv.guestEmail, userEmail ?? undefined))
   );
   if (!match) return null;
   return match.role ?? 'guest';

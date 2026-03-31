@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { InvitationRole } from '@/types';
+import { isPlausibleInviteEmail, normalizeGuestEmail } from '@/lib/invite-email';
 import { generateInviteCode, generateUuidV4 } from '@/lib/id';
 import { APP_STORE_URL, buildFullInviteMessage, buildWhatsAppInviteMessage } from '@/lib/invite-messages';
 
@@ -27,9 +28,22 @@ interface GeneratedInvite {
   code: string;
 }
 
-function shareVia(platform: 'whatsapp' | 'telegram' | 'native', estateName: string, code: string, role: InvitationRole, note?: string) {
+function shareVia(
+  platform: 'whatsapp' | 'telegram' | 'native',
+  estateName: string,
+  code: string,
+  role: InvitationRole,
+  note: string | undefined,
+  inviteeEmail: string
+) {
   if (platform === 'whatsapp') {
-    const wa = buildWhatsAppInviteMessage({ estateName, inviteCode: code, role, note });
+    const wa = buildWhatsAppInviteMessage({
+      estateName,
+      inviteCode: code,
+      role,
+      note,
+      inviteeEmail,
+    });
     Linking.openURL(`https://wa.me/?text=${encodeURIComponent(wa)}`);
     return;
   }
@@ -40,6 +54,7 @@ function shareVia(platform: 'whatsapp' | 'telegram' | 'native', estateName: stri
     note,
     footerLine:
       role === 'guest' ? 'Enter your code after signing up as a Guest.' : 'Enter your code after signing up.',
+    inviteeEmail,
   });
   if (platform === 'telegram') {
     Linking.openURL(
@@ -66,6 +81,7 @@ export default function InviteUser() {
 
   // estateRoles: estateId → role (only selected estates appear here)
   const [estateRoles, setEstateRoles] = useState<Record<string, InvitationRole>>({});
+  const [inviteeEmail, setInviteeEmail] = useState('');
   const [note, setNote] = useState('');
   const [createdInvites, setCreatedInvites] = useState<GeneratedInvite[]>([]);
 
@@ -85,6 +101,15 @@ export default function InviteUser() {
   }
 
   async function generateCodes() {
+    const emailNorm = inviteeEmail.trim();
+    if (!isPlausibleInviteEmail(emailNorm)) {
+      Alert.alert(
+        'Invitee email',
+        'Enter a valid email for the person you are inviting. Only that account can redeem each code.'
+      );
+      return;
+    }
+    const guestEmail = normalizeGuestEmail(emailNorm);
     const now = new Date().toISOString();
     const invites: GeneratedInvite[] = [];
     for (const [estateId, role] of Object.entries(estateRoles)) {
@@ -94,6 +119,7 @@ export default function InviteUser() {
         estateId,
         ownerId: currentUser!.id,
         inviteCode: code,
+        guestEmail,
         role,
         message: note.trim() || undefined,
         status: 'pending',
@@ -110,7 +136,7 @@ export default function InviteUser() {
   }
 
   const selectedCount = Object.keys(estateRoles).length;
-  const canGenerate = selectedCount > 0;
+  const canGenerate = selectedCount > 0 && isPlausibleInviteEmail(inviteeEmail.trim());
 
   return (
     <ThemedView style={styles.container}>
@@ -132,6 +158,23 @@ export default function InviteUser() {
       >
         {createdInvites.length === 0 ? (
           <>
+            <View style={styles.section}>
+              <ThemedText style={[styles.label, { color: colors.icon }]}>Invitee email (required)</ThemedText>
+              <TextInput
+                style={[styles.input, { color: colors.text, borderColor: colors.icon + '44', height: 50 }]}
+                placeholder="guest@example.com"
+                placeholderTextColor={colors.icon}
+                value={inviteeEmail}
+                onChangeText={setInviteeEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <ThemedText style={{ fontSize: 12, color: colors.icon, lineHeight: 16 }}>
+                Codes only work when that person signs in with this email.
+              </ThemedText>
+            </View>
+
             {/* Estate multi-select with per-estate role */}
             <View style={styles.section}>
               <ThemedText style={[styles.label, { color: colors.icon }]}>
@@ -255,26 +298,34 @@ export default function InviteUser() {
                   </View>
                 </View>
                 <ThemedText style={[styles.code, { color: colors.tint }]}>{inv.code}</ThemedText>
-                <ThemedText style={[styles.codeHint, { color: colors.icon }]}>Single-use code</ThemedText>
+                <ThemedText style={[styles.codeHint, { color: colors.icon }]}>
+                  For {inviteeEmail.trim()} · single use
+                </ThemedText>
 
                 <View style={styles.shareRow}>
                   <TouchableOpacity
                     style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
-                    onPress={() => shareVia('whatsapp', inv.estateName, inv.code, inv.role, note || undefined)}
+                    onPress={() =>
+                      shareVia('whatsapp', inv.estateName, inv.code, inv.role, note || undefined, inviteeEmail.trim())
+                    }
                     activeOpacity={0.85}
                   >
                     <ThemedText style={styles.shareBtnText}>WhatsApp</ThemedText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.shareBtn, { backgroundColor: '#0088CC' }]}
-                    onPress={() => shareVia('telegram', inv.estateName, inv.code, inv.role, note || undefined)}
+                    onPress={() =>
+                      shareVia('telegram', inv.estateName, inv.code, inv.role, note || undefined, inviteeEmail.trim())
+                    }
                     activeOpacity={0.85}
                   >
                     <ThemedText style={styles.shareBtnText}>Telegram</ThemedText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.shareBtn, { backgroundColor: colors.tint }]}
-                    onPress={() => shareVia('native', inv.estateName, inv.code, inv.role, note || undefined)}
+                    onPress={() =>
+                      shareVia('native', inv.estateName, inv.code, inv.role, note || undefined, inviteeEmail.trim())
+                    }
                     activeOpacity={0.85}
                   >
                     <IconSymbol name="square.and.arrow.up" size={14} color="#fff" />
@@ -284,7 +335,10 @@ export default function InviteUser() {
             ))}
 
             <TouchableOpacity
-              onPress={() => setCreatedInvites([])}
+              onPress={() => {
+                setCreatedInvites([]);
+                setInviteeEmail('');
+              }}
               activeOpacity={0.75}
               style={{ alignSelf: 'center', paddingVertical: 12 }}
             >

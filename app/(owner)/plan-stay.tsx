@@ -14,6 +14,13 @@ import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
+import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
+import {
+  effectiveMaxAdvanceDays,
+  effectiveMinNights,
+  violatesMaxAdvance,
+  violatesMinNights,
+} from '@/lib/availability-rule-blocking';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
 
@@ -25,7 +32,8 @@ export default function PlanStay() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const profileById = useProfileStore((s) => s.byId);
   const allEstates = useEstateStore((s) => s.estates);
-  const { createDirectStay, getBlockedRanges } = useStayStore();
+  const { createDirectStay, getBlockedRanges, hasConflict } = useStayStore();
+  const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
   const { getInvitationsByEstate } = useInvitationStore();
 
   const estates = useMemo(
@@ -41,6 +49,17 @@ export default function PlanStay() {
   const [to, setTo] = useState<string | null>(null);
 
   const blockedRanges = selectedEstateId ? getBlockedRanges(selectedEstateId) : [];
+  const nights = from && to ? nightCount(from, to) : 0;
+  const effMinNights =
+    selectedEstateId != null ? effectiveMinNights(availabilityRules, selectedEstateId) : undefined;
+  const effMaxAdvance =
+    selectedEstateId != null ? effectiveMaxAdvanceDays(availabilityRules, selectedEstateId) : undefined;
+  const minNightsBreak = Boolean(
+    selectedEstateId && from && to && violatesMinNights(availabilityRules, selectedEstateId, from, to, nights)
+  );
+  const maxAdvanceBreak = Boolean(
+    selectedEstateId && from && violatesMaxAdvance(availabilityRules, selectedEstateId, from)
+  );
 
   // Build guest options: owner first, then accepted guests of the selected estate
   const guestOptions = useMemo(() => {
@@ -80,6 +99,28 @@ export default function PlanStay() {
     if (!selectedEstateId) { Alert.alert('Required', 'Please select a property.'); return; }
     if (selectedGuestIds.length === 0) { Alert.alert('Required', 'Please select at least one guest.'); return; }
     if (!from || !to) { Alert.alert('Required', 'Please select check-in and check-out dates.'); return; }
+    if (hasConflict(selectedEstateId, from, to)) {
+      Alert.alert('Dates unavailable', 'These dates overlap another stay or a closed period.');
+      return;
+    }
+    if (minNightsBreak) {
+      Alert.alert(
+        'Minimum stay',
+        effMinNights != null
+          ? `This property requires at least ${effMinNights} nights.`
+          : 'Dates do not meet the minimum stay.'
+      );
+      return;
+    }
+    if (maxAdvanceBreak) {
+      Alert.alert(
+        'Booking window',
+        effMaxAdvance != null
+          ? `Check-in must be within ${effMaxAdvance} days from today.`
+          : 'Those dates are outside the allowed booking window.'
+      );
+      return;
+    }
 
     for (const guestId of selectedGuestIds) {
       const { error } = await createDirectStay({
@@ -101,7 +142,14 @@ export default function PlanStay() {
     router.back();
   }
 
-  const canSubmit = !!selectedEstateId && selectedGuestIds.length > 0 && !!from && !!to;
+  const canSubmit =
+    !!selectedEstateId &&
+    selectedGuestIds.length > 0 &&
+    !!from &&
+    !!to &&
+    !minNightsBreak &&
+    !maxAdvanceBreak &&
+    !(selectedEstateId && from && to && hasConflict(selectedEstateId, from, to));
 
   return (
     <ThemedView style={styles.container}>
