@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform, UIManager } from 'react-native';
 import RevenueCatUI, {
   type CustomerCenterCallbacks,
   type PAYWALL_RESULT,
@@ -6,8 +6,30 @@ import RevenueCatUI, {
 
 import { isRevenueCatConfigured } from '@/lib/revenuecat-client';
 
+/**
+ * True when `<RevenueCatUI.Paywall />` would use the native view, not RC preview
+ * ("Web paywalls are not supported yet." in Expo Go / web / missing native module).
+ */
+export function isEmbeddedRevenueCatPaywallAvailable(): boolean {
+  if (Platform.OS === 'web') return false;
+  if (!isRevenueCatConfigured()) return false;
+  if (NativeModules.RNPaywalls == null) return false;
+  if (UIManager.getViewManagerConfig('Paywall') == null) return false;
+  return true;
+}
+
+/** Same for embedded Customer Center (avoids preview stub). */
+export function isEmbeddedRevenueCatCustomerCenterAvailable(): boolean {
+  if (Platform.OS === 'web') return false;
+  if (!isRevenueCatConfigured()) return false;
+  if (NativeModules.RNCustomerCenter == null) return false;
+  if (UIManager.getViewManagerConfig('CustomerCenterView') == null) return false;
+  return true;
+}
+
+/** Modal paywall / customer center: only when native RC UI modules exist. */
 export function isRevenueCatUiAvailable(): boolean {
-  return (Platform.OS === 'ios' || Platform.OS === 'android') && isRevenueCatConfigured();
+  return isEmbeddedRevenueCatPaywallAvailable();
 }
 
 /** Modal paywall (current offering from RevenueCat dashboard). */
@@ -37,7 +59,7 @@ export async function presentPaywallIfNeededForEntitlement(
 
 /** System-modal Customer Center (subscription management UI from RevenueCat). */
 export async function presentRevenueCatCustomerCenter(callbacks?: CustomerCenterCallbacks) {
-  if (!isRevenueCatUiAvailable()) return;
+  if (!isEmbeddedRevenueCatCustomerCenterAvailable()) return;
   try {
     await RevenueCatUI.presentCustomerCenter({ callbacks });
   } catch {

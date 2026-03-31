@@ -9,7 +9,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { isRevenueCatConfigured } from '@/lib/revenuecat-client';
 import { MAISON_PRO_DISPLAY_NAME } from '@/lib/subscription-config';
-import { RevenueCatUI } from '@/lib/revenuecat-ui';
+import { isEmbeddedRevenueCatCustomerCenterAvailable, RevenueCatUI } from '@/lib/revenuecat-ui';
 import { useSubscription } from '@/providers/subscription-provider';
 
 /**
@@ -23,7 +23,10 @@ export function CustomerCenterScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const { refetch } = useSubscription();
 
-  if (!isRevenueCatConfigured()) {
+  const rcConfigured = isRevenueCatConfigured();
+  const embeddedCustomerCenter = isEmbeddedRevenueCatCustomerCenterAvailable();
+
+  if (!rcConfigured) {
     return (
       <ThemedView style={styles.container}>
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -38,6 +41,28 @@ export function CustomerCenterScreen() {
         <View style={styles.fallback}>
           <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>
             Customer Center requires a native build with RevenueCat API keys configured.
+          </ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  if (!embeddedCustomerCenter) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+          </TouchableOpacity>
+          <ThemedText type="title" style={styles.title}>
+            Subscription
+          </ThemedText>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={styles.fallback}>
+          <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>
+            Subscription management UI requires a development or production build with RevenueCat native modules — not
+            Expo Go or the web app.
           </ThemedText>
         </View>
       </ThemedView>
