@@ -23,6 +23,7 @@ import { loadAllStores } from '@/lib/load-all-stores';
 import { clearPushToken, registerPushToken } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
+import { SubscriptionProvider } from '@/providers/subscription-provider';
 
 const LightNavTheme: Theme = {
   dark: false,
@@ -112,15 +113,17 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkNavTheme : LightNavTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="auth" />
-        <Stack.Screen name="(onboarding)" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(owner)" />
-        <Stack.Screen name="(guest)" />
-      </Stack>
-      <StatusBar style="auto" />
+      <SubscriptionProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="auth" />
+          <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(owner)" />
+          <Stack.Screen name="(guest)" />
+        </Stack>
+        <StatusBar style="auto" />
+      </SubscriptionProvider>
     </ThemeProvider>
   );
 }

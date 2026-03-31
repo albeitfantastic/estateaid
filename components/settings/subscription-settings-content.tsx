@@ -7,9 +7,14 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { loadAllStores } from '@/lib/load-all-stores';
+import { isRevenueCatConfigured } from '@/lib/revenuecat-client';
+import { isRevenueCatUiAvailable } from '@/lib/revenuecat-ui';
+import { MAISON_PRO_DISPLAY_NAME } from '@/lib/subscription-config';
 import { supportMailto } from '@/lib/support';
 import { supabase } from '@/lib/supabase';
+import { formatDate } from '@/lib/date-utils';
 import { useAuthStore } from '@/store/auth-store';
+import { useSubscription } from '@/providers/subscription-provider';
 
 export function SubscriptionSettingsContent() {
   const insets = useSafeAreaInsets();
@@ -19,16 +24,25 @@ export function SubscriptionSettingsContent() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const selectedTier = useAuthStore((s) => s.selectedTier);
   const patchUser = useAuthStore((s) => s.patchUser);
+  const {
+    isPro,
+    sdkMaisonProActive,
+    loading,
+    primaryRow,
+    syncPurchasesAndRefetch,
+    presentManageSubscriptions,
+  } = useSubscription();
 
   const role = currentUser?.role;
   const isGuest = role === 'guest';
   const isOwner = role === 'owner';
 
-  const planLine =
-    isGuest
-      ? 'Guest — free'
+  const planLine = isGuest
+    ? 'Guest — free'
+    : isPro
+      ? `Owner — ${MAISON_PRO_DISPLAY_NAME}`
       : selectedTier === 'premium'
-        ? 'Owner — Premium'
+        ? `Owner — ${MAISON_PRO_DISPLAY_NAME} (pending)`
         : 'Owner — Starter';
 
   async function upgradeToOwner() {
@@ -55,31 +69,46 @@ export function SubscriptionSettingsContent() {
     );
   }
 
-  function cancelSubscription() {
-    if (selectedTier !== 'premium') {
+  async function openManageSubscriptions() {
+    if (!isRevenueCatConfigured()) {
       Alert.alert(
-        'Cancel subscription',
-        'You are not on a paid Premium plan in the app. There is nothing to cancel here yet.',
-        [
-          { text: 'OK' },
-          {
-            text: 'Contact support',
-            onPress: () =>
-              void Linking.openURL(supportMailto('Cancel subscription', 'Please help me cancel my subscription.')),
-          },
-        ]
+        'Manage subscription',
+        'Open the App Store or Play Store subscriptions page for this Apple/Google account.',
+        [{ text: 'OK' }]
       );
+      return;
+    }
+    try {
+      await presentManageSubscriptions();
+    } catch {
+      Alert.alert('Could not open', 'Use your device subscription settings for this app.');
+    }
+  }
+
+  function cancelOrManage() {
+    if (!isOwner) {
+      Alert.alert('Guests', 'Guest accounts do not have an app subscription. Contact the property host if needed.');
+      return;
+    }
+    if (isPro) {
+      if (isRevenueCatUiAvailable()) {
+        router.push('./customer-center' as never);
+        return;
+      }
+      void openManageSubscriptions();
       return;
     }
     Alert.alert(
       'Cancel subscription',
-      'Billing is not connected in this build. Contact support and we will help you cancel.',
+      'You do not have an active paid subscription in our records. If you believe this is wrong, contact support.',
       [
-        { text: 'Not now', style: 'cancel' },
+        { text: 'OK' },
         {
           text: 'Contact support',
           onPress: () =>
-            void Linking.openURL(supportMailto('Cancel Premium', 'I would like to cancel my Premium subscription.')),
+            void Linking.openURL(
+              supportMailto('Subscription', `I need help with my ${MAISON_PRO_DISPLAY_NAME} subscription.`)
+            ),
         },
       ]
     );
@@ -92,12 +121,22 @@ export function SubscriptionSettingsContent() {
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <ThemedText type="defaultSemiBold" style={styles.planText}>
             {planLine}
+            {loading ? ' · …' : ''}
           </ThemedText>
           {isOwner && (
             <ThemedText style={[styles.sub, { color: colors.icon }]}>
-              {selectedTier === 'premium'
-                ? 'Premium includes expanded limits when billing is enabled.'
-                : 'Starter is the default owner plan.'}
+              {isPro
+                ? `${MAISON_PRO_DISPLAY_NAME} is confirmed on our servers after purchase (webhook sync).`
+                : sdkMaisonProActive && !isPro
+                  ? 'Store shows an active subscription; waiting for account sync. Tap Sync below.'
+                  : selectedTier === 'premium'
+                    ? `Complete checkout to activate ${MAISON_PRO_DISPLAY_NAME} on this account.`
+                    : `Starter is the default owner plan. Upgrade to ${MAISON_PRO_DISPLAY_NAME} for premium features.`}
+            </ThemedText>
+          )}
+          {isPro && primaryRow?.expires_at && (
+            <ThemedText style={[styles.sub, { color: colors.icon, marginTop: 6 }]}>
+              Renews or ends: {formatDate(primaryRow.expires_at.slice(0, 10))}
             </ThemedText>
           )}
         </View>
@@ -118,13 +157,55 @@ export function SubscriptionSettingsContent() {
           </>
         )}
 
-        <ThemedText style={[styles.sectionTitle, { color: colors.icon, marginTop: 28 }]}>Subscription</ThemedText>
+        {isOwner && !isPro && (
+          <>
+            <ThemedText style={[styles.sectionTitle, { color: colors.icon, marginTop: 28 }]}>
+              {MAISON_PRO_DISPLAY_NAME}
+            </ThemedText>
+            <TouchableOpacity
+              style={[styles.primaryBtn, { backgroundColor: colors.tint }]}
+              onPress={() => router.push('./paywall' as never)}
+              activeOpacity={0.85}
+            >
+              <ThemedText style={styles.primaryBtnText}>View paywall</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.outlineBtn, { borderColor: colors.tint, marginTop: 10 }]}
+              onPress={() => void syncPurchasesAndRefetch()}
+              activeOpacity={0.8}
+            >
+              <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>Sync with App Store / Play Store</ThemedText>
+            </TouchableOpacity>
+          </>
+        )}
+
+        <ThemedText style={[styles.sectionTitle, { color: colors.icon, marginTop: 28 }]}>Manage</ThemedText>
+        {isOwner && isRevenueCatUiAvailable() && (
+          <TouchableOpacity
+            style={[styles.outlineBtn, { borderColor: colors.tint }]}
+            onPress={() => router.push('./customer-center' as never)}
+            activeOpacity={0.8}
+          >
+            <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>Customer Center</ThemedText>
+          </TouchableOpacity>
+        )}
+        {isOwner && isPro && (
+          <TouchableOpacity
+            style={[styles.outlineBtn, { borderColor: colors.tint, marginTop: 10 }]}
+            onPress={() => void openManageSubscriptions()}
+            activeOpacity={0.8}
+          >
+            <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>System subscription settings</ThemedText>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
-          style={[styles.outlineBtn, { borderColor: colors.error }]}
-          onPress={cancelSubscription}
+          style={[styles.outlineBtn, { borderColor: colors.error, marginTop: 10 }]}
+          onPress={cancelOrManage}
           activeOpacity={0.8}
         >
-          <ThemedText style={{ color: colors.error, fontWeight: '600' }}>Cancel subscription</ThemedText>
+          <ThemedText style={{ color: colors.error, fontWeight: '600' }}>
+            {isOwner && isPro ? 'Cancel or change plan' : 'Cancel subscription'}
+          </ThemedText>
         </TouchableOpacity>
       </View>
     </ThemedView>

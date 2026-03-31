@@ -1,0 +1,5 @@
+# Supabase local / deploy configuration.
+# RevenueCat sends a shared secret (Bearer token), not a Supabase JWT — disable JWT verification for this function.
+
+[functions.revenuecat-webhook]
+verify_jwt = false
