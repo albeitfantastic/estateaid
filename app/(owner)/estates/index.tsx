@@ -47,33 +47,25 @@ export default function OwnerEstates() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        {navigation.canGoBack() ? (
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.back} />
-        )}
+        
         <ThemedText type="title" style={styles.title}>Properties</ThemedText>
-        {currentUser?.role !== 'admin' && (
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.tint }]}
-            onPress={() => router.push('/(owner)/estates/new' as never)}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="plus" size={18} color="#fff" />
-            <ThemedText style={styles.addBtnText}>Add New</ThemedText>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: colors.tint }]}
+          onPress={() => router.push('/(owner)/estates/new' as never)}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name="plus" size={18} color="#fff" />
+          <ThemedText style={styles.addBtnText}>Add New</ThemedText>
+        </TouchableOpacity>
       </View>
 
       {estates.length === 0 ? (
         <EmptyState
           icon="building.2.fill"
           title="No estates yet"
-          subtitle={currentUser?.role === 'admin' ? "You haven't been invited to manage any estates yet." : "Add your first vacation home to get started."}
-          actionLabel={currentUser?.role === 'admin' ? undefined : "Add Estate"}
-          onAction={currentUser?.role === 'admin' ? undefined : () => router.push('/(owner)/estates/new' as never)}
+          subtitle="Add your first vacation home to get started."
+          actionLabel="Add Estate"
+          onAction={() => router.push('/(owner)/estates/new' as never)}
         />
       ) : (
         <ScrollView
@@ -92,9 +84,9 @@ export default function OwnerEstates() {
                   onPress={() => router.push(`/(owner)/estates/${estate.id}` as never)}
                 />
                 {invRole && (
-                  <View style={[styles.roleBadge, { backgroundColor: invRole === 'admin' ? colors.tint + '22' : colors.icon + '15' }]}>
-                    <ThemedText style={[styles.roleBadgeText, { color: invRole === 'admin' ? colors.tint : colors.icon }]}>
-                      {invRole === 'admin' ? 'Admin' : 'Guest'}
+                  <View style={[styles.roleBadge, { backgroundColor: colors.icon + '15' }]}>
+                    <ThemedText style={[styles.roleBadgeText, { color: colors.icon }]}>
+                      Guest
                     </ThemedText>
                   </View>
                 )}

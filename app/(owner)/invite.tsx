@@ -17,7 +17,6 @@ import { APP_STORE_URL, buildFullInviteMessage, buildWhatsAppInviteMessage } fro
 
 const ROLES: { value: InvitationRole; label: string }[] = [
   { value: 'guest', label: 'Guest' },
-  { value: 'admin', label: 'Admin' },
   { value: 'owner', label: 'Owner' },
 ];
 

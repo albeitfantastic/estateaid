@@ -9,7 +9,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { formatDate, formatDateRange, getDaysInRange, toISODate } from '@/lib/date-utils';
+import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
+import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
@@ -116,6 +117,7 @@ export default function OwnerCalendar() {
         };
       });
     });
+    finalizeCalendarAvailability(map, viewYear, viewMonth);
     return map;
   }, [estateStays, myStays, estateEvents, viewYear, viewMonth, colors.tint]);
 
@@ -127,6 +129,7 @@ export default function OwnerCalendar() {
       (s) => s.from && s.to && selectedDay >= s.from && selectedDay <= s.to
     );
     if (isBlocked) return { type: 'blocked' as const };
+    if (selectedDay < today()) return { type: 'unavailable' as const };
     return { type: 'available' as const };
   }, [selectedDay, myStays, estateStays]);
 
@@ -143,13 +146,7 @@ export default function OwnerCalendar() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        {canGoBack ? (
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.back} />
-        )}
+        
       </View>
 
       {myEstates.length === 0 ? (
@@ -211,13 +208,17 @@ export default function OwnerCalendar() {
                       ? '#22c55e12'
                       : selectedDayData.type === 'blocked'
                         ? '#ef444410'
-                        : colors.tint + '0E',
+                        : selectedDayData.type === 'unavailable'
+                          ? '#64748b14'
+                          : colors.tint + '0E',
                   borderColor:
                     selectedDayData.type === 'my-stay'
                       ? '#22c55e44'
                       : selectedDayData.type === 'blocked'
                         ? '#ef444430'
-                        : colors.tint + '33',
+                        : selectedDayData.type === 'unavailable'
+                          ? '#64748b40'
+                          : colors.tint + '33',
                 },
               ]}
             >
@@ -231,7 +232,9 @@ export default function OwnerCalendar() {
                           ? '#22c55e'
                           : selectedDayData.type === 'blocked'
                             ? '#ef4444'
-                            : '#22c55e',
+                            : selectedDayData.type === 'unavailable'
+                              ? '#64748b'
+                              : '#22c55e',
                     },
                   ]}
                 />
@@ -252,6 +255,11 @@ export default function OwnerCalendar() {
                   {selectedDayData.type === 'blocked' && (
                     <ThemedText style={[styles.infoMain, { color: '#ef4444' }]}>
                       Not available — property occupied
+                    </ThemedText>
+                  )}
+                  {selectedDayData.type === 'unavailable' && (
+                    <ThemedText style={[styles.infoMain, { color: colors.icon }]}>
+                      Unavailable — this date has passed
                     </ThemedText>
                   )}
                   {selectedDayData.type === 'available' && (
@@ -322,7 +330,41 @@ export default function OwnerCalendar() {
                 <View
                   style={[
                     styles.legendSwatch,
-                    { backgroundColor: '#ef444430', borderWidth: 1, borderColor: '#ef444460' },
+                    {
+                      backgroundColor: '#16a34a14',
+                      borderWidth: 1,
+                      borderColor: '#16a34a44',
+                    },
+                  ]}
+                />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  Available — open from today onward
+                </ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View
+                  style={[
+                    styles.legendSwatch,
+                    {
+                      backgroundColor: '#64748b18',
+                      borderWidth: 1,
+                      borderColor: '#64748b55',
+                    },
+                  ]}
+                />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  Unavailable — past dates
+                </ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View
+                  style={[
+                    styles.legendSwatch,
+                    {
+                      backgroundColor: '#ef444438',
+                      borderWidth: 1,
+                      borderColor: '#dc262688',
+                    },
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>

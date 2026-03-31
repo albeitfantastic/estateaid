@@ -26,10 +26,7 @@ export default function InviteGuest() {
   const estate = getEstateById(estateId);
 
   const [note, setNote] = useState('');
-  const [inviteRole, setInviteRole] = useState<'guest' | 'admin'>('guest');
   const [createdCode, setCreatedCode] = useState<string | null>(null);
-
-  const isEstateOwner = estate?.ownerId === currentUser?.id;
 
   async function createInvite() {
     const code = generateInviteCode();
@@ -38,7 +35,7 @@ export default function InviteGuest() {
       estateId,
       ownerId: currentUser!.id,
       inviteCode: code,
-      role: isEstateOwner ? inviteRole : 'guest',
+      role: 'guest',
       message: note.trim() || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
@@ -68,9 +65,7 @@ export default function InviteGuest() {
       estateName: estate.name,
       inviteCode: createdCode,
       note: noteOpt,
-      footerLine: inviteRole === 'admin' && isEstateOwner
-        ? 'Enter your code after signing up as an Estate Manager.'
-        : 'Enter your code after signing up as a Guest.',
+      footerLine: 'Enter your code after signing up as a Guest.',
     });
     if (platform === 'telegram') {
       Linking.openURL(
@@ -107,30 +102,6 @@ export default function InviteGuest() {
                 A unique invite code will be generated. Share it with your guest via WhatsApp, Telegram, or any messaging app.
               </ThemedText>
             </View>
-
-            {isEstateOwner && (
-              <View style={styles.field}>
-                <ThemedText style={[styles.label, { color: colors.icon }]}>Invite as</ThemedText>
-                <View style={styles.roleToggle}>
-                  {(['guest', 'admin'] as const).map((r) => (
-                    <TouchableOpacity
-                      key={r}
-                      style={[
-                        styles.roleBtn,
-                        { borderColor: inviteRole === r ? colors.tint : colors.icon + '44' },
-                        inviteRole === r && { backgroundColor: colors.tint + '15' },
-                      ]}
-                      onPress={() => setInviteRole(r)}
-                      activeOpacity={0.7}
-                    >
-                      <ThemedText style={[styles.roleBtnText, inviteRole === r && { color: colors.tint, fontWeight: '700' }]}>
-                        {r === 'admin' ? 'Estate Manager' : 'Guest'}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
 
             <View style={styles.field}>
               <ThemedText style={[styles.label, { color: colors.icon }]}>Personal Note (optional)</ThemedText>
@@ -249,7 +220,4 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   shareBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  roleToggle: { flexDirection: 'row', gap: 10 },
-  roleBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
-  roleBtnText: { fontSize: 14 },
 });

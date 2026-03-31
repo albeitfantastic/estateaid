@@ -1,4 +1,14 @@
 import { Theme, ThemeProvider } from '@react-navigation/native';
+import {
+  Manrope_400Regular,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+} from '@expo-google-fonts/manrope';
+import {
+  Inter_500Medium,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
@@ -14,35 +24,43 @@ import { useAuthStore } from '@/store/auth-store';
 const LightNavTheme: Theme = {
   dark: false,
   colors: {
-    primary: '#1C3D5A',
-    background: '#FAFAF8',
+    primary: '#2C554E',
+    background: '#F4F4F2',
     card: '#FFFFFF',
-    text: '#0E1C2D',
-    border: '#E5E7EA',
-    notification: '#C9A96E',
+    text: '#1A2B28',
+    border: '#DDE1E0',
+    notification: '#607D8B',
   },
   fonts: {
-    regular: { fontFamily: 'System', fontWeight: '400' },
-    medium: { fontFamily: 'System', fontWeight: '500' },
-    bold: { fontFamily: 'System', fontWeight: '700' },
-    heavy: { fontFamily: 'System', fontWeight: '900' },
+    regular: { fontFamily: 'Manrope_400Regular', fontWeight: '400' },
+    medium: { fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
+    bold: { fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+    heavy: { fontFamily: 'Manrope_700Bold', fontWeight: '900' },
   },
 };
 
 const DarkNavTheme: Theme = {
   dark: true,
   colors: {
-    primary: '#C9A96E',
-    background: '#0E1C2D',
-    card: '#1A2F4E',
-    text: '#F0EDE8',
-    border: '#2A3F58',
-    notification: '#C9A96E',
+    primary: '#4A9B8E',
+    background: '#0F1F1E',
+    card: '#1A2B28',
+    text: '#E8F0EE',
+    border: '#2E4B48',
+    notification: '#607D8B',
   },
   fonts: LightNavTheme.fonts,
 };
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Inter_500Medium,
+    Inter_700Bold,
+  });
+
   const colorScheme = useColorScheme();
   const { bootstrapSession, clearUser } = useAuthStore();
   const currentUserId = useAuthStore((s) => s.currentUser?.id);
@@ -82,6 +100,8 @@ export default function RootLayout() {
       subscription.unsubscribe();
     };
   }, []);
+
+  if (!fontsLoaded) return null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkNavTheme : LightNavTheme}>

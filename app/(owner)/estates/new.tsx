@@ -31,10 +31,6 @@ export default function NewEstate() {
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [saving, setSaving] = useState(false);
 
-  if (currentUser?.role === 'admin') {
-    return <Redirect href={'/(owner)/estates' as never} />;
-  }
-
   async function pickPhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],

@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Invitation, InvitationStatus, InvitationRole } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { useEstateStore } from '@/store/estate-store';
 import { dedupeById } from '@/lib/dedup-by-id';
 import { getPushToken, sendPush } from '@/lib/notifications';
 
@@ -87,6 +88,9 @@ export const useInvitationStore = create<InvitationState>()(
         const update: Record<string, unknown> = { status, responded_at: respondedAt };
         if (guestId) update.guest_id = guestId;
         void supabase.from('invitations').update(update).eq('id', id);
+        if (status === 'accepted') {
+          void useEstateStore.getState().fetchFromSupabase();
+        }
       },
       revokeInvitation: (id) => {
         set((s) => ({
@@ -106,7 +110,7 @@ export const useInvitationStore = create<InvitationState>()(
         // Notify the invitee — fire-and-forget
         const inv = get().invitations.find((i) => i.id === id);
         if (inv?.guestId) {
-          const roleLabel = role === 'admin' ? 'Estate Manager' : role === 'owner' ? 'Owner' : 'Guest';
+          const roleLabel = role === 'owner' ? 'Owner' : 'Guest';
           void getPushToken(inv.guestId).then((token) =>
             sendPush(token, 'Role Updated', `Your role has been updated to ${roleLabel}.`)
           );
@@ -138,6 +142,7 @@ export const useInvitationStore = create<InvitationState>()(
                   ? s.invitations.map((i) => (i.id === invAccepted.id ? invAccepted : i))
                   : [...s.invitations, invAccepted],
               }));
+              void useEstateStore.getState().fetchFromSupabase();
               return { success: true, invitation: invAccepted };
             }
             if (p.ok === false) {
@@ -192,6 +197,7 @@ export const useInvitationStore = create<InvitationState>()(
               : i
           ),
         }));
+        void useEstateStore.getState().fetchFromSupabase();
         return { success: true, invitation: { ...inv!, status: 'accepted', guestId } };
       },
       getInvitationsByEstate: (estateId) =>

@@ -31,7 +31,7 @@ export default function EditEstate() {
   const [timeZone, setTimeZone] = useState(estate?.timeZone ?? '');
   const [coverImageUrl, setCoverImageUrl] = useState(estate?.coverImageUrl ?? '');
 
-  if (currentUser?.role === 'admin' || (estate && estate.ownerId !== currentUser?.id)) {
+  if (estate && estate.ownerId !== currentUser?.id) {
     return <Redirect href={`/(owner)/estates/${estateId}` as never} />;
   }
 

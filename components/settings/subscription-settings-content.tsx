@@ -22,7 +22,7 @@ export function SubscriptionSettingsContent() {
 
   const role = currentUser?.role;
   const isGuest = role === 'guest';
-  const isOwner = role === 'owner' || role === 'admin';
+  const isOwner = role === 'owner';
 
   const planLine =
     isGuest

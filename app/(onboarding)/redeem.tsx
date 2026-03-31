@@ -6,12 +6,12 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
 
 const C = {
-  bg: '#FAFAF8',
-  navy: '#1C3D5A',
-  gold: '#C9A96E',
-  text: '#0E1C2D',
-  muted: '#6B7A8D',
-  border: '#E5E7EA',
+  bg: '#F4F4F2',
+  navy: '#2C554E',
+  gold: '#607D8B',
+  text: '#1A2B28',
+  muted: '#607D8B',
+  border: '#DDE1E0',
   surface: '#FFFFFF',
   success: '#2D7D52',
   error: '#C0392B',
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   },
   codeInput: {
     backgroundColor: C.surface,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 2,
     paddingHorizontal: 20,
     paddingVertical: 20,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   },
   btn: {
     backgroundColor: C.navy,
-    borderRadius: 14,
+    borderRadius: 10,
     paddingVertical: 18,
     alignItems: 'center',
   },

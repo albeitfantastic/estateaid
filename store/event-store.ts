@@ -37,7 +37,7 @@ interface EventState {
   events: EstateEvent[];
   setEvents: (events: EstateEvent[]) => void;
   fetchFromSupabase: () => Promise<void>;
-  addEvent: (event: EstateEvent) => Promise<void>;
+  addEvent: (event: EstateEvent) => Promise<{ error: string | null }>;
   updateEvent: (id: string, patch: Partial<EstateEvent>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
   getEventsByEstate: (estateId: string) => EstateEvent[];
@@ -55,7 +55,11 @@ export const useEventStore = create<EventState>()(
       addEvent: async (event) => {
         set((s) => ({ events: [...s.events, event] }));
         const { error } = await supabase.from('estate_events').insert(toDb(event));
-        if (error) set((s) => ({ events: s.events.filter((e) => e.id !== event.id) }));
+        if (error) {
+          set((s) => ({ events: s.events.filter((e) => e.id !== event.id) }));
+          return { error: error.message };
+        }
+        return { error: null };
       },
       updateEvent: async (id, patch) => {
         set((s) => ({

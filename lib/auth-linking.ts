@@ -63,7 +63,7 @@ type AuthUserLike = {
 
 function roleFromMetadata(meta: Record<string, unknown> | null | undefined): UserRole | null {
   const r = meta?.role;
-  return r === 'owner' || r === 'guest' || r === 'admin' ? r : null;
+  return r === 'owner' || r === 'guest' ? r : null;
 }
 
 function nameFromMetadata(meta: Record<string, unknown> | null | undefined): string | null {

@@ -1,5 +1,5 @@
 export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked';
-export type InvitationRole = 'guest' | 'admin' | 'owner';
+export type InvitationRole = 'guest' | 'owner';
 
 export interface Invitation {
   id: string;

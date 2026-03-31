@@ -124,7 +124,7 @@ export default function GuestHome() {
             icon="suitcase.fill"
             value={pendingCount}
             label="Stays Pending"
-            color="#f59e0b"
+            color={colors.tint}
             colors={colors}
             onPress={() => router.push('/(guest)/stays' as never)}
           />

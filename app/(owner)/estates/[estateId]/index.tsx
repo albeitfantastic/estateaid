@@ -25,16 +25,6 @@ const OWNER_ITEMS = [
   { label: 'Tickets', icon: 'exclamationmark.triangle.fill', route: 'tickets' },
 ] as const;
 
-const ADMIN_ITEMS = [
-  { label: 'Stay Requests', icon: 'calendar', route: 'stays' },
-  { label: 'Events', icon: 'calendar.badge.clock', route: 'events' },
-  { label: 'Guests', icon: 'person.2.fill', route: 'guests' },
-  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq' },
-  { label: 'Documents', icon: 'doc.fill', route: 'documents' },
-  { label: 'Contacts', icon: 'phone.fill', route: 'contacts' },
-  { label: 'Tickets', icon: 'exclamationmark.triangle.fill', route: 'tickets' },
-] as const;
-
 const GUEST_ITEMS = [
   { label: 'Plan a Stay', icon: 'calendar', route: 'request-stay', alwaysOn: true },
   { label: 'My Stays', icon: 'checkmark.circle.fill', route: 'my-stays', alwaysOn: true },
@@ -62,7 +52,7 @@ export default function EstateHub() {
     : getEstateRole(allInvitations, estateId, currentUser!.id, currentUser?.email);
 
   const hasContextAccess = useMemo(() => {
-    if (estateRole === 'owner' || estateRole === 'admin') return true;
+    if (estateRole === 'owner') return true;
     return allStays.some(
       (s) =>
         s.estateId === estateId &&
@@ -105,49 +95,6 @@ export default function EstateHub() {
           )}
           <View style={styles.tiles}>
             {OWNER_ITEMS.map((item) => (
-              <TouchableOpacity
-                key={item.route}
-                style={[styles.tile, { backgroundColor: colors.tint + '11', borderColor: colors.tint + '22' }]}
-                onPress={() => router.push(`/(owner)/estates/${estateId}/${item.route}` as never)}
-                activeOpacity={0.75}
-              >
-                <IconSymbol name={item.icon} size={28} color={colors.tint} />
-                <ThemedText type="defaultSemiBold" style={styles.tileLabel}>{item.label}</ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-      </ThemedView>
-    );
-  }
-
-  // Admin: same tiles as owner but routed through guest screens, no edit pencil
-  if (estateRole === 'admin') {
-    return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-          <View style={styles.headerText}>
-            <View style={styles.nameRow}>
-              <ThemedText type="title" style={styles.name} numberOfLines={1}>{estate.name}</ThemedText>
-              <View style={[styles.adminBadge, { backgroundColor: colors.tint + '22' }]}>
-                <ThemedText style={[styles.adminBadgeText, { color: colors.tint }]}>Admin</ThemedText>
-              </View>
-            </View>
-            <View style={styles.locationRow}>
-              <IconSymbol name="map.fill" size={13} color={colors.icon} />
-              <ThemedText style={[styles.location, { color: colors.icon }]}>{estate.location}</ThemedText>
-            </View>
-          </View>
-        </View>
-        <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}>
-          {estate.description && (
-            <ThemedText style={[styles.description, { color: colors.icon }]}>{estate.description}</ThemedText>
-          )}
-          <View style={styles.tiles}>
-            {ADMIN_ITEMS.map((item) => (
               <TouchableOpacity
                 key={item.route}
                 style={[styles.tile, { backgroundColor: colors.tint + '11', borderColor: colors.tint + '22' }]}

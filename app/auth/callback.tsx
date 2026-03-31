@@ -28,7 +28,7 @@ export default function AuthCallbackScreen() {
         await loadAllStores();
         if (!isOnboardingCompleteForCurrentUser(state)) {
           router.replace('/(onboarding)/q1' as never);
-        } else if (user.role === 'owner' || user.role === 'admin') {
+        } else if (user.role === 'owner') {
           router.replace('/(owner)/home' as never);
         } else {
           router.replace('/(guest)/home' as never);

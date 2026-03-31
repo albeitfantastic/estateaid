@@ -29,22 +29,22 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const A = {
-  bg:         '#EDE8E0',
-  bgDark:     '#1A1310',
-  card:       '#F5F1EB',
-  cardDark:   '#2A1F18',
-  brown:      '#5C3D2E',
-  brownMid:   '#A0785A',
-  creamDark:  '#E2D9CC',
-  creamDarkD: '#3A2A20',
-  text:       '#2A1F18',
-  textDark:   '#F0EBE3',
-  textMuted:  '#8C7B6E',
-  textMutedD: '#7A6558',
-  white:      '#FDFAF7',
-  whiteDark:  '#2E1F16',
-  border:     '#D4C8BB',
-  borderDark: '#4A3728',
+  bg:         '#F4F4F2',
+  bgDark:     '#0F1F1E',
+  card:       '#FFFFFF',
+  cardDark:   '#1A2B28',
+  brown:      '#2C554E',
+  brownMid:   '#4A7A6E',
+  creamDark:  '#E0E8E6',
+  creamDarkD: '#233D3A',
+  text:       '#1A2B28',
+  textDark:   '#E8F0EE',
+  textMuted:  '#607D8B',
+  textMutedD: '#5A7A75',
+  white:      '#FFFFFF',
+  whiteDark:  '#1A2B28',
+  border:     '#DDE1E0',
+  borderDark: '#2E4B48',
 };
 
 type Mode = 'signin' | 'signup';
@@ -85,8 +85,8 @@ function FocusInput({ label, dark, style, ...props }: FocusInputProps) {
 
 const fi = StyleSheet.create({
   wrap:  { gap: 6 },
-  label: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: 'sans-serif' },
-  input: { height: 50, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 16, fontSize: 15, fontFamily: 'sans-serif' },
+  label: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: 'Inter_700Bold' },
+  input: { height: 50, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 16, fontSize: 15, fontFamily: 'Manrope_400Regular' },
 });
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ export default function AuthScreen() {
               {
                 backgroundColor: cardBg,
                 borderColor: dark ? A.borderDark : '#E2D9CC',
-                shadowColor: '#2C1C12',
+                shadowColor: '#1A2B28',
               },
             ]}
           >
@@ -365,7 +365,7 @@ export default function AuthScreen() {
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={['#7A5548', '#5C3D2E']}
+                colors={['#3D7268', '#2C554E']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={s.cta}
@@ -404,7 +404,7 @@ const s = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 390,
-    borderRadius: 28,
+    borderRadius: 16,
     padding: 32,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 8 },
@@ -416,30 +416,30 @@ const s = StyleSheet.create({
   // header
   header:    { marginBottom: 28 },
   titleRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  logoMark:  { width: 32, height: 32, borderRadius: 9, backgroundColor: A.brown, alignItems: 'center', justifyContent: 'center' },
-  title:     { fontSize: 26, fontWeight: '700', letterSpacing: -0.5, fontFamily: 'serif' },
-  subtitle:  { fontSize: 14, marginLeft: 40, fontFamily: 'sans-serif' },
+  logoMark:  { width: 32, height: 32, borderRadius: 8, backgroundColor: A.brown, alignItems: 'center', justifyContent: 'center' },
+  title:     { fontSize: 26, fontWeight: '700', letterSpacing: -0.5, fontFamily: 'Manrope_700Bold' },
+  subtitle:  { fontSize: 14, marginLeft: 40, fontFamily: 'Manrope_400Regular' },
   // tabs
-  tabs:      { flexDirection: 'row', borderRadius: 14, padding: 4, marginBottom: 24 },
-  tab:       { flex: 1, paddingVertical: 11, borderRadius: 11, alignItems: 'center' },
-  tabText:   { fontSize: 14, fontWeight: '600', fontFamily: 'sans-serif' },
+  tabs:      { flexDirection: 'row', borderRadius: 10, padding: 4, marginBottom: 24 },
+  tab:       { flex: 1, paddingVertical: 11, borderRadius: 8, alignItems: 'center' },
+  tabText:   { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // oauth
   oauthGroup: { gap: 10, marginBottom: 20 },
-  oauthBtn:  { height: 50, borderRadius: 14, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  oauthText: { fontSize: 14, fontWeight: '600', fontFamily: 'sans-serif' },
+  oauthBtn:  { height: 50, borderRadius: 10, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  oauthText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // divider
   divRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
   divLine:   { flex: 1, height: 1 },
-  divText:   { fontSize: 12, fontFamily: 'sans-serif', letterSpacing: 0.5 },
+  divText:   { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.5 },
   // fields
   fields:    { gap: 14, marginBottom: 20 },
   // email button
-  emailBtn:  { height: 50, borderRadius: 14, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 4 },
-  emailBtnText: { fontSize: 14, fontWeight: '600', fontFamily: 'sans-serif' },
+  emailBtn:  { height: 50, borderRadius: 10, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 4 },
+  emailBtnText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // cta
-  ctaWrap:   { borderRadius: 14, shadowColor: '#5C3D2E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 6, marginBottom: 16 },
-  cta:       { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  ctaText:   { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'sans-serif', letterSpacing: 0.3 },
+  ctaWrap:   { borderRadius: 10, shadowColor: '#2C554E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 6, marginBottom: 16 },
+  cta:       { height: 52, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  ctaText:   { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'Manrope_700Bold', letterSpacing: 0.3 },
   // footer
-  footerText: { textAlign: 'center', fontSize: 13, fontFamily: 'sans-serif', lineHeight: 20 },
+  footerText: { textAlign: 'center', fontSize: 13, fontFamily: 'Manrope_400Regular', lineHeight: 20 },
 });

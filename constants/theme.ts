@@ -1,34 +1,32 @@
-import { Platform } from 'react-native';
-
 export const Colors = {
   light: {
-    background: '#EDE8E0',    // warm linen
-    surface: '#F5F1EB',       // card surface
-    text: '#2A1F18',          // deep espresso
-    textSecondary: '#8C7B6E', // muted warm
-    tint: '#5C3D2E',          // primary brown
-    accent: '#C9A96E',        // warm gold
-    brownMid: '#A0785A',      // mid brown — links, secondary accents
-    border: '#D4C8BB',        // linen separator
-    icon: '#8C7B6E',
-    tabIconDefault: '#8C7B6E',
-    tabIconSelected: '#5C3D2E',
+    background: '#F4F4F2',    // neutral light grey
+    surface: '#FFFFFF',       // card surface
+    text: '#1A2B28',          // dark teal
+    textSecondary: '#607D8B', // blue-grey
+    tint: '#2C554E',          // primary deep teal
+    accent: '#607D8B',        // secondary blue-grey
+    brownMid: '#4A7A6E',      // mid teal — links, secondary accents
+    border: '#DDE1E0',        // subtle neutral border
+    icon: '#607D8B',
+    tabIconDefault: '#607D8B',
+    tabIconSelected: '#2C554E',
     success: '#4A7C59',
     error: '#B04A3A',
     warning: '#C48B2C',
   },
   dark: {
-    background: '#1A1310',
-    surface: '#2A1F18',
-    text: '#F0EBE3',
-    textSecondary: '#9B8C7E',
-    tint: '#C9A96E',
-    accent: '#C9A96E',
-    brownMid: '#C9A96E',
-    border: '#4A3728',
-    icon: '#9B8C7E',
-    tabIconDefault: '#9B8C7E',
-    tabIconSelected: '#C9A96E',
+    background: '#0F1F1E',
+    surface: '#1A2B28',
+    text: '#E8F0EE',
+    textSecondary: '#8FA8A3',
+    tint: '#4A9B8E',
+    accent: '#607D8B',
+    brownMid: '#4A9B8E',
+    border: '#2E4B48',
+    icon: '#8FA8A3',
+    tabIconDefault: '#8FA8A3',
+    tabIconSelected: '#4A9B8E',
     success: '#4CAF7D',
     error: '#E57373',
     warning: '#FFB74D',
@@ -36,7 +34,7 @@ export const Colors = {
 };
 
 export const Spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
-export const Radius = { sm: 8, md: 12, lg: 16, xl: 24, full: 9999 };
+export const Radius = { sm: 6, md: 10, lg: 12, xl: 16, full: 9999 };
 
 /** Distinct colors for estates on the calendar (up to 8 estates) */
 export const EstateColors = [
@@ -64,23 +62,10 @@ export const StatusColors = {
   closed: '#94A3B8',
 } as const;
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: 'system-ui',
-    serif: 'ui-serif',
-    rounded: 'ui-rounded',
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+export const Fonts = {
+  heading: 'Manrope_700Bold',
+  headingSemiBold: 'Manrope_600SemiBold',
+  body: 'Manrope_400Regular',
+  label: 'Inter_500Medium',
+  labelBold: 'Inter_700Bold',
+};

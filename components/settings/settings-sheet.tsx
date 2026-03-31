@@ -111,7 +111,6 @@ export function SettingsSheet({
               <ThemedText type="defaultSemiBold" style={{ fontSize: 16 }}>
                 {currentUser?.name}
               </ThemedText>
-              <ThemedText style={[styles.email, { color: colors.icon }]}>{currentUser?.email}</ThemedText>
             </View>
             <View style={[styles.tierBadge, { backgroundColor: colors.tint + '18' }]}>
               <ThemedText style={[styles.tierText, { color: colors.tint }]}>{tierLabel}</ThemedText>
@@ -132,20 +131,18 @@ export function SettingsSheet({
                 thumbColor="#fff"
               />
             )}
-            <View style={[styles.row, { borderBottomColor: colors.border }]}>
-              <View style={styles.notifRowLeft}>
-                <View style={[styles.rowIcon, { backgroundColor: colors.tint + '12' }]}>
-                  <IconSymbol name="bell.fill" size={18} color={colors.tint} />
-                </View>
-                <ThemedText style={styles.rowLabel}>Notifications</ThemedText>
-              </View>
+
+            {menuRow('bell.fill', 'Notifications',undefined,
               <Switch
                 value={notificationsOn}
                 onValueChange={onToggleNotifications}
                 trackColor={{ false: colors.border, true: colors.tint }}
                 thumbColor="#fff"
               />
-            </View>
+              
+              )}
+
+
             {menuRow('gearshape.fill', 'Account', () => go('account'))}
             {menuRow('questionmark.circle.fill', 'Help & Support', () => {
               onClose();

@@ -12,6 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEventStore } from '@/store/event-store';
 import { EventType, RecurrenceFrequency } from '@/types';
 import { today } from '@/lib/date-utils';
+import { generateUuidV4 } from '@/lib/id';
 
 const EVENT_COLORS = ['#22c55e', '#8B5CF6', '#0a7ea4', '#f59e0b', '#ef4444', '#B5703A', '#64748B', '#2E7D91'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -43,40 +44,48 @@ export default function NewEvent() {
   const [dayOfWeek, setDayOfWeek] = useState(1);
   const [dayOfMonth, setDayOfMonth] = useState(1);
 
-  function save() {
+  async function save() {
     if (!title.trim()) {
       Alert.alert('Missing title', 'Please enter an event title.');
       return;
     }
+    if (!estateId) {
+      Alert.alert('Error', 'Missing property. Go back and open this screen from the estate again.');
+      return;
+    }
 
-    const id = `event-${Date.now()}`;
-    if (type === 'task') {
-      addEvent({
-        id,
-        estateId,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        type: 'task',
-        date: taskDate,
-        color,
-        createdAt: new Date().toISOString(),
-      });
-    } else {
-      addEvent({
-        id,
-        estateId,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        type: 'recurring',
-        recurrence: {
-          frequency,
-          dayOfWeek: (frequency === 'weekly' || frequency === 'biweekly') ? dayOfWeek : undefined,
-          dayOfMonth: frequency === 'monthly' ? dayOfMonth : undefined,
-          startDate: today(),
-        },
-        color,
-        createdAt: new Date().toISOString(),
-      });
+    const id = generateUuidV4();
+    const createdAt = new Date().toISOString();
+    const base = {
+      id,
+      estateId,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      color,
+      createdAt,
+    } as const;
+
+    const result =
+      type === 'task'
+        ? await addEvent({
+            ...base,
+            type: 'task' as const,
+            date: taskDate,
+          })
+        : await addEvent({
+            ...base,
+            type: 'recurring' as const,
+            recurrence: {
+              frequency,
+              dayOfWeek: frequency === 'weekly' || frequency === 'biweekly' ? dayOfWeek : undefined,
+              dayOfMonth: frequency === 'monthly' ? dayOfMonth : undefined,
+              startDate: today(),
+            },
+          });
+
+    if (result.error) {
+      Alert.alert('Could not save event', result.error);
+      return;
     }
     router.back();
   }

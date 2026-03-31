@@ -13,8 +13,15 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEventStore } from '@/store/event-store';
 import { describeRecurrence } from '@/lib/event-utils';
 
+function paramId(v: string | string[] | undefined): string {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v[0]) return v[0];
+  return '';
+}
+
 export default function EventsIndex() {
-  const { estateId } = useLocalSearchParams<{ estateId: string }>();
+  const params = useLocalSearchParams<{ estateId: string | string[] }>();
+  const estateId = paramId(params.estateId);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();

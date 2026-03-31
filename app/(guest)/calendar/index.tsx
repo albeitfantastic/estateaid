@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MonthGrid, DayInfo } from '@/components/calendar/month-grid';
@@ -13,7 +13,8 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
-import { formatDate, formatDateRange, getDaysInRange, toISODate } from '@/lib/date-utils';
+import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
+import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
 import { useEventStore } from '@/store/event-store';
 
@@ -43,9 +44,20 @@ export default function GuestCalendar() {
 
   const acceptedEstateIds = useMemo(() => acceptedEstates.map((e) => e.id), [acceptedEstates]);
 
-  const [selectedEstateId, setSelectedEstateId] = useState<string>(acceptedEstateIds[0] ?? '');
+  const [selectedEstateId, setSelectedEstateId] = useState<string>('');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
+
+  useEffect(() => {
+    if (acceptedEstateIds.length === 0) return;
+    if (!selectedEstateId || !acceptedEstateIds.includes(selectedEstateId)) {
+      setSelectedEstateId(acceptedEstateIds[0]);
+    }
+  }, [acceptedEstateIds, selectedEstateId]);
+
+  useEffect(() => {
+    void useStayStore.getState().fetchFromSupabase();
+  }, []);
 
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -81,11 +93,13 @@ export default function GuestCalendar() {
   const dayInfoMap = useMemo(() => {
     const map: Record<string, DayInfo> = {};
     estateStays.forEach(({ from, to }) => {
+      if (!from || !to) return;
       getDaysInRange(from, to).forEach((dateStr) => {
         map[dateStr] = { dateStr, availability: 'blocked' };
       });
     });
     myStays.forEach(({ from, to }) => {
+      if (!from || !to) return;
       getDaysInRange(from, to).forEach((dateStr) => {
         map[dateStr] = { dateStr, availability: 'my-stay' };
       });
@@ -104,6 +118,7 @@ export default function GuestCalendar() {
         };
       });
     });
+    finalizeCalendarAvailability(map, viewYear, viewMonth);
     return map;
   }, [estateStays, myStays, estateEvents, viewYear, viewMonth, colors.tint]);
 
@@ -111,8 +126,11 @@ export default function GuestCalendar() {
     if (!selectedDay) return null;
     const mine = myStays.find((s) => selectedDay >= s.from && selectedDay <= s.to);
     if (mine) return { type: 'my-stay' as const, stay: mine };
-    const isBlocked = estateStays.some((s) => selectedDay >= s.from && selectedDay <= s.to);
+    const isBlocked = estateStays.some(
+      (s) => s.from && s.to && selectedDay >= s.from && selectedDay <= s.to
+    );
     if (isBlocked) return { type: 'blocked' as const };
+    if (selectedDay < today()) return { type: 'unavailable' as const };
     return { type: 'available' as const };
   }, [selectedDay, myStays, estateStays]);
 
@@ -191,10 +209,12 @@ export default function GuestCalendar() {
                   backgroundColor:
                     selectedDayData.type === 'my-stay' ? '#22c55e12'
                     : selectedDayData.type === 'blocked' ? '#ef444410'
+                    : selectedDayData.type === 'unavailable' ? '#64748b14'
                     : colors.tint + '0E',
                   borderColor:
                     selectedDayData.type === 'my-stay' ? '#22c55e44'
                     : selectedDayData.type === 'blocked' ? '#ef444430'
+                    : selectedDayData.type === 'unavailable' ? '#64748b40'
                     : colors.tint + '33',
                 },
               ]}
@@ -207,6 +227,7 @@ export default function GuestCalendar() {
                       backgroundColor:
                         selectedDayData.type === 'my-stay' ? '#22c55e'
                         : selectedDayData.type === 'blocked' ? '#ef4444'
+                        : selectedDayData.type === 'unavailable' ? '#64748b'
                         : '#22c55e',
                     },
                   ]}
@@ -228,6 +249,11 @@ export default function GuestCalendar() {
                   {selectedDayData.type === 'blocked' && (
                     <ThemedText style={[styles.infoMain, { color: '#ef4444' }]}>
                       Not available — property occupied
+                    </ThemedText>
+                  )}
+                  {selectedDayData.type === 'unavailable' && (
+                    <ThemedText style={[styles.infoMain, { color: colors.icon }]}>
+                      Unavailable — this date has passed
                     </ThemedText>
                   )}
                   {selectedDayData.type === 'available' && (
@@ -283,8 +309,49 @@ export default function GuestCalendar() {
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Your approved stay</ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendSwatch, { backgroundColor: '#ef444430', borderWidth: 1, borderColor: '#ef444460' }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Unavailable — booked by others</ThemedText>
+                <View
+                  style={[
+                    styles.legendSwatch,
+                    {
+                      backgroundColor: '#16a34a14',
+                      borderWidth: 1,
+                      borderColor: '#16a34a44',
+                    },
+                  ]}
+                />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  Available — open from today onward
+                </ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View
+                  style={[
+                    styles.legendSwatch,
+                    {
+                      backgroundColor: '#64748b18',
+                      borderWidth: 1,
+                      borderColor: '#64748b55',
+                    },
+                  ]}
+                />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  Unavailable — past dates
+                </ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View
+                  style={[
+                    styles.legendSwatch,
+                    {
+                      backgroundColor: '#ef444438',
+                      borderWidth: 1,
+                      borderColor: '#dc262688',
+                    },
+                  ]}
+                />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  Unavailable — booked by others
+                </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatchRing, { borderColor: '#0a7ea4', borderWidth: 1.5 }]} />

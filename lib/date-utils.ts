@@ -68,3 +68,14 @@ export function nightCount(from: string, to: string): number {
   const diff = parseDateStr(to).getTime() - parseDateStr(from).getTime();
   return Math.round(diff / (1000 * 60 * 60 * 24));
 }
+
+/** Every calendar date in a month as "YYYY-MM-DD" (month is 0-based, like Date). */
+export function eachDateInMonth(year: number, monthIndex0: number): string[] {
+  const last = new Date(year, monthIndex0 + 1, 0).getDate();
+  const m = String(monthIndex0 + 1).padStart(2, '0');
+  const out: string[] = [];
+  for (let d = 1; d <= last; d++) {
+    out.push(`${year}-${m}-${String(d).padStart(2, '0')}`);
+  }
+  return out;
+}

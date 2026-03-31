@@ -7,12 +7,12 @@ import { APP_STORE_URL } from '@/lib/invite-messages';
 import { useAuthStore } from '@/store/auth-store';
 
 const C = {
-  bg: '#FAFAF8',
-  navy: '#1C3D5A',
-  gold: '#C9A96E',
-  text: '#0E1C2D',
-  muted: '#6B7A8D',
-  border: '#E5E7EA',
+  bg: '#F4F4F2',
+  navy: '#2C554E',
+  gold: '#E9A840',
+  text: '#1A2B28',
+  muted: '#607D8B',
+  border: '#DDE1E0',
   surface: '#FFFFFF',
 };
 
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   appStoreBtn: {
     backgroundColor: C.navy,
-    borderRadius: 14,
+    borderRadius: 10,
     paddingVertical: 16,
     paddingHorizontal: 32,
     alignItems: 'center',
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   feedbackNote: {
     backgroundColor: C.surface,
-    borderRadius: 14,
+    borderRadius: 10,
     padding: 16,
     borderWidth: 1,
     borderColor: C.border,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   btn: {
     backgroundColor: C.navy,
-    borderRadius: 14,
+    borderRadius: 10,
     paddingVertical: 18,
     alignItems: 'center',
   },

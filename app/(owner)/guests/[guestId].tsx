@@ -69,7 +69,7 @@ export default function GuestDetail() {
   }
 
   function promptChangeRole(invId: string, currentRole: string) {
-    const ROLES = ['guest', 'admin', 'owner'] as const;
+    const ROLES = ['guest', 'owner'] as const;
     const others = ROLES.filter((r) => r !== currentRole);
     Alert.alert(
       'Change Role',

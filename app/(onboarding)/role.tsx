@@ -8,14 +8,14 @@ import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types';
 
 const C = {
-  bg: '#FAFAF8',
-  navy: '#1C3D5A',
-  gold: '#C9A96E',
-  text: '#0E1C2D',
-  muted: '#6B7A8D',
-  border: '#E5E7EA',
+  bg: '#F4F4F2',
+  navy: '#2C554E',
+  gold: '#607D8B',
+  text: '#1A2B28',
+  muted: '#607D8B',
+  border: '#DDE1E0',
   surface: '#FFFFFF',
-  brown: '#5C3D2E',
+  brown: '#2C554E',
 };
 
 interface RoleCard {
@@ -37,15 +37,6 @@ const ROLES: RoleCard[] = [
     tag: 'From €5/week',
     tagColor: C.navy,
     tagTextColor: '#FFFFFF',
-  },
-  {
-    role: 'admin',
-    emoji: '🗝️',
-    title: "I'm an Estate Manager",
-    desc: 'Help manage properties on behalf of an owner — approve stays, handle guests and more.',
-    tag: 'Invite only',
-    tagColor: C.brown + '22',
-    tagTextColor: C.brown,
   },
   {
     role: 'guest',
@@ -165,7 +156,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: C.surface,
-    borderRadius: 20,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: C.border,
     padding: 20,
@@ -174,7 +165,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 56,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: C.navy + '15',

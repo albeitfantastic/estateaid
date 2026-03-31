@@ -219,17 +219,17 @@ export default function OwnerDashboard() {
             icon="person.2.fill"
             value={guestsCount}
             label="Guests"
-            color="#22c55e"
+            color={colors.tint}
             colors={colors}
             onPress={() => router.push('/(owner)/guests' as never)}
           />
           <StatCard
             icon="tray.fill"
             value={pendingCount}
-            label="Approvals"
-            color="#f59e0b"
+            label="Requests"
+            color={colors.tint}
             colors={colors}
-            onPress={() => router.push('/(owner)/requests' as never)}
+            onPress={() => router.push('/(owner)/stays' as never)}
           />
           {/*}
           <StatCard
@@ -416,7 +416,7 @@ export default function OwnerDashboard() {
             <View style={styles.dayDetailHeader}>
               <ThemedText type="defaultSemiBold" style={styles.dayDetailTitle}>{selectedDay}</ThemedText>
               <TouchableOpacity onPress={() => setSelectedDay(null)}>
-                <IconSymbol name="xmark" size={14} color={colors.icon} />
+                <IconSymbol name="xmark" size={22} color={colors.icon} />
               </TouchableOpacity>
             </View>
             {staysOnSelectedDay.length === 0 && eventsOnSelectedDay.length === 0 && (

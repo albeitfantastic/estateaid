@@ -2,12 +2,12 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const C = {
-  bg: '#FAFAF8',
-  navy: '#1C3D5A',
-  gold: '#C9A96E',
-  text: '#0E1C2D',
-  muted: '#6B7A8D',
-  border: '#E5E7EA',
+  bg: '#F4F4F2',
+  navy: '#2C554E',
+  gold: '#607D8B',
+  text: '#1A2B28',
+  muted: '#607D8B',
+  border: '#DDE1E0',
   surface: '#FFFFFF',
 };
 
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: C.surface,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: C.border,
     paddingVertical: 18,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   optionSelected: {
     borderColor: C.navy,
-    backgroundColor: '#F0F4F8',
+    backgroundColor: '#EBF2F0',
   },
   optionText: {
     flex: 1,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   btn: {
     backgroundColor: C.navy,
-    borderRadius: 14,
+    borderRadius: 10,
     paddingVertical: 18,
     alignItems: 'center',
   },
