@@ -8,7 +8,12 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "eas:dev:ios": "eas build --profile development --platform ios",
+    "eas:dev:android": "eas build --profile development --platform android",
+    "eas:dev:all": "eas build --profile development --platform all",
+    "eas:dev:ios-sim": "eas build --profile development-simulator --platform ios",
+    "start:dev": "expo start --dev-client"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -22,6 +27,7 @@
     "expo": "~54.0.33",
     "expo-auth-session": "~7.0.10",
     "expo-constants": "~18.0.13",
+    "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",
     "expo-font": "~14.0.11",
     "expo-haptics": "~15.0.8",

@@ -56,7 +56,8 @@
       "Bash(git update-ref:*)",
       "Bash(find /c/Users/svenk/local_projects/EstateAid/app -type d -name \"\\(onboarding\\)\")",
       "Bash(find /c/Users/svenk/local_projects/EstateAid/app -path \"*/\\(owner\\)/*.tsx\" -type f)",
-      "Bash(find \"C:\\\\Users\\\\svenk\\\\local_projects\\\\EstateAid\\\\app\\\\\\(guest\\)\" -type f -name \"*.tsx\")"
+      "Bash(find \"C:\\\\Users\\\\svenk\\\\local_projects\\\\EstateAid\\\\app\\\\\\(guest\\)\" -type f -name \"*.tsx\")",
+      "Bash(find C:Userssvenklocal_projectsEstateAid -type f -name *.env*)"
     ]
   }
 }
