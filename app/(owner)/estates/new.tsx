@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
@@ -17,6 +18,7 @@ import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
 
 export default function NewEstate() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -80,7 +82,7 @@ export default function NewEstate() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>New Estate</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.newEstate')}</ThemedText>
         <TouchableOpacity onPress={() => void submit()} style={styles.saveBtn} disabled={saving}>
           {saving ? (
             <ActivityIndicator color={colors.tint} size="small" />

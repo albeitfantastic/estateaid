@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
@@ -24,12 +25,14 @@ function sleep(ms: number) {
  * Trusted unlock still follows Supabase mirror after webhook; we poll after purchase/restore.
  */
 export function PaywallScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const segments = useSegments();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { refetch, isPro, loading: subLoading } = useSubscription();
+  const plan = MAISON_PRO_DISPLAY_NAME;
 
   const [confirming, setConfirming] = useState(false);
 
@@ -62,16 +65,13 @@ export function PaywallScreen() {
   const onCompletedFlow = useCallback(async () => {
     const ok = await pollMirrorUntilActive();
     if (ok) {
-      Alert.alert('Welcome to ' + MAISON_PRO_DISPLAY_NAME, 'Your subscription is active.', [
-        { text: 'OK', onPress: () => leavePaywall() },
+      Alert.alert(t('paywall.welcomeTitle', { plan }), t('paywall.welcomeBody'), [
+        { text: t('common.ok'), onPress: () => leavePaywall() },
       ]);
     } else {
-      Alert.alert(
-        'Processing',
-        'Purchase recorded. It can take a moment for your account to update — use Refresh status in Settings if needed.'
-      );
+      Alert.alert(t('paywall.processingTitle'), t('paywall.processingBody'));
     }
-  }, [leavePaywall, pollMirrorUntilActive, router]);
+  }, [leavePaywall, pollMirrorUntilActive, t, plan]);
 
   const disabled = confirming || subLoading;
 
@@ -92,9 +92,11 @@ export function PaywallScreen() {
         </View>
         <View style={styles.fallback}>
           <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>
-            Add EXPO_PUBLIC_REVENUECAT_API_KEY (or iOS/Android keys) in your env and use a dev/production build with
-            native IAP. Expected products: {RC_PRODUCT_IDS.monthly}, {RC_PRODUCT_IDS.yearly}. Entitlement:{' '}
-            {PRIMARY_ENTITLEMENT_ID}.
+            {t('paywall.envHint', {
+              monthly: RC_PRODUCT_IDS.monthly,
+              yearly: RC_PRODUCT_IDS.yearly,
+              entitlement: PRIMARY_ENTITLEMENT_ID,
+            })}
           </ThemedText>
         </View>
       </ThemedView>
@@ -114,10 +116,7 @@ export function PaywallScreen() {
           <View style={{ width: 30 }} />
         </View>
         <View style={styles.fallback}>
-          <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>
-            The in-app paywall needs a development or production build with RevenueCat native UI. It does not run in Expo
-            Go or in the browser — open the app from an iOS/Android build to subscribe or restore.
-          </ThemedText>
+          <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>{t('paywall.nativeOnlyHint')}</ThemedText>
         </View>
       </ThemedView>
     );
@@ -138,7 +137,7 @@ export function PaywallScreen() {
       {isPro && (
         <View style={[styles.banner, { backgroundColor: colors.tint + '18', borderColor: colors.tint + '44' }]}>
           <ThemedText type="defaultSemiBold" style={{ color: colors.tint }}>
-            You already have {MAISON_PRO_DISPLAY_NAME}.
+            {t('paywall.alreadyHave', { plan })}
           </ThemedText>
         </View>
       )}
@@ -146,7 +145,7 @@ export function PaywallScreen() {
       {confirming && (
         <View style={[styles.confirmRow, { backgroundColor: colors.surface }]}>
           <ActivityIndicator color={colors.tint} />
-          <ThemedText style={{ color: colors.icon, marginLeft: 10 }}>Syncing subscription…</ThemedText>
+          <ThemedText style={{ color: colors.icon, marginLeft: 10 }}>{t('paywall.syncing')}</ThemedText>
         </View>
       )}
 
@@ -156,10 +155,10 @@ export function PaywallScreen() {
         onPurchaseCompleted={() => void onCompletedFlow()}
         onRestoreCompleted={() => void onCompletedFlow()}
         onPurchaseError={({ error }) => {
-          Alert.alert('Purchase error', error.message ?? 'Something went wrong.');
+          Alert.alert(t('paywall.purchaseErrorTitle'), error.message ?? t('paywall.purchaseErrorFallback'));
         }}
         onRestoreError={({ error }) => {
-          Alert.alert('Restore error', error.message ?? 'Restore failed.');
+          Alert.alert(t('paywall.restoreErrorTitle'), error.message ?? t('paywall.restoreErrorBody'));
         }}
         onDismiss={() => leavePaywall()}
       />

@@ -1,6 +1,7 @@
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -22,6 +23,7 @@ const CATEGORY_LABELS: Record<DocumentCategory, string> = {
 const CATEGORY_ORDER: DocumentCategory[] = ['emergency', 'rule', 'guide', 'manual', 'other'];
 
 export default function OwnerDocuments() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -48,7 +50,7 @@ export default function OwnerDocuments() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Documents</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.documents')}</ThemedText>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: colors.tint }]}
           onPress={() => router.push(`/(owner)/estates/${estateId}/documents/upload` as never)}

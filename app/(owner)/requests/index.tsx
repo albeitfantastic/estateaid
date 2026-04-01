@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { Avatar } from '@/components/ui/avatar';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -19,6 +20,7 @@ import { useStayStore } from '@/store/stay-store';
 import { formatDateRange } from '@/lib/date-utils';
 
 export default function OwnerRequests() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -45,7 +47,7 @@ export default function OwnerRequests() {
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
       
-        <ThemedText type="title" style={styles.title}>Inbox</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.inbox')}</ThemedText>
         {allRequests.length > 0 && (
           <View style={[styles.badge, { backgroundColor: colors.tint }]}>
             <ThemedText style={styles.badgeText}>{allRequests.length}</ThemedText>

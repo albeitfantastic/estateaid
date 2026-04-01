@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -20,6 +21,7 @@ function paramId(v: string | string[] | undefined): string {
 }
 
 export default function EventsIndex() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ estateId: string | string[] }>();
   const estateId = paramId(params.estateId);
   const router = useRouter();
@@ -48,7 +50,7 @@ export default function EventsIndex() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Events</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.events')}</ThemedText>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: colors.tint }]}
           onPress={() => router.push(`/(owner)/estates/${estateId}/events/new` as never)}

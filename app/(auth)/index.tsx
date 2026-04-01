@@ -26,6 +26,7 @@ import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-s
 import { useInvitationStore } from '@/store/invitation-store';
 import { User, type UserRole } from '@/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const A = {
@@ -93,6 +94,7 @@ const fi = StyleSheet.create({
 const { height: SCREEN_H } = Dimensions.get('window');
 
 export default function AuthScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -126,13 +128,13 @@ export default function AuthScreen() {
       if (!r.success) {
         const msg =
           r.reason === 'wrong_invitee'
-            ? 'That code is tied to a different email. Sign in with the address your host used when they sent the invite.'
+            ? t('auth.inviteWrongEmail')
             : r.reason === 'no_session_email'
-              ? 'Add an email to your account to redeem invite codes.'
+              ? t('auth.inviteNoSessionEmail')
               : r.reason === 'invite_missing_email'
-                ? 'That invite is outdated. Ask your host for a new code sent to your email.'
-                : 'We could not apply your invite code. Open Invitations and enter it again.';
-        Alert.alert('Invite code', msg);
+                ? t('auth.inviteOutdated')
+                : t('auth.inviteGenericFail');
+        Alert.alert(t('auth.inviteCodeTitle'), msg);
       }
     }
     if (!isOnboardingCompleteForCurrentUser(useAuthStore.getState())) {
@@ -148,11 +150,17 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (error) { Alert.alert('Sign in failed', error.message); return; }
+      if (error) {
+        Alert.alert(t('auth.signInFailed'), error.message);
+        return;
+      }
       let { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
       if (!profile) {
         const ensured = await ensureProfileRowForAuthUser(data.user);
-        if (ensured.error) { Alert.alert('Profile setup failed', ensured.error); return; }
+        if (ensured.error) {
+          Alert.alert(t('auth.profileSetupFailed'), ensured.error);
+          return;
+        }
         profile = ensured.profile;
       }
       if (!profile) { Alert.alert('Profile not found', 'Could not create your profile.'); return; }
@@ -164,8 +172,14 @@ export default function AuthScreen() {
 
   // ── sign up ────────────────────────────────────────────────────────────────
   async function handleSignUp() {
-    if (!name || !email || !password) { Alert.alert('Missing fields', 'Please fill in all fields.'); return; }
-    if (password.length < 6) { Alert.alert('Weak password', 'Password must be at least 6 characters.'); return; }
+    if (!name || !email || !password) {
+      Alert.alert(t('auth.missingFieldsTitle'), t('auth.missingFieldsSignUp'));
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert(t('auth.weakPasswordTitle'), t('auth.weakPassword'));
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -173,11 +187,19 @@ export default function AuthScreen() {
         password,
         options: { emailRedirectTo: authRedirectUri, data: { name: name.trim() } },
       });
-      if (error) { Alert.alert('Sign up failed', error.message); return; }
-      if (!data.user) { Alert.alert('Sign up failed', 'Please try again.'); return; }
+      if (error) {
+        Alert.alert(t('auth.signUpFailed'), error.message);
+        return;
+      }
+      if (!data.user) {
+        Alert.alert(t('auth.signUpFailed'), t('auth.tryAgain'));
+        return;
+      }
       if (!data.session) {
         await savePendingSignupProfile({ userId: data.user.id, name: name.trim(), role: 'owner' });
-        Alert.alert('Check your email', 'We sent you a confirmation link. Open it on this device to finish sign-up.', [{ text: 'OK', onPress: () => setMode('signin') }]);
+        Alert.alert(t('auth.checkEmailTitle'), t('auth.checkEmailBody'), [
+          { text: t('common.ok'), onPress: () => setMode('signin') },
+        ]);
         return;
       }
       const now = new Date().toISOString();
@@ -197,11 +219,15 @@ export default function AuthScreen() {
     try {
       const result = await signInWithOAuth(provider, 'owner');
       if (!result.profile) {
-        if (result.error !== 'cancelled') Alert.alert('Sign-in failed', result.error ?? 'Please try again.');
+        if (result.error !== 'cancelled')
+          Alert.alert(t('auth.signInFailedGeneric'), result.error ?? t('auth.tryAgain'));
         return;
       }
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { Alert.alert('Sign-in failed', 'No session found.'); return; }
+      if (!session) {
+        Alert.alert(t('auth.signInFailedGeneric'), t('auth.noSession'));
+        return;
+      }
       await finishSignIn(result.profile, session.user.email!);
     } finally {
       setLoadingOAuth(null);
@@ -242,10 +268,10 @@ export default function AuthScreen() {
                 <View style={s.logoMark}>
                   <IconSymbol name="house.fill" size={16} color="#fff" />
                 </View>
-                <Text style={[s.title, { color: textCol }]}>EstateAid</Text>
+                <Text style={[s.title, { color: textCol }]}>{t('common.estateAid')}</Text>
               </View>
               <Text style={[s.subtitle, { color: A.textMuted }]}>
-                {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+                {mode === 'signin' ? t('auth.welcomeBack') : t('auth.createAccount')}
               </Text>
             </View>
 
@@ -269,7 +295,7 @@ export default function AuthScreen() {
                   activeOpacity={0.85}
                 >
                   <Text style={[s.tabText, { color: mode === m ? '#fff' : A.textMuted }]}>
-                    {m === 'signin' ? 'Sign In' : 'Sign Up'}
+                    {m === 'signin' ? t('auth.signIn') : t('auth.signUp')}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -288,7 +314,7 @@ export default function AuthScreen() {
                 ) : (
                   <>
                     <Ionicons name="logo-google" size={18} color="#4285F4" />
-                    <Text style={[s.oauthText, { color: textCol }]}>Continue with Google</Text>
+                    <Text style={[s.oauthText, { color: textCol }]}>{t('auth.continueGoogle')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -305,7 +331,7 @@ export default function AuthScreen() {
                   ) : (
                     <>
                       <Ionicons name="logo-apple" size={18} color={dark ? A.text : '#fff'} />
-                      <Text style={[s.oauthText, { color: dark ? A.text : '#fff' }]}>Continue with Apple</Text>
+                      <Text style={[s.oauthText, { color: dark ? A.text : '#fff' }]}>{t('auth.continueApple')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -320,22 +346,22 @@ export default function AuthScreen() {
                 activeOpacity={0.8}
               >
                 <Ionicons name="mail-outline" size={18} color={textCol} />
-                <Text style={[s.emailBtnText, { color: textCol }]}>Continue with E-mail</Text>
+                <Text style={[s.emailBtnText, { color: textCol }]}>{t('auth.continueEmail')}</Text>
               </TouchableOpacity>
             ) : (
               <>
                 <View style={s.divRow}>
                   <View style={[s.divLine, { backgroundColor: borderCol }]} />
-                  <Text style={[s.divText, { color: A.textMuted }]}>or with email</Text>
+                  <Text style={[s.divText, { color: A.textMuted }]}>{t('auth.orWithEmail')}</Text>
                   <View style={[s.divLine, { backgroundColor: borderCol }]} />
                 </View>
 
                 <View style={s.fields}>
                   {mode === 'signup' && (
                     <FocusInput
-                      label="Full Name"
+                      label={t('auth.fullName')}
                       dark={dark}
-                      placeholder="Jane Smith"
+                      placeholder={t('auth.placeholderName')}
                       value={name}
                       onChangeText={setName}
                       autoCapitalize="words"
@@ -343,9 +369,9 @@ export default function AuthScreen() {
                     />
                   )}
                   <FocusInput
-                    label="Email"
+                    label={t('auth.email')}
                     dark={dark}
-                    placeholder="you@example.com"
+                    placeholder={t('auth.placeholderEmail')}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -353,9 +379,9 @@ export default function AuthScreen() {
                     autoComplete="email"
                   />
                   <FocusInput
-                    label="Password"
+                    label={t('auth.password')}
                     dark={dark}
-                    placeholder="••••••••"
+                    placeholder={t('auth.placeholderPassword')}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -380,7 +406,11 @@ export default function AuthScreen() {
               >
                 {loading
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={s.ctaText}>{mode === 'signin' ? 'Sign In' : 'Create Account'}</Text>
+                  : (
+                    <Text style={s.ctaText}>
+                      {mode === 'signin' ? t('auth.signIn') : t('auth.createAccountCta')}
+                    </Text>
+                  )
                 }
               </LinearGradient>
             </TouchableOpacity>}
@@ -388,15 +418,16 @@ export default function AuthScreen() {
             {/* ── Footer ── */}
             {mode === 'signin' && (
               <Text style={[s.footerText, { color: A.textMuted }]}>
-                <Text style={{ color: A.brownMid, fontWeight: '600' }}>Forgot password?</Text>
+                <Text style={{ color: A.brownMid, fontWeight: '600' }}>{t('auth.forgotPassword')}</Text>
               </Text>
             )}
             {mode === 'signup' && (
               <Text style={[s.footerText, { color: A.textMuted }]}>
-                By creating an account you agree to our{' '}
-                <Text style={{ color: A.brownMid }}>Terms</Text>
-                {' '}and{' '}
-                <Text style={{ color: A.brownMid }}>Privacy Policy</Text>
+                {t('auth.termsPrefix')}{' '}
+                <Text style={{ color: A.brownMid }}>{t('auth.terms')}</Text>
+                {' '}
+                {t('auth.and')}{' '}
+                <Text style={{ color: A.brownMid }}>{t('auth.privacyLink')}</Text>
               </Text>
             )}
           </View>

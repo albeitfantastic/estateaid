@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
@@ -16,6 +17,7 @@ import { useEstateStore } from '@/store/estate-store';
 import { isRequired } from '@/lib/validators';
 
 export default function EditEstate() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -74,7 +76,7 @@ export default function EditEstate() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Edit Estate</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.editEstate')}</ThemedText>
         <TouchableOpacity onPress={submit}>
           <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
         </TouchableOpacity>

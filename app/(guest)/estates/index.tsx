@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { EstateCard } from '@/components/ui/estate-card';
@@ -16,6 +17,7 @@ import { guestEmailsMatch } from '@/lib/invite-email';
 import { useInvitationStore } from '@/store/invitation-store';
 
 export default function GuestEstatesList() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -42,7 +44,7 @@ export default function GuestEstatesList() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Properties</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('guestEstates.title')}</ThemedText>
       </View>
 
       <ScrollView
@@ -52,8 +54,8 @@ export default function GuestEstatesList() {
         {acceptedEstates.length === 0 ? (
           <EmptyState
             icon="building.2.fill"
-            title="No estates yet"
-            subtitle="Accept an invitation from an owner to access their estate."
+            title={t('guestEstates.emptyTitle')}
+            subtitle={t('guestEstates.emptySub')}
           />
         ) : (
           <View style={styles.list}>

@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -19,6 +20,7 @@ import { getPushToken, sendPush } from '@/lib/notifications';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 
 export default function ReviewStayRequest() {
+  const { t } = useTranslation();
   const { estateId, requestId } = useLocalSearchParams<{ estateId: string; requestId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -100,7 +102,7 @@ export default function ReviewStayRequest() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Stay Request</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.stayRequest')}</ThemedText>
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">

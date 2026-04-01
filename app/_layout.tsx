@@ -1,29 +1,30 @@
-import { Theme, ThemeProvider } from '@react-navigation/native';
 import {
-  Manrope_400Regular,
-  Manrope_600SemiBold,
-  Manrope_700Bold,
-} from '@expo-google-fonts/manrope';
-import {
-  Inter_500Medium,
-  Inter_700Bold,
+    Inter_500Medium,
+    Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import {
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+} from '@expo-google-fonts/manrope';
+import { Theme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
-SplashScreen.preventAutoHideAsync();
-
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { hydrateStoredLanguage, initI18n } from '@/lib/i18n';
 import { loadAllStores } from '@/lib/load-all-stores';
 import { clearPushToken, registerPushToken } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/auth-store';
 import { SubscriptionProvider } from '@/providers/subscription-provider';
+import { useAuthStore } from '@/store/auth-store';
+
+SplashScreen.preventAutoHideAsync();
 
 const LightNavTheme: Theme = {
   dark: false,
@@ -57,6 +58,7 @@ const DarkNavTheme: Theme = {
 };
 
 export default function RootLayout() {
+  const [i18nReady, setI18nReady] = useState(false);
   const [fontsLoaded] = useFonts({
     Manrope_400Regular,
     Manrope_600SemiBold,
@@ -80,10 +82,27 @@ export default function RootLayout() {
   }, [currentUserId, notificationsEnabled]);
 
   useEffect(() => {
-    if (fontsLoaded) {
+    let cancelled = false;
+    void (async () => {
+      try {
+        await initI18n();
+        await hydrateStoredLanguage();
+      } catch {
+        /* still show app */
+      } finally {
+        if (!cancelled) setI18nReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded && i18nReady) {
       void SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, i18nReady]);
 
   useEffect(() => {
     let cancelled = false;

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -17,6 +18,7 @@ import { formatDate } from '@/lib/date-utils';
 const PRIORITY_COLORS: Record<string, string> = { low: '#94a3b8', normal: '#0a7ea4', high: '#f59e0b', urgent: '#ef4444' };
 
 export default function OwnerTickets() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -32,7 +34,7 @@ export default function OwnerTickets() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Tickets</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.tickets')}</ThemedText>
       </View>
 
       {tickets.length === 0 ? (

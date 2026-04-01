@@ -1,7 +1,8 @@
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
@@ -28,31 +29,35 @@ interface RoleCard {
   tagTextColor: string;
 }
 
-const ROLES: RoleCard[] = [
-  {
-    role: 'owner',
-    emoji: '🏡',
-    title: "I'm a Property Owner",
-    desc: 'Manage estates, invite guests, approve stays and keep everything in one place.',
-    tag: 'From €5/week',
-    tagColor: C.navy,
-    tagTextColor: '#FFFFFF',
-  },
-  {
-    role: 'guest',
-    emoji: '🛎️',
-    title: "I'm a Guest",
-    desc: 'View properties you\'ve been invited to, request stays and raise any issues.',
-    tag: 'Always free',
-    tagColor: C.gold + '30',
-    tagTextColor: C.navy,
-  },
-];
-
 export default function RoleScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { currentUser, setUser } = useAuthStore();
   const [saving, setSaving] = useState(false);
+
+  const roles = useMemo<RoleCard[]>(
+    () => [
+      {
+        role: 'owner',
+        emoji: '🏡',
+        title: t('role.ownerTitle'),
+        desc: t('role.ownerDesc'),
+        tag: t('role.ownerTag'),
+        tagColor: C.navy,
+        tagTextColor: '#FFFFFF',
+      },
+      {
+        role: 'guest',
+        emoji: '🛎️',
+        title: t('role.guestTitle'),
+        desc: t('role.guestDesc'),
+        tag: t('role.guestTag'),
+        tagColor: C.gold + '30',
+        tagTextColor: C.navy,
+      },
+    ],
+    [t]
+  );
 
   async function chooseRole(role: UserRole) {
     if (!currentUser) return;
@@ -63,7 +68,7 @@ export default function RoleScreen() {
         .update({ role })
         .eq('id', currentUser.id);
       if (error) {
-        Alert.alert('Error', 'Could not save your role. Please try again.');
+        Alert.alert(t('role.saveErrorTitle'), t('role.saveErrorBody'));
         return;
       }
       setUser({ ...currentUser, role });
@@ -80,14 +85,12 @@ export default function RoleScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.content}>
-        <Text style={styles.eyebrow}>Almost there</Text>
-        <Text style={styles.title}>How will you use{'\n'}EstateAid?</Text>
-        <Text style={styles.subtitle}>
-          Choose your role. You can always switch later.
-        </Text>
+        <Text style={styles.eyebrow}>{t('role.eyebrow')}</Text>
+        <Text style={styles.title}>{t('role.title')}</Text>
+        <Text style={styles.subtitle}>{t('role.subtitle')}</Text>
 
         <View style={styles.cards}>
-          {ROLES.map((item) => (
+          {roles.map((item) => (
             <TouchableOpacity
               key={item.role}
               style={styles.card}

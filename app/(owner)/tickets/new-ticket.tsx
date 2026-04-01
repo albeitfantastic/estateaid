@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
@@ -22,6 +23,7 @@ const PRIORITIES: { value: TicketPriority; label: string; color: string }[] = [
 ];
 
 export default function NewTicket() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -81,7 +83,7 @@ export default function NewTicket() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>New Ticket</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.newTicket')}</ThemedText>
       </View>
 
       <ScrollView

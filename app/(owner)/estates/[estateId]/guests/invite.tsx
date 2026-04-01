@@ -2,6 +2,7 @@ import { Alert, Linking, ScrollView, Share, StyleSheet, TextInput, TouchableOpac
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
@@ -16,6 +17,7 @@ import { generateInviteCode, generateUuidV4 } from '@/lib/id';
 import { APP_STORE_URL, buildFullInviteMessage, buildWhatsAppInviteMessage } from '@/lib/invite-messages';
 
 export default function InviteGuest() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -92,7 +94,7 @@ export default function InviteGuest() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Invite</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.invite')}</ThemedText>
         {createdCode && (
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Done</ThemedText>

@@ -1,6 +1,7 @@
 import { Alert, ScrollView, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -15,6 +16,7 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { buildFullInviteMessage } from '@/lib/invite-messages';
 
 export default function GuestsList() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -50,7 +52,7 @@ export default function GuestsList() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Guests</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.guests')}</ThemedText>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: colors.tint }]}
           onPress={() => router.push(`/(owner)/estates/${estateId}/guests/invite` as never)}

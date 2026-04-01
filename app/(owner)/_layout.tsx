@@ -1,5 +1,6 @@
 import { router, Tabs } from 'expo-router';
 import { Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -9,9 +10,11 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 export default function OwnerTabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t, i18n } = useTranslation();
 
   return (
     <Tabs
+      key={i18n.resolvedLanguage}
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
         headerShown: false,
@@ -25,14 +28,14 @@ export default function OwnerTabLayout() {
       <Tabs.Screen
         name="home/index"
         options={{
-          title: 'Home',
+          title: t('tabs.home'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'house.fill' : 'house'} color={color} />,
         }}
       />
       <Tabs.Screen
         name="estates"
         options={{
-          title: 'Properties',
+          title: t('tabs.properties'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'building.2.fill' : 'building.2'} color={color} />,
         }}
         listeners={{
@@ -47,7 +50,7 @@ export default function OwnerTabLayout() {
       <Tabs.Screen
         name="calendar/index"
         options={{
-          title: 'Calendar',
+          title: t('tabs.calendar'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol name="calendar" color={color} weight={focused ? 'semibold' : 'regular'} />
           ),
@@ -72,14 +75,14 @@ export default function OwnerTabLayout() {
       <Tabs.Screen
         name="stays"
         options={{
-          title: 'Stays',
+          title: t('tabs.stays'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
         }}
       />
       <Tabs.Screen
         name="invitations/index"
         options={{
-          title: 'Invites',
+          title: t('tabs.invites'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'envelope.fill' : 'envelope'} color={color} />,
         }}
       />

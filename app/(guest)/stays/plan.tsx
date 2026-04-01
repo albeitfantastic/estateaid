@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -25,6 +26,7 @@ import { guestEmailsMatch } from '@/lib/invite-email';
 import { generateUuidV4 } from '@/lib/id';
 
 export default function GuestPlanStay() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -136,7 +138,7 @@ export default function GuestPlanStay() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Plan a Stay</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.planStay')}</ThemedText>
       </View>
 
       <ScrollView

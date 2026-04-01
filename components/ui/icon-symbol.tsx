@@ -1,7 +1,7 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { SymbolViewProps, SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
@@ -14,6 +14,7 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
+  'house': 'home',
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
@@ -29,6 +30,7 @@ const MAPPING = {
   'calendar.badge.exclamationmark': 'event-busy',
   'info.circle.fill': 'info',
   'tray.fill': 'inbox',
+  'envelope': 'mail',
   'envelope.fill': 'mail',
   'doc.fill': 'description',
   'phone.fill': 'phone',
@@ -58,6 +60,19 @@ const MAPPING = {
   'tag.fill': 'label',
   'clock.fill': 'schedule',
   'map.fill': 'map',
+  'globe': 'language',
+  'suitcase': 'luggage',
+  'suitcase.fill': 'luggage',
+  'line.3.horizontal': 'menu',
+  'chevron.up': 'keyboard-arrow-up',
+  'chevron.down': 'keyboard-arrow-down',
+  'arrow.down.circle.fill': 'arrow-circle-down',
+  'arrow.up.circle.fill': 'arrow-circle-up',
+  'sun.max.fill': 'wb-sunny',
+  'moon.fill': 'dark-mode',
+  'doc.text.fill': 'article',
+  'rectangle.portrait.and.arrow.right': 'logout',
+  'creditcard.fill': 'credit-card',
 } as IconMapping;
 
 /**

@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'r
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { SectionHeader } from '@/components/ui/section-header';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -49,6 +50,7 @@ function kindLabel(k: AvailabilityRuleKind): string {
 }
 
 export default function AvailabilityRulesScreen() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -195,7 +197,7 @@ export default function AvailabilityRulesScreen() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>
-          Availability
+          {t('titles.availability')}
         </ThemedText>
         <View style={{ width: 26 }} />
       </View>

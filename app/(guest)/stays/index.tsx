@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -23,6 +24,7 @@ type UpcomingItem =
   | { type: 'direct'; data: Stay; sortKey: string };
 
 export default function StaysOverview() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -117,13 +119,13 @@ export default function StaysOverview() {
 
           {req.ownerNote && (
             <ThemedText style={[styles.ownerNote, { backgroundColor: colors.tint + '11', color: colors.text }]}>
-              Owner: {req.ownerNote}
+              {t('guestStays.ownerPrefix')} {req.ownerNote}
             </ThemedText>
           )}
 
           {interactive && req.status === 'alternative_proposed' && req.alternativeFrom && req.alternativeTo && (
             <View style={styles.altSection}>
-              <ThemedText style={[styles.altLabel, { color: colors.tint }]}>Proposed alternative:</ThemedText>
+              <ThemedText style={[styles.altLabel, { color: colors.tint }]}>{t('guestStays.proposedAlt')}</ThemedText>
               <ThemedText type="defaultSemiBold">
                 {formatDateRange(req.alternativeFrom, req.alternativeTo)}
               </ThemedText>
@@ -135,13 +137,13 @@ export default function StaysOverview() {
                     if (!result.success) Alert.alert('Conflict', 'These dates are no longer available.');
                   }}
                 >
-                  <ThemedText style={styles.btnText}>Accept</ThemedText>
+                  <ThemedText style={styles.btnText}>{t('actions.accept')}</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.btn, { borderColor: colors.icon + '44', borderWidth: 1 }]}
                   onPress={() => declineAlternative(req.id)}
                 >
-                  <ThemedText style={[styles.btnText, { color: colors.icon }]}>Decline</ThemedText>
+                  <ThemedText style={[styles.btnText, { color: colors.icon }]}>{t('actions.decline')}</ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
@@ -151,13 +153,17 @@ export default function StaysOverview() {
             <TouchableOpacity
               style={styles.cancelLink}
               onPress={() =>
-                Alert.alert('Cancel Request', 'Cancel this stay request?', [
-                  { text: 'Keep', style: 'cancel' },
-                  { text: 'Cancel Request', style: 'destructive', onPress: () => cancelRequest(req.id) },
+                Alert.alert(t('guestStays.cancelRequestTitle'), t('guestStays.cancelRequestBody'), [
+                  { text: t('actions.keep'), style: 'cancel' },
+                  {
+                    text: t('guestStays.cancelRequestCta'),
+                    style: 'destructive',
+                    onPress: () => cancelRequest(req.id),
+                  },
                 ])
               }
             >
-              <ThemedText style={{ color: colors.icon, fontSize: 13 }}>Cancel request</ThemedText>
+              <ThemedText style={{ color: colors.icon, fontSize: 13 }}>{t('guestStays.cancelRequestLink')}</ThemedText>
             </TouchableOpacity>
           )}
 
@@ -165,10 +171,10 @@ export default function StaysOverview() {
             <TouchableOpacity
               style={styles.cancelLink}
               onPress={() =>
-                Alert.alert('Cancel Stay', 'Are you sure you want to cancel this confirmed stay?', [
-                  { text: 'Keep', style: 'cancel' },
+                Alert.alert(t('guestStays.cancelStayTitle'), t('guestStays.cancelStayBody'), [
+                  { text: t('actions.keep'), style: 'cancel' },
                   {
-                    text: 'Cancel Stay',
+                    text: t('guestStays.cancelStayCta'),
                     style: 'destructive',
                     onPress: () => {
                       const linked = stays.find((s) => s.stayRequestId === req.id);
@@ -179,7 +185,7 @@ export default function StaysOverview() {
                 ])
               }
             >
-              <ThemedText style={{ color: colors.error, fontSize: 13 }}>Cancel stay</ThemedText>
+              <ThemedText style={{ color: colors.error, fontSize: 13 }}>{t('guestStays.cancelStayLink')}</ThemedText>
             </TouchableOpacity>
           )}
         </View>
@@ -204,7 +210,7 @@ export default function StaysOverview() {
                 {formatDateRange(stay.from, stay.to)}
               </ThemedText>
             </View>
-            <Badge label="Confirmed" variant="approved" />
+            <Badge label={t('actions.confirmed')} variant="approved" />
           </View>
         </View>
       </View>
@@ -223,7 +229,7 @@ export default function StaysOverview() {
         <View style={styles.reqInfo}>
           <View style={styles.rowTop}>
             <View style={{ flex: 1 }}>
-              <ThemedText type="defaultSemiBold">{estate?.name ?? 'Unknown Estate'}</ThemedText>
+              <ThemedText type="defaultSemiBold">{estate?.name ?? t('common.unknownEstate')}</ThemedText>
               <ThemedText style={[styles.reqDates, { color: colors.icon }]}>
                 {formatDateRange(req.requestedFrom, req.requestedTo)}
               </ThemedText>
@@ -237,13 +243,15 @@ export default function StaysOverview() {
           ) : null}
           {req.ownerNote ? (
             <View style={[styles.ownerNoteBox, { backgroundColor: colors.tint + '08' }]}>
-              <ThemedText style={[styles.ownerNoteLabel, { color: colors.tint }]}>Owner response</ThemedText>
+              <ThemedText style={[styles.ownerNoteLabel, { color: colors.tint }]}>
+                {t('guestStays.ownerNoteLabel')}
+              </ThemedText>
               <ThemedText style={[styles.note, { color: colors.text }]}>{req.ownerNote}</ThemedText>
             </View>
           ) : null}
           {req.status === 'alternative_proposed' && req.alternativeFrom && req.alternativeTo && (
             <ThemedText style={[styles.altDates, { color: colors.tint }]}>
-              Proposed: {formatDateRange(req.alternativeFrom, req.alternativeTo)}
+              {t('guestStays.proposed')}: {formatDateRange(req.alternativeFrom, req.alternativeTo)}
             </ThemedText>
           )}
         </View>
@@ -254,7 +262,7 @@ export default function StaysOverview() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <ThemedText type="title" style={styles.title}>Stays</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('guestStays.title')}</ThemedText>
       </View>
 
       {/* Tab switcher */}
@@ -265,7 +273,7 @@ export default function StaysOverview() {
           activeOpacity={0.8}
         >
           <ThemedText style={[styles.tabLabel, tab === 'upcoming' && styles.tabLabelActive]}>
-            Upcoming
+            {t('guestStays.upcoming')}
           </ThemedText>
         </TouchableOpacity>
         <TouchableOpacity
@@ -274,7 +282,7 @@ export default function StaysOverview() {
           activeOpacity={0.8}
         >
           <ThemedText style={[styles.tabLabel, tab === 'requests' && styles.tabLabelActive]}>
-            Requests
+            {t('guestStays.requestsTab')}
           </ThemedText>
           {pendingCount > 0 && (
             <View style={[styles.tabBadge, { backgroundColor: tab === 'requests' ? '#fff' : colors.tint }]}>
@@ -291,9 +299,9 @@ export default function StaysOverview() {
         upcomingItems.length === 0 ? (
           <EmptyState
             icon="calendar"
-            title="No upcoming stays"
-            subtitle="Request a stay from any of your properties."
-            actionLabel={acceptedEstateIds.length > 0 ? 'Plan a Stay' : undefined}
+            title={t('guestStays.noUpcomingTitle')}
+            subtitle={t('guestStays.noUpcomingSub')}
+            actionLabel={acceptedEstateIds.length > 0 ? t('guestStays.planStayCta') : undefined}
             onAction={
               acceptedEstateIds.length > 0
                 ? () => router.push('/(guest)/stays/plan' as never)
@@ -329,8 +337,8 @@ export default function StaysOverview() {
         myRequests.length === 0 ? (
           <EmptyState
             icon="tray.fill"
-            title="No stay requests"
-            subtitle="When you request a stay at an estate, it will appear here."
+            title={t('guestStays.emptyRequestsTitle')}
+            subtitle={t('guestStays.emptyRequestsSub')}
           />
         ) : (
           <ScrollView

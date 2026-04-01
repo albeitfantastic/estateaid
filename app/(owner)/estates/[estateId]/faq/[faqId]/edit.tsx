@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
@@ -12,6 +13,7 @@ import { useFaqStore } from '@/store/faq-store';
 import { isRequired } from '@/lib/validators';
 
 export default function EditFaq() {
+  const { t } = useTranslation();
   const { faqId } = useLocalSearchParams<{ faqId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -38,7 +40,7 @@ export default function EditFaq() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Edit FAQ</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.editFaq')}</ThemedText>
         <TouchableOpacity onPress={submit}>
           <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
         </TouchableOpacity>

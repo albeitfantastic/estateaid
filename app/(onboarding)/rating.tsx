@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { APP_STORE_URL } from '@/lib/invite-messages';
 import { useAuthStore } from '@/store/auth-store';
@@ -18,11 +19,17 @@ const C = {
 
 export default function RatingScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ role?: string | string[] }>();
   const rawRole = params.role;
   const role = Array.isArray(rawRole) ? rawRole[0] : rawRole;
   const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
   const [selected, setSelected] = useState<number | null>(null);
+
+  const ratingLabels = useMemo(
+    () => ['', t('rating.poor'), t('rating.fair'), t('rating.good'), t('rating.great'), t('rating.excellent')],
+    [t]
+  );
 
   function proceed() {
     const guestInvitesPath = '/(guest)/invitations';
@@ -37,13 +44,10 @@ export default function RatingScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.content}>
-        <Text style={styles.eyebrow}>Quick favour</Text>
-        <Text style={styles.title}>Enjoying EstateAid{'\n'}so far?</Text>
-        <Text style={styles.subtitle}>
-          Your rating helps others discover the app and helps us keep improving it.
-        </Text>
+        <Text style={styles.eyebrow}>{t('rating.eyebrow')}</Text>
+        <Text style={styles.title}>{t('rating.title')}</Text>
+        <Text style={styles.subtitle}>{t('rating.subtitle')}</Text>
 
-        {/* Stars */}
         <View style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map((star) => (
             <TouchableOpacity
@@ -52,20 +56,15 @@ export default function RatingScreen() {
               activeOpacity={0.7}
               style={styles.starBtn}
             >
-              <Text style={[styles.star, star <= (selected ?? 0) && styles.starFilled]}>
-                ★
-              </Text>
+              <Text style={[styles.star, star <= (selected ?? 0) && styles.starFilled]}>★</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {selected !== null && (
-          <Text style={styles.ratingLabel}>
-            {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent!'][selected]}
-          </Text>
+          <Text style={styles.ratingLabel}>{ratingLabels[selected] ?? ''}</Text>
         )}
 
-        {/* Rate on App Store */}
         {selected !== null && selected >= 4 && (
           <TouchableOpacity
             style={styles.appStoreBtn}
@@ -75,15 +74,13 @@ export default function RatingScreen() {
             }}
             activeOpacity={0.85}
           >
-            <Text style={styles.appStoreBtnText}>⭐ Rate on the App Store</Text>
+            <Text style={styles.appStoreBtnText}>{t('rating.rateAppStore')}</Text>
           </TouchableOpacity>
         )}
 
         {selected !== null && selected < 4 && (
           <View style={styles.feedbackNote}>
-            <Text style={styles.feedbackNoteText}>
-              Thanks for the honest feedback — we're working on making it better.
-            </Text>
+            <Text style={styles.feedbackNoteText}>{t('rating.feedbackNote')}</Text>
           </View>
         )}
       </View>
@@ -96,11 +93,11 @@ export default function RatingScreen() {
           activeOpacity={0.85}
         >
           <Text style={styles.btnText}>
-            {selected !== null && selected >= 4 ? 'Continue' : 'Continue anyway'}
+            {selected !== null && selected >= 4 ? t('rating.continue') : t('rating.continueAnyway')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={proceed} style={styles.skipLink}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('rating.skip')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -122,7 +119,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 16,
-    alignSelf: 'flex-start',
   },
   title: {
     fontSize: 30,
@@ -130,62 +126,31 @@ const styles = StyleSheet.create({
     color: C.text,
     lineHeight: 38,
     letterSpacing: -0.5,
-    alignSelf: 'flex-start',
     marginBottom: 12,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
     color: C.muted,
     lineHeight: 22,
-    alignSelf: 'flex-start',
-    marginBottom: 48,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  starBtn: { padding: 4 },
-  star: {
-    fontSize: 52,
-    color: C.border,
-  },
-  starFilled: {
-    color: C.gold,
-  },
-  ratingLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: C.navy,
     marginBottom: 32,
-    letterSpacing: 0.2,
-  },
-  appStoreBtn: {
-    backgroundColor: C.navy,
-    borderRadius: 10,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-  },
-  appStoreBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  feedbackNote: {
-    backgroundColor: C.surface,
-    borderRadius: 10,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: C.border,
-    maxWidth: 300,
-  },
-  feedbackNoteText: {
-    fontSize: 14,
-    color: C.muted,
-    lineHeight: 20,
     textAlign: 'center',
   },
+  starsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  starBtn: { padding: 4 },
+  star: { fontSize: 40, color: C.border },
+  starFilled: { color: C.gold },
+  ratingLabel: { fontSize: 16, fontWeight: '600', color: C.navy, marginBottom: 16 },
+  appStoreBtn: {
+    backgroundColor: C.navy,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  appStoreBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  feedbackNote: { paddingHorizontal: 16, marginTop: 8 },
+  feedbackNoteText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
   footer: {
     paddingHorizontal: 24,
     paddingBottom: 16,

@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -12,6 +13,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFaqStore } from '@/store/faq-store';
 
 export default function GuestFaq() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -27,7 +29,7 @@ export default function GuestFaq() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>FAQ</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.faq')}</ThemedText>
       </View>
 
       {faqs.length === 0 ? (

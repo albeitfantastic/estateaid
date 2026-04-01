@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -16,6 +17,7 @@ import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 
 export default function EditStay() {
+  const { t } = useTranslation();
   const { stayId } = useLocalSearchParams<{ stayId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -94,7 +96,7 @@ export default function EditStay() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Edit Stay</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.editStay')}</ThemedText>
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: colors.tint }, !canSave && styles.disabled]}
           onPress={save}

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DayInfo, MonthGrid } from '@/components/calendar/month-grid';
 import { SettingsSheet, type SettingsDestination } from '@/components/settings/settings-sheet';
@@ -23,23 +24,24 @@ import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useTicketStore } from '@/store/ticket-store';
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-function getStayRelativeLabel(from: string, to: string, todayStr: string): string {
-  if (from === todayStr) return 'Arriving today';
-  if (to === todayStr) return 'Departing today';
-  if (from <= todayStr && to >= todayStr) return 'Active stay';
-  const diffMs = new Date(from).getTime() - new Date(todayStr).getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 1) return 'Tomorrow';
-  return `In ${diffDays} days`;
-}
-
 export default function OwnerDashboard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  const monthNames = t('calendar.months', { returnObjects: true }) as string[];
+
+  function getStayRelativeLabel(from: string, to: string, todayStr: string): string {
+    if (from === todayStr) return t('stayRelative.arrivingToday');
+    if (to === todayStr) return t('stayRelative.departingToday');
+    if (from <= todayStr && to >= todayStr) return t('stayRelative.activeStay');
+    const diffMs = new Date(from).getTime() - new Date(todayStr).getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return t('stayRelative.tomorrow');
+    return t('stayRelative.inDays', { count: diffDays });
+  }
   const currentUser = useAuthStore((s) => s.currentUser);
   const {
     themePreference,
@@ -170,9 +172,9 @@ export default function OwnerDashboard() {
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={{ flex: 1 }}>
           <ThemedText type="title" style={styles.greeting}>
-            Good day, {currentUser?.name.split(' ')[0]}
+            {t('ownerHome.greeting', { name: currentUser?.name.split(' ')[0] ?? '' })}
           </ThemedText>
-          <ThemedText style={[styles.sub, { color: colors.icon }]}>Your estate dashboard</ThemedText>
+          <ThemedText style={[styles.sub, { color: colors.icon }]}>{t('ownerHome.sub')}</ThemedText>
         </View>
         <TouchableOpacity
           onPress={() => setMenuOpen(true)}
@@ -210,7 +212,7 @@ export default function OwnerDashboard() {
           <StatCard
             icon="building.2.fill"
             value={estates.length}
-            label="Properties"
+            label={t('ownerHome.properties')}
             color={colors.tint}
             colors={colors}
             onPress={() => router.push('/(owner)/estates' as never)}
@@ -218,7 +220,7 @@ export default function OwnerDashboard() {
           <StatCard
             icon="person.2.fill"
             value={guestsCount}
-            label="Guests"
+            label={t('ownerHome.guests')}
             color={colors.tint}
             colors={colors}
             onPress={() => router.push('/(owner)/guests' as never)}
@@ -226,7 +228,7 @@ export default function OwnerDashboard() {
           <StatCard
             icon="tray.fill"
             value={pendingCount}
-            label="Requests"
+            label={t('ownerHome.requests')}
             color={colors.tint}
             colors={colors}
             onPress={() => router.push('/(owner)/stays' as never)}
@@ -253,7 +255,7 @@ export default function OwnerDashboard() {
               >
                 <IconSymbol name="arrow.down.circle.fill" size={14} color="#22c55e" />
                 <ThemedText style={[styles.priorityText, { color: '#22c55e' }]}>
-                  {todayArrivals.length} arriving
+                  {t('ownerHome.arriving', { count: todayArrivals.length })}
                 </ThemedText>
               </TouchableOpacity>
             )}
@@ -265,7 +267,7 @@ export default function OwnerDashboard() {
               >
                 <IconSymbol name="arrow.up.circle.fill" size={14} color="#f59e0b" />
                 <ThemedText style={[styles.priorityText, { color: '#f59e0b' }]}>
-                  {todayDepartures.length} departing
+                  {t('ownerHome.departing', { count: todayDepartures.length })}
                 </ThemedText>
               </TouchableOpacity>
             )}
@@ -277,7 +279,7 @@ export default function OwnerDashboard() {
               >
                 <IconSymbol name="tray.fill" size={14} color={colors.tint} />
                 <ThemedText style={[styles.priorityText, { color: colors.tint }]}>
-                  {pendingCount} pending
+                  {t('ownerHome.pending', { count: pendingCount })}
                 </ThemedText>
               </TouchableOpacity>
             )}
@@ -294,8 +296,8 @@ export default function OwnerDashboard() {
             <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
               <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
             </View>
-            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>Plan a Stay</ThemedText>
-            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>Schedule guests</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>{t('ownerHome.planStay')}</ThemedText>
+            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>{t('ownerHome.planStaySub')}</ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -306,22 +308,22 @@ export default function OwnerDashboard() {
             <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
               <IconSymbol name="envelope.fill" size={22} color={colors.tint} />
             </View>
-            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>Invite User</ThemedText>
-            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>Send access codes</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>{t('ownerHome.inviteUser')}</ThemedText>
+            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>{t('ownerHome.inviteUserSub')}</ThemedText>
           </TouchableOpacity>
         </View>
 
         {/* Upcoming Stays */}
         <SectionHeader
-          title="Upcoming Stays"
-          actionLabel="See All"
+          title={t('ownerHome.upcomingStays')}
+          actionLabel={t('ownerHome.seeAll')}
           onAction={() => router.push('/(owner)/stays' as never)}
         />
         {upcomingStays.length === 0 ? (
           <EmptyState
             icon="calendar"
-            title="No upcoming stays"
-            subtitle="Plan a stay or wait for guest requests."
+            title={t('ownerHome.noUpcomingTitle')}
+            subtitle={t('ownerHome.noUpcomingSub')}
           />
         ) : (
           <View style={styles.upcomingList}>
@@ -329,7 +331,7 @@ export default function OwnerDashboard() {
               const estate = estates.find((e) => e.id === stay.estateId);
               const isOwnerStay = stay.guestId === currentUser?.id;
               const guestLabel = isOwnerStay
-                ? `${currentUser?.name?.split(' ')[0] ?? 'You'} (you)`
+                ? `${currentUser?.name?.split(' ')[0] ?? t('common.you')} ${t('ownerHome.youSuffix')}`
                 : resolveUserDisplayName(stay.guestId, profileById);
               const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
               const relLabel = getStayRelativeLabel(stay.from, stay.to, todayStr);
@@ -361,13 +363,13 @@ export default function OwnerDashboard() {
         )}
 
         {/* Interactive Calendar */}
-        <SectionHeader title="This Month" />
+        <SectionHeader title={t('ownerHome.thisMonth')} />
         <View style={styles.calendarNav}>
           <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
             <IconSymbol name="arrow.left" size={18} color={colors.tint} />
           </TouchableOpacity>
           <ThemedText type="defaultSemiBold" style={styles.monthLabel}>
-            {MONTHS[viewMonth]} {viewYear}
+            {monthNames[viewMonth]} {viewYear}
           </ThemedText>
           <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
             <IconSymbol name="arrow.right" size={18} color={colors.tint} />
@@ -389,7 +391,7 @@ export default function OwnerDashboard() {
               onPress={() => setLegendOpen((o) => !o)}
               activeOpacity={0.7}
             >
-              <ThemedText style={[styles.legendToggleText, { color: colors.icon }]}>Legend</ThemedText>
+              <ThemedText style={[styles.legendToggleText, { color: colors.icon }]}>{t('ownerHome.legend')}</ThemedText>
               <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
             </TouchableOpacity>
             {legendOpen && (
@@ -420,14 +422,14 @@ export default function OwnerDashboard() {
               </TouchableOpacity>
             </View>
             {staysOnSelectedDay.length === 0 && eventsOnSelectedDay.length === 0 && (
-              <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>Nothing scheduled</ThemedText>
+              <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>{t('ownerHome.nothingScheduled')}</ThemedText>
             )}
             {staysOnSelectedDay.map((stay) => {
               const estate = estates.find((e) => e.id === stay.estateId);
               const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
               const guestLabel =
                 stay.guestId === currentUser?.id
-                  ? (currentUser?.name ?? 'You')
+                  ? (currentUser?.name ?? t('common.you'))
                   : resolveUserDisplayName(stay.guestId, profileById);
               return (
                 <View key={stay.id} style={[styles.dayStayRow, { borderLeftColor: dotColor }]}>

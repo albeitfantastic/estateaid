@@ -1,6 +1,7 @@
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { StatusBadge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -14,6 +15,7 @@ import { useStayStore } from '@/store/stay-store';
 import { formatDateRange } from '@/lib/date-utils';
 
 export default function MyStays() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -29,7 +31,7 @@ export default function MyStays() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>My Stay Status</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.myStayStatus')}</ThemedText>
       </View>
 
       {requests.length === 0 ? (

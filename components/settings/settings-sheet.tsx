@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { supportMailto } from '@/lib/support';
 import type { OwnerTier } from '@/store/auth-store';
@@ -10,7 +10,7 @@ import type { UserRole } from '@/types';
 
 type ThemeColors = (typeof Colors)['light'];
 
-export type SettingsDestination = 'profile' | 'subscription' | 'account';
+export type SettingsDestination = 'profile' | 'language' | 'subscription' | 'account';
 
 export interface SettingsSheetProps {
   visible: boolean;
@@ -43,6 +43,7 @@ export function SettingsSheet({
   onNavigate,
   onSignOut,
 }: SettingsSheetProps) {
+  const { t } = useTranslation();
   const initials =
     currentUser?.name
       .split(' ')
@@ -52,10 +53,10 @@ export function SettingsSheet({
       .toUpperCase() ?? '';
   const tierLabel =
     userRole === 'guest'
-      ? 'Guest'
+      ? t('common.guest')
       : selectedTier === 'premium'
-        ? 'Premium'
-        : 'Starter';
+        ? t('common.premium')
+        : t('common.starter');
 
   function go(dest: SettingsDestination) {
     onClose();
@@ -96,7 +97,7 @@ export function SettingsSheet({
         >
           <View style={styles.sheetHeader}>
             <ThemedText type="title" style={styles.sheetTitle}>
-              Settings
+              {t('settingsScreens.settingsTitle')}
             </ThemedText>
             <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.icon + '15' }]}>
               <IconSymbol name="xmark" size={16} color={colors.icon} />
@@ -119,6 +120,7 @@ export function SettingsSheet({
 
           <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
             {menuRow('person.fill', 'Profile', () => go('profile'))}
+            {menuRow('globe', 'Language', () => go('language'))}
             {menuRow('creditcard.fill', 'Manage subscription', () => go('subscription'))}
             {menuRow(
               isDark ? 'moon.fill' : 'sun.max.fill',
@@ -132,28 +134,26 @@ export function SettingsSheet({
               />
             )}
 
-            {menuRow('bell.fill', 'Notifications',undefined,
+            {menuRow(
+              'bell.fill',
+              t('common.notifications'),
+              undefined,
               <Switch
                 value={notificationsOn}
                 onValueChange={onToggleNotifications}
                 trackColor={{ false: colors.border, true: colors.tint }}
                 thumbColor="#fff"
               />
-              
-              )}
+            )}
 
-
-            {menuRow('gearshape.fill', 'Account', () => go('account'))}
-            {menuRow('questionmark.circle.fill', 'Help & Support', () => {
+            {menuRow('gearshape.fill', t('common.account'), () => go('account'))}
+            {menuRow('questionmark.circle.fill', t('common.helpSupport'), () => {
               onClose();
-              void Linking.openURL(supportMailto('Help & Support', 'I need help with EstateAid.'));
+              void Linking.openURL(supportMailto(t('common.helpSupport'), t('settingsHub.helpBody')));
             })}
-            {menuRow('doc.text.fill', 'Privacy Policy', () => {
+            {menuRow('doc.text.fill', t('common.privacyPolicy'), () => {
               onClose();
-              Alert.alert(
-                'Privacy Policy',
-                'Our privacy policy will be published on the website soon. Contact support if you need details now.'
-              );
+              Alert.alert(t('settingsHub.privacyTitle'), t('settingsHub.privacyBody'));
             })}
           </ScrollView>
 
@@ -161,15 +161,15 @@ export function SettingsSheet({
             style={[styles.signOutBtn, { borderColor: colors.error }]}
             onPress={() => {
               onClose();
-              Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Sign out', style: 'destructive', onPress: onSignOut },
+              Alert.alert(t('settingsHub.signOutTitle'), t('settingsHub.signOutConfirm'), [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('common.signOut'), style: 'destructive', onPress: onSignOut },
               ]);
             }}
             activeOpacity={0.7}
           >
             <IconSymbol name="rectangle.portrait.and.arrow.right" size={16} color={colors.error} />
-            <ThemedText style={{ color: colors.error, fontWeight: '600' }}>Sign out</ThemedText>
+            <ThemedText style={{ color: colors.error, fontWeight: '600' }}>{t('common.signOut')}</ThemedText>
           </TouchableOpacity>
         </Pressable>
       </Pressable>

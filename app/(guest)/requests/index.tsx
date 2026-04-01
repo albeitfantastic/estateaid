@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -18,6 +19,7 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 
 export default function GuestRequests() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -54,7 +56,7 @@ export default function GuestRequests() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>My Requests</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('guestRequests.title')}</ThemedText>
         {myRequests.length > 0 && (
           <View style={[styles.badge, { backgroundColor: colors.tint }]}>
             <ThemedText style={styles.badgeText}>{myRequests.filter((r) => r.status === 'pending').length}</ThemedText>
@@ -65,8 +67,8 @@ export default function GuestRequests() {
       {myRequests.length === 0 ? (
         <EmptyState
           icon="tray.fill"
-          title="No stay requests"
-          subtitle="When you request a stay at an estate, it will appear here."
+          title={t('guestRequests.emptyTitle')}
+          subtitle={t('guestRequests.emptySub')}
         />
       ) : (
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
@@ -82,7 +84,7 @@ export default function GuestRequests() {
                 <View style={styles.info}>
                   <View style={styles.rowTop}>
                     <View style={{ flex: 1 }}>
-                      <ThemedText type="defaultSemiBold">{estate?.name ?? 'Unknown Estate'}</ThemedText>
+                      <ThemedText type="defaultSemiBold">{estate?.name ?? t('common.unknownEstate')}</ThemedText>
                       <ThemedText style={[styles.dates, { color: colors.icon }]}>
                         {formatDateRange(req.requestedFrom, req.requestedTo)}
                       </ThemedText>
@@ -96,13 +98,15 @@ export default function GuestRequests() {
                   ) : null}
                   {req.ownerNote ? (
                     <View style={[styles.ownerNote, { backgroundColor: colors.tint + '08' }]}>
-                      <ThemedText style={[styles.ownerNoteLabel, { color: colors.tint }]}>Owner response</ThemedText>
+                      <ThemedText style={[styles.ownerNoteLabel, { color: colors.tint }]}>
+                        {t('guestRequests.ownerNoteLabel')}
+                      </ThemedText>
                       <ThemedText style={[styles.note, { color: colors.text }]}>{req.ownerNote}</ThemedText>
                     </View>
                   ) : null}
                   {req.status === 'alternative_proposed' && req.alternativeFrom && req.alternativeTo && (
                     <ThemedText style={[styles.altDates, { color: colors.tint }]}>
-                      Proposed: {formatDateRange(req.alternativeFrom, req.alternativeTo)}
+                      {t('guestRequests.proposed')}: {formatDateRange(req.alternativeFrom, req.alternativeTo)}
                     </ThemedText>
                   )}
                 </View>

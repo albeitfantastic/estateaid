@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Linking, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -17,6 +18,7 @@ const CATEGORY_ORDER: ContactCategory[] = ['emergency', 'staff', 'service', 'uti
 const CATEGORY_LABELS: Record<ContactCategory, string> = { emergency: 'Emergency', staff: 'Staff', service: 'Services', utility: 'Utilities', neighbor: 'Neighbors', other: 'Other' };
 
 export default function GuestContacts() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -32,7 +34,7 @@ export default function GuestContacts() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Contacts</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.contacts')}</ThemedText>
       </View>
       {contacts.length === 0 ? (
         <EmptyState icon="phone.fill" title="No contacts" subtitle="The owner hasn't added any contacts yet." />

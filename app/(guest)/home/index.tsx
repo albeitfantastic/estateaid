@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { SettingsSheet, type SettingsDestination } from '@/components/settings/settings-sheet';
 import { ThemedText } from '@/components/themed-text';
@@ -20,6 +21,7 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 
 export default function GuestHome() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -77,9 +79,9 @@ export default function GuestHome() {
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={{ flex: 1 }}>
           <ThemedText type="title" style={styles.greeting}>
-            Good day, {currentUser?.name.split(' ')[0]}
+            {t('guestHome.greeting', { name: currentUser?.name.split(' ')[0] ?? '' })}
           </ThemedText>
-          <ThemedText style={[styles.sub, { color: colors.icon }]}>Lets plan</ThemedText>
+          <ThemedText style={[styles.sub, { color: colors.icon }]}>{t('guestHome.sub')}</ThemedText>
         </View>
         <TouchableOpacity
           onPress={() => setMenuOpen(true)}
@@ -116,7 +118,7 @@ export default function GuestHome() {
           <StatCard
             icon="building.2.fill"
             value={estates.length}
-            label="Properties"
+            label={t('guestHome.properties')}
             color={colors.tint}
             colors={colors}
             onPress={() => router.push('/(guest)/estates' as never)}
@@ -124,7 +126,7 @@ export default function GuestHome() {
           <StatCard
             icon="suitcase.fill"
             value={pendingCount}
-            label="Stays Pending"
+            label={t('guestHome.staysPending')}
             color={colors.tint}
             colors={colors}
             onPress={() => router.push('/(guest)/stays' as never)}
@@ -140,21 +142,21 @@ export default function GuestHome() {
             <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
               <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
             </View>
-            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>Plan a Stay</ThemedText>
-            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>Book your next trip</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>{t('guestHome.planStay')}</ThemedText>
+            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>{t('guestHome.planStaySub')}</ThemedText>
           </TouchableOpacity>
         </View>
 
         <SectionHeader
-          title="Upcoming Stays"
-          actionLabel="See All"
+          title={t('guestHome.upcomingStays')}
+          actionLabel={t('guestHome.seeAll')}
           onAction={() => router.push('/(guest)/stays' as never)}
         />
         {upcomingStays.length === 0 ? (
           <EmptyState
             icon="calendar"
-            title="No upcoming stays"
-            subtitle="Plan a stay or wait for approval from your host."
+            title={t('guestHome.noUpcomingTitle')}
+            subtitle={t('guestHome.noUpcomingSub')}
           />
         ) : (
           <View style={styles.upcomingList}>
@@ -169,7 +171,7 @@ export default function GuestHome() {
                   <View style={[styles.colorBar, { backgroundColor: dotColor }]} />
                   <View style={styles.stayInfo}>
                     <ThemedText type="defaultSemiBold" style={styles.stayGuest}>
-                      {currentUser?.name ?? 'You'}
+                      {currentUser?.name ?? t('common.you')}
                     </ThemedText>
                     <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
                       {estate?.name} · {formatDateRange(stay.from, stay.to)}

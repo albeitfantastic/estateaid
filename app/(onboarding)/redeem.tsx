@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { useAuthStore } from '@/store/auth-store';
 
@@ -19,6 +20,7 @@ const C = {
 
 export default function RedeemScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { completeOnboarding, setPendingInviteCode } = useAuthStore();
   const [code, setCode] = useState('');
 
@@ -26,7 +28,7 @@ export default function RedeemScreen() {
     if (withCode) {
       const normalized = withCode.toUpperCase().trim();
       if (normalized.length !== 8 || !/^[A-Z0-9]{8}$/.test(normalized)) {
-        Alert.alert('Invalid code', 'Enter the 8-character code from your host (letters and numbers).');
+        Alert.alert(t('redeem.invalidTitle'), t('redeem.invalidBody'));
         return;
       }
       setPendingInviteCode(normalized);
@@ -44,32 +46,25 @@ export default function RedeemScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.content}>
-        <Text style={styles.eyebrow}>Guest access</Text>
-        <Text style={styles.title}>Enter your{'\n'}invite code</Text>
-        <Text style={styles.subtitle}>
-          Your host will share an 8-character code with you via WhatsApp, Telegram, or any other messaging app.
-        </Text>
+        <Text style={styles.eyebrow}>{t('redeem.eyebrow')}</Text>
+        <Text style={styles.title}>{t('redeem.title')}</Text>
+        <Text style={styles.subtitle}>{t('redeem.subtitle')}</Text>
 
-        {/* Code input */}
         <View style={styles.inputWrap}>
           <TextInput
             style={[styles.codeInput, { borderColor: code.length > 0 ? C.navy : C.border }]}
             value={code}
             onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-            placeholder="e.g. SERENA9T"
+            placeholder={t('redeem.placeholder')}
             placeholderTextColor={C.muted}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={8}
           />
-          {isValidLength && (
-            <Text style={styles.checkmark}>✓</Text>
-          )}
+          {isValidLength && <Text style={styles.checkmark}>✓</Text>}
         </View>
 
-        <Text style={styles.hint}>
-          You can also add codes later from the Invitations tab after signing in.
-        </Text>
+        <Text style={styles.hint}>{t('redeem.hint')}</Text>
       </View>
 
       <View style={styles.footer}>
@@ -79,10 +74,10 @@ export default function RedeemScreen() {
           disabled={!isValidLength}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnText}>Redeem Code</Text>
+          <Text style={styles.btnText}>{t('redeem.redeemCta')}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => proceed()} style={styles.skipLink}>
-          <Text style={styles.skipText}>I don't have a code yet →</Text>
+          <Text style={styles.skipText}>{t('redeem.skip')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

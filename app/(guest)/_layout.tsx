@@ -1,35 +1,20 @@
 import { Tabs } from 'expo-router';
-import { useMemo } from 'react';
 import { Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuthStore } from '@/store/auth-store';
-import { guestEmailsMatch } from '@/lib/invite-email';
-import { useInvitationStore } from '@/store/invitation-store';
 
 export default function GuestTabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const allInvitations = useInvitationStore((s) => s.invitations);
-
-  const pendingInvitations = useMemo(
-    () =>
-      allInvitations.filter(
-        (inv) =>
-          (guestEmailsMatch(inv.guestEmail, currentUser?.email) || inv.guestId === currentUser?.id) &&
-          inv.status === 'pending'
-      ),
-    [allInvitations, currentUser?.email, currentUser?.id]
-  );
+  const { t, i18n } = useTranslation();
 
   return (
-    
-
     <Tabs
+      key={i18n.resolvedLanguage}
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
         headerShown: false,
@@ -43,21 +28,21 @@ export default function GuestTabLayout() {
       <Tabs.Screen
         name="home/index"
         options={{
-          title: 'Home',
+          title: t('tabs.home'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'house.fill' : 'house'} color={color} />,
         }}
       />
        <Tabs.Screen
         name="estates"
         options={{
-          title: 'Properties',
+          title: t('tabs.properties'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'building.2.fill' : 'building.2'} color={color} />,
         }}
       />
       <Tabs.Screen
         name="calendar/index"
         options={{
-          title: 'Calendar',
+          title: t('tabs.calendar'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol name="calendar" color={color} weight={focused ? 'semibold' : 'regular'} />
           ),
@@ -66,14 +51,14 @@ export default function GuestTabLayout() {
       <Tabs.Screen
         name="stays"
         options={{
-          title: 'Stays',
+          title: t('tabs.stays'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
         }}
       />
         <Tabs.Screen
         name="invitations/index"
         options={{
-          title: 'Invites',
+          title: t('tabs.invites'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'envelope.fill' : 'envelope'} color={color} />,
         }}
       />
@@ -83,7 +68,5 @@ export default function GuestTabLayout() {
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
-  
-    );
-    
+  );
 }

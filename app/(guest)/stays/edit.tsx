@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -16,6 +17,7 @@ import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
 
 export default function GuestEditStay() {
+  const { t } = useTranslation();
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -64,7 +66,7 @@ export default function GuestEditStay() {
           <TouchableOpacity onPress={() => router.back()} style={styles.back}>
             <IconSymbol name="arrow.left" size={22} color={colors.tint} />
           </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>Edit Stay</ThemedText>
+          <ThemedText type="title" style={styles.title}>{t('titles.editStay')}</ThemedText>
         </View>
         <View style={styles.center}>
           <ThemedText style={{ opacity: 0.5 }}>Request not found.</ThemedText>
@@ -114,7 +116,7 @@ export default function GuestEditStay() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Edit Stay</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.editStay')}</ThemedText>
       </View>
 
       <ScrollView

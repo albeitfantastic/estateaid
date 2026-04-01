@@ -1,24 +1,26 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { OnboardingQuestion } from '@/components/ui/onboarding-question';
+import { useTranslation } from 'react-i18next';
 
-const OPTIONS = [
-  'Frequently — every few months',
-  'A few times a year',
-  'Rarely, but I\'d love to change that',
-];
+import { OnboardingQuestion } from '@/components/ui/onboarding-question';
 
 export default function Q1() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<number | null>(null);
+
+  const options = useMemo(
+    () => [t('onboarding.q1o0'), t('onboarding.q1o1'), t('onboarding.q1o2')],
+    [t]
+  );
 
   return (
     <OnboardingQuestion
       step={1}
       total={3}
-      question="How often do you gather with family and close friends?"
-      hint="Your properties could be the backdrop for memories that last a lifetime."
-      options={OPTIONS}
+      question={t('onboarding.q1q')}
+      hint={t('onboarding.q1h')}
+      options={options}
       selectedIndex={selected}
       onSelect={setSelected}
       onContinue={() => router.push('/(onboarding)/q2' as never)}

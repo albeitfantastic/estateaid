@@ -2,6 +2,7 @@ import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
@@ -21,6 +22,7 @@ const FREQ_OPTIONS: { value: RecurrenceFrequency; label: string }[] = [
 ];
 
 export default function EditEvent() {
+  const { t } = useTranslation();
   const { estateId, eventId } = useLocalSearchParams<{ estateId: string; eventId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -82,7 +84,7 @@ export default function EditEvent() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.headerTitle}>Edit Event</ThemedText>
+        <ThemedText type="title" style={styles.headerTitle}>{t('titles.editEvent')}</ThemedText>
       </View>
 
       <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 24 }]}>

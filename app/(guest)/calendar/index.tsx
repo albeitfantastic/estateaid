@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { MonthGrid, DayInfo } from '@/components/calendar/month-grid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -21,9 +22,9 @@ import { useEventStore } from '@/store/event-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
 export default function GuestCalendar() {
+  const { t } = useTranslation();
+  const monthNames = t('calendar.months', { returnObjects: true }) as string[];
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -164,7 +165,7 @@ export default function GuestCalendar() {
 
       {acceptedEstates.length === 0 ? (
         <View style={styles.center}>
-          <ThemedText style={{ opacity: 0.5 }}>No properties yet. Accept an invitation first.</ThemedText>
+          <ThemedText style={{ opacity: 0.5 }}>{t('guestCalendar.emptyNoProperties')}</ThemedText>
         </View>
       ) : (
         <ScrollView
@@ -204,7 +205,7 @@ export default function GuestCalendar() {
               <IconSymbol name="arrow.left" size={18} color={colors.tint} />
             </TouchableOpacity>
             <ThemedText type="defaultSemiBold" style={styles.monthLabel}>
-              {MONTHS[viewMonth]} {viewYear}
+              {monthNames[viewMonth]} {viewYear}
             </ThemedText>
             <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
               <IconSymbol name="arrow.right" size={18} color={colors.tint} />
@@ -250,7 +251,7 @@ export default function GuestCalendar() {
                   {selectedDayData.type === 'my-stay' && (
                     <>
                       <ThemedText style={[styles.infoMain, { color: '#22c55e' }]}>
-                        Your stay · {selectedEstate?.name}
+                        {t('guestCalendar.yourStayLine', { name: selectedEstate?.name ?? '' })}
                       </ThemedText>
                       <ThemedText style={[styles.infoSub, { color: colors.icon }]}>
                         {formatDateRange(selectedDayData.stay.from, selectedDayData.stay.to)}
@@ -259,17 +260,17 @@ export default function GuestCalendar() {
                   )}
                   {selectedDayData.type === 'blocked' && (
                     <ThemedText style={[styles.infoMain, { color: '#ef4444' }]}>
-                      Not available — property occupied
+                      {t('guestCalendar.blockedOccupied')}
                     </ThemedText>
                   )}
                   {selectedDayData.type === 'unavailable' && (
                     <ThemedText style={[styles.infoMain, { color: colors.icon }]}>
-                      Unavailable — this date has passed
+                      {t('guestCalendar.unavailablePast')}
                     </ThemedText>
                   )}
                   {selectedDayData.type === 'available' && (
                     <ThemedText style={[styles.infoMain, { color: colors.icon }]}>
-                      Available — no bookings on this date
+                      {t('guestCalendar.availableNoBookings')}
                     </ThemedText>
                   )}
                   {selectedDayEvents.length > 0 && (
@@ -309,7 +310,9 @@ export default function GuestCalendar() {
             onPress={() => setLegendOpen((o) => !o)}
             activeOpacity={0.7}
           >
-            <ThemedText style={[styles.legendToggleLabel, { color: colors.icon }]}>Legend</ThemedText>
+            <ThemedText style={[styles.legendToggleLabel, { color: colors.icon }]}>
+              {t('guestCalendar.legend')}
+            </ThemedText>
             <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
           </TouchableOpacity>
 
@@ -317,7 +320,9 @@ export default function GuestCalendar() {
             <View style={[styles.legendBox, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}>
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatch, { backgroundColor: '#22c55e' }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Your approved stay</ThemedText>
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendYourStay')}
+                </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View
@@ -346,7 +351,7 @@ export default function GuestCalendar() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Unavailable — past dates
+                  {t('guestCalendar.legendUnavailablePast')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
@@ -361,20 +366,26 @@ export default function GuestCalendar() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Unavailable — booked by others
+                  {t('guestCalendar.legendUnavailableBooked')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatchRing, { borderColor: '#0a7ea4', borderWidth: 1.5 }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Today</ThemedText>
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendToday')}
+                </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 2.5 }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Selected day</ThemedText>
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendSelectedDay')}
+                </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={[styles.legendDot, { backgroundColor: colors.tint }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Property event</ThemedText>
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendPropertyEvent')}
+                </ThemedText>
               </View>
             </View>
           )}

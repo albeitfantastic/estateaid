@@ -2,6 +2,7 @@ import { Alert, Linking, ScrollView, Share, StyleSheet, TextInput, TouchableOpac
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
@@ -66,6 +67,7 @@ function shareVia(
 }
 
 export default function InviteUser() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -144,7 +146,7 @@ export default function InviteUser() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Invite User</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.inviteUser')}</ThemedText>
         {createdInvites.length > 0 && (
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Done</ThemedText>

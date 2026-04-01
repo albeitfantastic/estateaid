@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,6 +12,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useProfileStore } from '@/store/profile-store';
 
 export function ProfileSettingsContent() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -34,12 +36,12 @@ export function ProfileSettingsContent() {
     try {
       const { error } = await supabase.from('profiles').update({ name: trimmed }).eq('id', currentUser.id);
       if (error) {
-        Alert.alert('Could not save', error.message);
+        Alert.alert(t('profileSettings.saveFailedTitle'), error.message);
         return;
       }
       patchUser({ name: trimmed });
       await useProfileStore.getState().fetchFromSupabase();
-      Alert.alert('Saved', 'Your name is visible to other people in the app.');
+      Alert.alert(t('profileSettings.savedTitle'), t('profileSettings.savedBody'));
     } finally {
       setSaving(false);
     }
@@ -63,7 +65,7 @@ export function ProfileSettingsContent() {
           ]}
           value={name}
           onChangeText={setName}
-          placeholder="Your name"
+          placeholder={t('profileSettings.placeholderName')}
           placeholderTextColor={colors.icon}
           autoCapitalize="words"
           editable={!saving}
@@ -81,7 +83,7 @@ export function ProfileSettingsContent() {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <ThemedText style={styles.saveBtnText}>Save</ThemedText>
+            <ThemedText style={styles.saveBtnText}>{t('common.save')}</ThemedText>
           )}
         </TouchableOpacity>
       </View>

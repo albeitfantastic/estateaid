@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EstateCard } from '@/components/ui/estate-card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -17,6 +18,7 @@ import { getEstateRole } from '@/lib/estate-role';
 import { guestEmailsMatch } from '@/lib/invite-email';
 
 export default function OwnerEstates() {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -49,7 +51,7 @@ export default function OwnerEstates() {
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         
-        <ThemedText type="title" style={styles.title}>Properties</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.properties')}</ThemedText>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: colors.tint }]}
           onPress={() => router.push('/(owner)/estates/new' as never)}

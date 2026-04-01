@@ -2,6 +2,7 @@ import { Alert, ScrollView, Share, StyleSheet, TouchableOpacity, View } from 're
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -17,6 +18,7 @@ import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { buildFullInviteMessage } from '@/lib/invite-messages';
 
 export default function GuestsIndex() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -90,7 +92,7 @@ export default function GuestsIndex() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Guests</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.guests')}</ThemedText>
         <TouchableOpacity
           style={[styles.inviteBtn, { backgroundColor: colors.tint }]}
           onPress={() => router.push('/(owner)/invite' as never)}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -15,6 +16,7 @@ import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { formatDate } from '@/lib/date-utils';
 
 export default function OwnerInvitations() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -51,19 +53,22 @@ export default function OwnerInvitations() {
       const estate = getEstateById(result.invitation!.estateId);
       setCodeInput('');
       setRedeemError('');
-      Alert.alert('Access granted!', `You now have access to ${estate?.name ?? 'the estate'}.`);
+      Alert.alert(
+        t('guestInvitations.accessGrantedTitle'),
+        t('guestInvitations.accessGrantedBody', { name: estate?.name ?? t('guestInvitations.defaultAccessName') })
+      );
     } else if (result.reason === 'fetch_error') {
-      setRedeemError('Could not verify the code. Check your connection or try again.');
+      setRedeemError(t('guestInvitations.errFetch'));
     } else if (result.reason === 'update_failed') {
-      setRedeemError('This code could not be applied. It may have just been used—try again or ask your host for a new code.');
+      setRedeemError(t('guestInvitations.errUpdate'));
     } else if (result.reason === 'wrong_invitee') {
-      setRedeemError('This code was sent to a different email. Sign in with the address your host used, or ask them for a new invite.');
+      setRedeemError(t('guestInvitations.errWrongInvitee'));
     } else if (result.reason === 'no_session_email') {
-      setRedeemError('Your account needs an email address to redeem invites. Update your profile or sign in with email.');
+      setRedeemError(t('guestInvitations.errNoEmail'));
     } else if (result.reason === 'invite_missing_email') {
-      setRedeemError('This invite is outdated. Ask your host to create a new invite with your email on it.');
+      setRedeemError(t('guestInvitations.errOutdated'));
     } else {
-      setRedeemError('Code not found or already used. Check the code and try again.');
+      setRedeemError(t('guestInvitations.errGeneric'));
     }
   }
 
@@ -74,21 +79,21 @@ export default function OwnerInvitations() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <ThemedText type="title" style={styles.title}>Invitations</ThemedText>
+          <ThemedText type="title" style={styles.title}>{t('guestInvitations.title')}</ThemedText>
         </View>
 
-        {/* Redeem code section */}
         <View style={[styles.redeemBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <ThemedText style={[styles.redeemTitle, { color: colors.text }]}>Have an invite code?</ThemedText>
-          <ThemedText style={[styles.redeemSub, { color: colors.icon }]}>
-            Enter the 8-character code from your host. It only works for the email they invited.
-          </ThemedText>
+          <ThemedText style={[styles.redeemTitle, { color: colors.text }]}>{t('guestInvitations.redeemTitle')}</ThemedText>
+          <ThemedText style={[styles.redeemSub, { color: colors.icon }]}>{t('guestInvitations.redeemSub')}</ThemedText>
           <View style={styles.redeemRow}>
             <TextInput
               style={[styles.codeInput, { color: colors.text, borderColor: redeemError ? colors.error : colors.icon + '44' }]}
               value={codeInput}
-              onChangeText={(v) => { setCodeInput(v.toUpperCase().replace(/[^A-Z0-9]/g, '')); setRedeemError(''); }}
-              placeholder="e.g. SERENA9T"
+              onChangeText={(v) => {
+                setCodeInput(v.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+                setRedeemError('');
+              }}
+              placeholder={t('guestInvitations.placeholder')}
               placeholderTextColor={colors.icon}
               autoCapitalize="characters"
               autoCorrect={false}
@@ -101,29 +106,26 @@ export default function OwnerInvitations() {
               activeOpacity={0.85}
             >
               <ThemedText style={[styles.redeemBtnText, { color: codeInput.length === 8 ? '#fff' : colors.icon }]}>
-                Redeem
+                {t('actions.redeem')}
               </ThemedText>
             </TouchableOpacity>
           </View>
           {redeemError ? (
-            <ThemedText style={[styles.redeemError, { color: colors.error }]}>
-              {redeemError}
-            </ThemedText>
+            <ThemedText style={[styles.redeemError, { color: colors.error }]}>{redeemError}</ThemedText>
           ) : null}
         </View>
 
-        {/* Pending invitations */}
         {invitations.length === 0 ? (
           <EmptyState
             icon="envelope.fill"
-            title="No pending invitations"
-            subtitle="When another owner invites you to their estate, it will appear here."
+            title={t('guestInvitations.emptyTitle')}
+            subtitle={t('guestInvitations.emptySubOwner')}
           />
         ) : (
           <View style={styles.list}>
             {invitations.map((inv) => {
               const estate = getEstateById(inv.estateId);
-              const ownerName = ownerLabels[inv.ownerId] ?? 'Owner';
+              const ownerName = ownerLabels[inv.ownerId] ?? t('guestInvitations.ownerFallback');
               return (
                 <View
                   key={inv.id}
@@ -134,10 +136,10 @@ export default function OwnerInvitations() {
                   </View>
                   <View style={styles.body}>
                     <ThemedText type="defaultSemiBold" style={styles.estateName}>
-                      {estate?.name ?? 'Unknown Estate'}
+                      {estate?.name ?? t('common.unknownEstate')}
                     </ThemedText>
                     <ThemedText style={[styles.meta, { color: colors.icon }]}>
-                      {estate?.location} · From {ownerName}
+                      {estate?.location} · {t('guestInvitations.fromHost', { name: ownerName })}
                     </ThemedText>
                     {inv.message && (
                       <ThemedText style={[styles.message, { color: colors.text }]} numberOfLines={3}>
@@ -153,14 +155,14 @@ export default function OwnerInvitations() {
                         onPress={() => accept(inv.id)}
                         activeOpacity={0.8}
                       >
-                        <ThemedText style={styles.btnText}>Accept</ThemedText>
+                        <ThemedText style={styles.btnText}>{t('actions.accept')}</ThemedText>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.btn, styles.btnOutline, { borderColor: colors.icon + '55' }]}
                         onPress={() => decline(inv.id)}
                         activeOpacity={0.8}
                       >
-                        <ThemedText style={[styles.btnText, { color: colors.icon }]}>Decline</ThemedText>
+                        <ThemedText style={[styles.btnText, { color: colors.icon }]}>{t('actions.decline')}</ThemedText>
                       </TouchableOpacity>
                     </View>
                   </View>

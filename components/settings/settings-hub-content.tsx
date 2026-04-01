@@ -1,11 +1,12 @@
+import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Alert, Linking, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supportMailto } from '@/lib/support';
@@ -15,6 +16,7 @@ import type { SettingsDestination } from './settings-sheet';
 
 export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/settings' | '/(guest)/settings' }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -29,7 +31,11 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
   const isDark = themePreference === 'dark';
   const userRole = currentUser?.role ?? 'guest';
   const tierLabel =
-    userRole === 'guest' ? 'Guest' : selectedTier === 'premium' ? 'Premium' : 'Starter';
+    userRole === 'guest'
+      ? t('common.guest')
+      : selectedTier === 'premium'
+        ? t('common.premium')
+        : t('common.starter');
   const initials =
     currentUser?.name
       .split(' ')
@@ -86,11 +92,12 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
           </View>
         </View>
 
-        {menuRow('person.fill', 'Profile', () => pushSection('profile'))}
-        {menuRow('creditcard.fill', 'Manage subscription', () => pushSection('subscription'))}
+        {menuRow('person.fill', t('common.profile'), () => pushSection('profile'))}
+        {menuRow('globe', t('common.language'), () => pushSection('language'))}
+        {menuRow('creditcard.fill', t('settingsHub.manageSubscription'), () => pushSection('subscription'))}
         {menuRow(
           isDark ? 'moon.fill' : 'sun.max.fill',
-          'Dark mode',
+          t('common.darkMode'),
           undefined,
           <Switch
             value={isDark}
@@ -104,7 +111,7 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
             <View style={[styles.rowIcon, { backgroundColor: colors.tint + '12' }]}>
               <IconSymbol name="bell.fill" size={18} color={colors.tint} />
             </View>
-            <ThemedText style={styles.rowLabel}>Notifications</ThemedText>
+            <ThemedText style={styles.rowLabel}>{t('common.notifications')}</ThemedText>
           </View>
           <Switch
             value={notificationsEnabled}
@@ -127,10 +134,10 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
         <TouchableOpacity
           style={[styles.signOutBtn, { borderColor: colors.error }]}
           onPress={() => {
-            Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-              { text: 'Cancel', style: 'cancel' },
+            Alert.alert(t('settingsHub.signOutTitle'), t('settingsHub.signOutConfirm'), [
+              { text: t('common.cancel'), style: 'cancel' },
               {
-                text: 'Sign out',
+                text: t('common.signOut'),
                 style: 'destructive',
                 onPress: () => void signOut().then(() => router.replace('/(auth)' as never)),
               },
@@ -139,7 +146,7 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
           activeOpacity={0.7}
         >
           <IconSymbol name="rectangle.portrait.and.arrow.right" size={16} color={colors.error} />
-          <ThemedText style={{ color: colors.error, fontWeight: '600' }}>Sign out</ThemedText>
+          <ThemedText style={{ color: colors.error, fontWeight: '600' }}>{t('common.signOut')}</ThemedText>
         </TouchableOpacity>
       </ScrollView>
     </ThemedView>

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const C = {
   bg: '#F4F4F2',
@@ -32,6 +33,7 @@ export function OnboardingQuestion({
   onSelect,
   onContinue,
 }: OnboardingQuestionProps) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.safe}>
       {/* Progress dots */}
@@ -45,7 +47,7 @@ export function OnboardingQuestion({
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.stepLabel}>{step} of {total}</Text>
+        <Text style={styles.stepLabel}>{t('onboardingUi.stepOf', { step, total })}</Text>
         <Text style={styles.question}>{question}</Text>
         {hint && <Text style={styles.hint}>{hint}</Text>}
 
@@ -78,7 +80,7 @@ export function OnboardingQuestion({
           disabled={selectedIndex === null}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnText}>Continue</Text>
+          <Text style={styles.btnText}>{t('onboardingUi.continue')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

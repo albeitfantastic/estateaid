@@ -1,24 +1,26 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { OnboardingQuestion } from '@/components/ui/onboarding-question';
+import { useTranslation } from 'react-i18next';
 
-const OPTIONS = [
-  "It's a constant source of confusion",
-  'I manage, but it takes real effort',
-  'I have a system, but it\'s far from ideal',
-];
+import { OnboardingQuestion } from '@/components/ui/onboarding-question';
 
 export default function Q2() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<number | null>(null);
+
+  const options = useMemo(
+    () => [t('onboarding.q2o0'), t('onboarding.q2o1'), t('onboarding.q2o2')],
+    [t]
+  );
 
   return (
     <OnboardingQuestion
       step={2}
       total={3}
-      question="How do you handle who stays where and when?"
-      hint="Overlapping requests and missed messages shouldn't be part of the story."
-      options={OPTIONS}
+      question={t('onboarding.q2q')}
+      hint={t('onboarding.q2h')}
+      options={options}
       selectedIndex={selected}
       onSelect={setSelected}
       onContinue={() => router.push('/(onboarding)/q3' as never)}

@@ -10,7 +10,7 @@ export function rowGrantsAccess(row: Pick<SubscriptionEntitlementRow, 'status' |
   if (row.expires_at != null && row.expires_at.length > 0) {
     if (new Date(row.expires_at).getTime() <= Date.now()) return false;
   }
-  return ['active', 'cancelled', 'grace_period', 'billing_issue'].includes(row.status);
+  return ['active', 'cancelled', 'grace_period', 'billing_issue', 'unknown'].includes(row.status);
 }
 
 /** Fetch current user's entitlement rows (RLS: own rows only). */

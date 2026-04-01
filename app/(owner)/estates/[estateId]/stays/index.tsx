@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { Avatar } from '@/components/ui/avatar';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -18,6 +19,7 @@ import { formatDateRange } from '@/lib/date-utils';
 const TABS = ['Pending', 'All'] as const;
 
 export default function StayRequestsList() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -35,7 +37,7 @@ export default function StayRequestsList() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>Stay Requests</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.stayRequests')}</ThemedText>
       </View>
 
       <View style={[styles.tabs, { borderColor: colors.icon + '33' }]}>
