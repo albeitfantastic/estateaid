@@ -19,12 +19,20 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+interface PaywallScreenProps {
+  /**
+   * Override the default dismiss behaviour (back or home navigation).
+   * Used by the paywall flow to intercept dismiss → show the exit offer screen.
+   */
+  onDismiss?: () => void;
+}
+
 /**
  * RevenueCat Paywall (dashboard-designed UI via react-native-purchases-ui).
  * Products `monthly` / `yearly` should be on the current offering in RevenueCat.
  * Trusted unlock still follows Supabase mirror after webhook; we poll after purchase/restore.
  */
-export function PaywallScreen() {
+export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
   const { t } = useTranslation();
   const router = useRouter();
   const segments = useSegments();
@@ -38,13 +46,17 @@ export function PaywallScreen() {
 
   /** After `replace` from onboarding there is no stack to pop — go to the correct home tab. */
   const leavePaywall = useCallback(() => {
+    if (onDismiss) {
+      onDismiss();
+      return;
+    }
     if (router.canGoBack()) {
       router.back();
       return;
     }
     const root = segments[0];
     router.replace((root === '(guest)' ? '/(guest)/home' : '/(owner)/home') as never);
-  }, [router, segments]);
+  }, [onDismiss, router, segments]);
 
   const pollMirrorUntilActive = useCallback(async (maxAttempts = 8) => {
     setConfirming(true);

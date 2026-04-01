@@ -1,6 +1,7 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface SectionHeaderProps {
@@ -39,11 +40,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     opacity: 0.55,
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.labelBold,
   },
   action: {
     fontSize: 13,
     fontWeight: '600',
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.label,
   },
 });

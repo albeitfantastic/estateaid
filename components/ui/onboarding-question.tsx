@@ -2,14 +2,16 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { Fonts, Radius } from '@/constants/theme';
+
 const C = {
   bg: '#F4F4F2',
   navy: '#2C554E',
-  gold: '#607D8B',
   text: '#1A2B28',
   muted: '#607D8B',
   border: '#DDE1E0',
   surface: '#FFFFFF',
+  selectedBg: '#EBF2F0',
 };
 
 interface OnboardingQuestionProps {
@@ -115,6 +117,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: C.muted,
     fontWeight: '500',
+    fontFamily: Fonts.label,
     letterSpacing: 0.5,
     marginBottom: 16,
   },
@@ -124,12 +127,14 @@ const styles = StyleSheet.create({
     color: C.text,
     lineHeight: 36,
     letterSpacing: -0.5,
+    fontFamily: Fonts.heading,
     marginBottom: 8,
   },
   hint: {
     fontSize: 15,
     color: C.muted,
     lineHeight: 22,
+    fontFamily: Fonts.body,
     marginBottom: 32,
   },
   options: {
@@ -140,7 +145,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: C.surface,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     borderWidth: 1.5,
     borderColor: C.border,
     paddingVertical: 18,
@@ -149,22 +154,24 @@ const styles = StyleSheet.create({
   },
   optionSelected: {
     borderColor: C.navy,
-    backgroundColor: '#EBF2F0',
+    backgroundColor: C.selectedBg,
   },
   optionText: {
     flex: 1,
     fontSize: 16,
     color: C.text,
     lineHeight: 22,
+    fontFamily: Fonts.body,
   },
   optionTextSelected: {
     color: C.navy,
     fontWeight: '600',
+    fontFamily: Fonts.headingSemiBold,
   },
   radio: {
     width: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: Radius.full,
     borderWidth: 2,
     borderColor: C.border,
     alignItems: 'center',
@@ -176,7 +183,7 @@ const styles = StyleSheet.create({
   radioInner: {
     width: 10,
     height: 10,
-    borderRadius: 5,
+    borderRadius: Radius.full,
     backgroundColor: C.navy,
   },
   footer: {
@@ -185,7 +192,7 @@ const styles = StyleSheet.create({
   },
   btn: {
     backgroundColor: C.navy,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     paddingVertical: 18,
     alignItems: 'center',
   },
@@ -196,6 +203,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+    fontFamily: Fonts.heading,
     letterSpacing: 0.3,
   },
 });

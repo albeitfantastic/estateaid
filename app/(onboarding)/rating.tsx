@@ -38,7 +38,7 @@ export default function RatingScreen() {
       router.replace(guestInvitesPath as never);
       return;
     }
-    router.replace('/(owner)/settings/paywall' as never);
+    router.replace('/(owner)/settings/paywall-trust' as never);
   }
 
   return (

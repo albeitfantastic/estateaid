@@ -27,6 +27,12 @@ export default function OwnerSettingsLayout() {
       <Stack.Screen name="language" options={{ title: t('settingsScreens.languageTitle') }} />
       <Stack.Screen name="paywall" options={{ headerShown: false }} />
       <Stack.Screen name="customer-center" options={{ headerShown: false }} />
+      {/* Maison paywall flow — 5 screens, all manage their own header */}
+      <Stack.Screen name="paywall-trust" options={{ headerShown: false }} />
+      <Stack.Screen name="paywall-main" options={{ headerShown: false }} />
+      <Stack.Screen name="paywall-trial" options={{ headerShown: false }} />
+      <Stack.Screen name="paywall-outcome" options={{ headerShown: false }} />
+      <Stack.Screen name="paywall-exit" options={{ headerShown: false }} />
     </Stack>
   );
 }

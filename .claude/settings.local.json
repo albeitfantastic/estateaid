@@ -57,7 +57,11 @@
       "Bash(find /c/Users/svenk/local_projects/EstateAid/app -type d -name \"\\(onboarding\\)\")",
       "Bash(find /c/Users/svenk/local_projects/EstateAid/app -path \"*/\\(owner\\)/*.tsx\" -type f)",
       "Bash(find \"C:\\\\Users\\\\svenk\\\\local_projects\\\\EstateAid\\\\app\\\\\\(guest\\)\" -type f -name \"*.tsx\")",
-      "Bash(find C:Userssvenklocal_projectsEstateAid -type f -name *.env*)"
+      "Bash(find C:Userssvenklocal_projectsEstateAid -type f -name *.env*)",
+      "Bash(find /c/Users/svenk/local_projects/EstateAid -type f -name *subscription*provider* -o -name *provider*)",
+      "Bash(xargs head:*)",
+      "Bash(head:*)",
+      "Bash(find \"C:\\\\Users\\\\svenk\\\\local_projects\\\\EstateAid/app/\\(owner\\)\" -type f -name \"*.tsx\")"
     ]
   }
 }

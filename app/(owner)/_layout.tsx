@@ -1,11 +1,21 @@
 import { router, Tabs } from 'expo-router';
 import { Platform } from 'react-native';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const PAYWALL_ROUTES = new Set([
+  'paywall-trust',
+  'paywall-main',
+  'paywall-trial',
+  'paywall-outcome',
+  'paywall-exit',
+  'paywall',
+]);
 
 export default function OwnerTabLayout() {
   const colorScheme = useColorScheme();
@@ -94,6 +104,7 @@ export default function OwnerTabLayout() {
       <Tabs.Screen name="tickets/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
+      
     </Tabs>
   );
 }

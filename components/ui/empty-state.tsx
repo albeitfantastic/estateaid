@@ -1,9 +1,9 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from './icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { TouchableOpacity } from 'react-native';
 
 interface EmptyStateProps {
   icon?: string;
@@ -54,20 +54,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     textAlign: 'center',
-    fontFamily: 'serif',
+    fontFamily: Fonts.heading,
     fontWeight: '700',
   },
   subtitle: {
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.body,
   },
   btn: {
     marginTop: 16,
     paddingHorizontal: 28,
     paddingVertical: 13,
-    borderRadius: 14,
+    borderRadius: Radius.xl,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.heading,
     letterSpacing: 0.3,
   },
 });

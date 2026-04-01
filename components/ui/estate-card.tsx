@@ -1,8 +1,9 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
+
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from './icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Estate } from '@/types';
 
@@ -18,7 +19,7 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: '#2A1F18' }]}
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.text }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -63,7 +64,7 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
+    borderRadius: Radius.xl,
     borderWidth: 1,
     marginBottom: 14,
     overflow: 'hidden',
@@ -94,16 +95,17 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 17,
     flex: 1,
-    fontFamily: 'serif',
+    fontFamily: Fonts.headingSemiBold,
   },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 12,
+    borderRadius: Radius.lg,
   },
   badgeText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: Fonts.label,
   },
   locationRow: {
     flexDirection: 'row',
@@ -114,11 +116,13 @@ const styles = StyleSheet.create({
   location: {
     fontSize: 13,
     flex: 1,
+    fontFamily: Fonts.body,
   },
   description: {
     fontSize: 13,
     lineHeight: 18,
     marginTop: 4,
+    fontFamily: Fonts.body,
   },
   chevron: {
     position: 'absolute',

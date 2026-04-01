@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
+
 import { ThemedText } from '@/components/themed-text';
-import { StatusColors } from '@/constants/theme';
+import { Fonts, Radius, StatusColors } from '@/constants/theme';
 
 type BadgeVariant = keyof typeof StatusColors | 'neutral';
 
@@ -31,13 +32,14 @@ const styles = StyleSheet.create({
   pill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 20,
+    borderRadius: Radius.full,
     borderWidth: 1,
     alignSelf: 'flex-start',
   },
   text: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: Fonts.label,
     textTransform: 'capitalize',
   },
 });

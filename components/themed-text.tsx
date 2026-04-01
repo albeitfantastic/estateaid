@@ -1,6 +1,8 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors, Fonts } from '@/constants/theme';
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
@@ -16,6 +18,8 @@ export function ThemedText({
   ...rest
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const scheme = useColorScheme();
+  const linkColor = Colors[scheme ?? 'light'].brownMid;
 
   return (
     <Text
@@ -26,6 +30,7 @@ export function ThemedText({
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
         type === 'subtitle' ? styles.subtitle : undefined,
         type === 'link' ? styles.link : undefined,
+        type === 'link' ? { color: linkColor } : undefined,
         style,
       ]}
       {...rest}
@@ -37,29 +42,28 @@ const styles = StyleSheet.create({
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.body,
   },
   defaultSemiBold: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '600',
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.headingSemiBold,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: '700',
     lineHeight: 36,
-    fontFamily: 'serif',
+    fontFamily: Fonts.heading,
   },
   subtitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    fontFamily: 'serif',
+    fontWeight: '700',
+    fontFamily: Fonts.heading,
   },
   link: {
     lineHeight: 30,
     fontSize: 16,
-    color: '#A0785A',
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.body,
   },
 });
