@@ -5,9 +5,9 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Elevation, Layout, Radius, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import type { AccessTier } from '@/lib/access-tier';
 import { supportMailto } from '@/lib/support';
 import type { OwnerTier } from '@/store/auth-store';
-import type { UserRole } from '@/types';
 
 export type SettingsDestination = 'profile' | 'language' | 'subscription' | 'account';
 
@@ -17,7 +17,7 @@ export interface SettingsSheetProps {
   colors: ThemeColors;
   insets: { top: number; bottom: number };
   currentUser: { name: string; email: string } | null;
-  userRole: UserRole;
+  accessTier: AccessTier;
   selectedTier: OwnerTier | null;
   isDark: boolean;
   notificationsOn: boolean;
@@ -33,7 +33,7 @@ export function SettingsSheet({
   colors,
   insets,
   currentUser,
-  userRole,
+  accessTier,
   selectedTier,
   isDark,
   notificationsOn,
@@ -52,11 +52,13 @@ export function SettingsSheet({
       .slice(0, 2)
       .toUpperCase() ?? '';
   const tierLabel =
-    userRole === 'guest'
-      ? t('common.guest')
-      : selectedTier === 'premium'
-        ? t('common.premium')
-        : t('common.starter');
+    accessTier === 'standard'
+      ? t('common.accessStandard')
+      : accessTier === 'trial'
+        ? t('common.accessTrial')
+        : selectedTier === 'premium'
+          ? t('common.premium')
+          : t('common.accessPro');
 
   function go(dest: SettingsDestination) {
     onClose();

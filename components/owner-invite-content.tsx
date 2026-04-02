@@ -13,7 +13,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { InvitationRole } from '@/types';
+import type { EstateInviteRole } from '@/types';
 import { generateInviteCode, generateUuidV4 } from '@/lib/id';
 import {
   buildMultiInviteShareMessage,
@@ -21,15 +21,10 @@ import {
   inviteEmailSubject,
 } from '@/lib/invite-messages';
 
-const ROLES: { value: InvitationRole; label: string }[] = [
-  { value: 'guest', label: 'Guest' },
-  { value: 'owner', label: 'Owner' },
-];
-
 interface GeneratedInvite {
   estateName: string;
   estateId: string;
-  role: InvitationRole;
+  role: EstateInviteRole;
   code: string;
 }
 
@@ -52,12 +47,21 @@ export function OwnerInviteContent({
   const allEstates = useEstateStore((s) => s.estates);
   const { sendInvitation } = useInvitationStore();
 
+  const roleOptions = useMemo(
+    () =>
+      [
+        { value: 'guest' as const, label: t('ownerInvite.estateRoleGuestLabel') },
+        { value: 'owner' as const, label: t('ownerInvite.estateRoleCoOwnerLabel') },
+      ] as const,
+    [t]
+  );
+
   const estates = useMemo(
     () => allEstates.filter((e) => e.ownerId === currentUser?.id),
     [allEstates, currentUser?.id]
   );
 
-  const [estateRoles, setEstateRoles] = useState<Record<string, InvitationRole>>({});
+  const [estateRoles, setEstateRoles] = useState<Record<string, EstateInviteRole>>({});
   const [note, setNote] = useState('');
   const [createdInvites, setCreatedInvites] = useState<GeneratedInvite[]>([]);
   const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -88,7 +92,7 @@ export function OwnerInviteContent({
     });
   }
 
-  function setRole(estateId: string, role: InvitationRole) {
+  function setRole(estateId: string, role: EstateInviteRole) {
     setEstateRoles((prev) => ({ ...prev, [estateId]: role }));
   }
 
@@ -179,7 +183,7 @@ export function OwnerInviteContent({
                           {t('ownerInvite.roleFor', { name: e.name })}
                         </ThemedText>
                         <View style={styles.rolePills}>
-                          {ROLES.map((r) => {
+                          {roleOptions.map((r) => {
                             const roleSelected = currentRole === r.value;
                             return (
                               <TouchableOpacity
@@ -270,7 +274,9 @@ export function OwnerInviteContent({
                 </ThemedText>
                 <View style={[styles.roleBadge, { backgroundColor: colors.tint + '15' }]}>
                   <ThemedText style={[styles.roleBadgeText, { color: colors.tint }]}>
-                    {inv.role.charAt(0).toUpperCase() + inv.role.slice(1)}
+                    {inv.role === 'owner'
+                      ? t('ownerInvite.estateRoleCoOwnerLabel')
+                      : t('ownerInvite.estateRoleGuestLabel')}
                   </ThemedText>
                 </View>
               </View>

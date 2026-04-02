@@ -139,8 +139,7 @@ export default function RootLayout() {
           <Stack.Screen name="auth" />
           <Stack.Screen name="(onboarding)" />
           <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(owner)" />
-          <Stack.Screen name="(guest)" />
+          <Stack.Screen name="(app)" />
         </Stack>
         <StatusBar style="auto" />
       </SubscriptionProvider>

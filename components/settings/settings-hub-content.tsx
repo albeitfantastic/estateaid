@@ -10,11 +10,14 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supportMailto } from '@/lib/support';
+import { useAccessTier } from '@/lib/access-tier';
 import { useAuthStore } from '@/store/auth-store';
 
 import type { SettingsDestination } from './settings-sheet';
 
-export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/settings' | '/(guest)/settings' }) {
+const SETTINGS_BASE = '/(app)/settings' as const;
+
+export function SettingsHubContent() {
   const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -28,15 +31,17 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
   const notificationsEnabled = useAuthStore((s) => s.notificationsEnabled);
   const setNotificationsEnabled = useAuthStore((s) => s.setNotificationsEnabled);
   const signOut = useAuthStore((s) => s.signOut);
+  const accessTier = useAccessTier();
 
   const isDark = themePreference === 'dark';
-  const userRole = currentUser?.role ?? 'guest';
   const tierLabel =
-    userRole === 'guest'
-      ? t('common.guest')
-      : selectedTier === 'premium'
-        ? t('common.premium')
-        : t('common.starter');
+    accessTier === 'standard'
+      ? t('common.accessStandard')
+      : accessTier === 'trial'
+        ? t('common.accessTrial')
+        : selectedTier === 'premium'
+          ? t('common.premium')
+          : t('common.accessPro');
   const initials =
     currentUser?.name
       .split(' ')
@@ -46,7 +51,7 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
       .toUpperCase() ?? '';
 
   function pushSection(dest: SettingsDestination) {
-    router.push(`${settingsBase}/${dest}` as never);
+    router.push(`${SETTINGS_BASE}/${dest}` as never);
   }
 
   function menuRow(

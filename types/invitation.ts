@@ -1,5 +1,7 @@
 export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked';
-export type InvitationRole = 'guest' | 'owner';
+
+/** Access level on a specific estate when accepting an invite (not an account type). */
+export type EstateInviteRole = 'guest' | 'owner';
 
 export interface Invitation {
   id: string;
@@ -12,9 +14,13 @@ export interface Invitation {
    */
   guestEmail?: string;
   guestId?: string;
-  role?: InvitationRole;
+  /** Co-owner vs guest on this property only. */
+  role?: EstateInviteRole;
   status: InvitationStatus;
   message?: string;
   createdAt: string;
   respondedAt?: string;
 }
+
+/** @deprecated Use EstateInviteRole */
+export type InvitationRole = EstateInviteRole;

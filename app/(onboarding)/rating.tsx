@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { APP_STORE_URL } from '@/lib/invite-messages';
+import { deriveAccessTier } from '@/lib/access-tier';
 import { useAuthStore } from '@/store/auth-store';
+import { useSubscription } from '@/providers/subscription-provider';
 
 const C = {
   bg: '#F4F4F2',
@@ -20,10 +22,9 @@ const C = {
 export default function RatingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ role?: string | string[] }>();
-  const rawRole = params.role;
-  const role = Array.isArray(rawRole) ? rawRole[0] : rawRole;
   const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
+  const trialEndsAt = useAuthStore((s) => s.currentUser?.trialEndsAt);
+  const { isPro } = useSubscription();
   const [selected, setSelected] = useState<number | null>(null);
 
   const ratingLabels = useMemo(
@@ -32,13 +33,13 @@ export default function RatingScreen() {
   );
 
   function proceed() {
-    const guestInvitesPath = '/(guest)/invitations';
     completeOnboarding();
-    if (role === 'guest') {
-      router.replace(guestInvitesPath as never);
+    const tier = deriveAccessTier({ trialEndsAt, isProEntitlement: isPro });
+    if (tier === 'standard') {
+      router.replace('/(app)/settings/paywall-trust' as never);
       return;
     }
-    router.replace('/(owner)/settings/paywall-trust' as never);
+    router.replace('/(app)/home' as never);
   }
 
   return (

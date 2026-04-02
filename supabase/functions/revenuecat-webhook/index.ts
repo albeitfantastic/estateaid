@@ -1,6 +1,11 @@
 /**
  * RevenueCat → Supabase entitlement mirror.
  *
+ * Trial vs Pro: the app-managed 14-day window lives in `profiles.trial_*` (RPC `start_app_trial`).
+ * This webhook mirrors store/RC entitlements only (e.g. `maison_pro`). Do not mix the two clocks
+ * for the same UX period — Pro access after trial is determined here + `user_has_active_entitlement`;
+ * in-trial host access uses `trial_ends_at` on the client and `user_has_full_product_access()` in RLS.
+ *
  * Security:
  * - verify_jwt=false in config.toml: RevenueCat does not send Supabase JWTs.
  * - Authenticate using Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET> (set the same value in RevenueCat dashboard webhook auth).

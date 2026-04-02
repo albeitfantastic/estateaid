@@ -1,4 +1,4 @@
-import type { InvitationRole } from '@/types';
+import type { EstateInviteRole } from '@/types';
 
 export const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
 export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
@@ -16,12 +16,12 @@ function inviteEmailLine(inviteeEmail?: string): string {
 export type InviteMessageLine = {
   estateName: string;
   inviteCode: string;
-  role?: InvitationRole;
+  role?: EstateInviteRole;
 };
 
-function roleLabel(role?: InvitationRole): string {
-  if (!role) return 'Guest';
-  return role.charAt(0).toUpperCase() + role.slice(1);
+function roleLabel(role?: EstateInviteRole): string {
+  if (role === 'owner') return 'Co-owner';
+  return 'Guest on property';
 }
 
 function formatInviteLines(items: InviteMessageLine[]): string {
@@ -79,13 +79,13 @@ export function buildWhatsAppMultiInviteMessage(
 export function buildWhatsAppInviteMessage(opts: {
   estateName: string;
   inviteCode: string;
-  role?: InvitationRole;
+  role?: EstateInviteRole;
   note?: string;
   inviteeEmail?: string;
 }): string {
   const { estateName, inviteCode, role, note, inviteeEmail } = opts;
   const noteSection = note ? `\n\n"${note}"` : '';
-  const roleSection = role ? ` as ${role}` : '';
+  const roleSection = role ? ` as ${roleLabel(role)}` : '';
   return (
     `${APP_STORE_URL}\n\n` +
     `Already have EstateAid? Your invite code: ${inviteCode}\n\n` +
@@ -98,7 +98,7 @@ export function buildWhatsAppInviteMessage(opts: {
 export function buildFullInviteMessage(opts: {
   estateName: string;
   inviteCode: string;
-  role?: InvitationRole;
+  role?: EstateInviteRole;
   note?: string;
   footerLine?: string;
   inviteeEmail?: string;
@@ -108,12 +108,12 @@ export function buildFullInviteMessage(opts: {
 }): string {
   const { estateName, inviteCode, role, note, footerLine, inviteeEmail, openInvite, openInviteSuffix } = opts;
   const noteSection = note ? `\n\n"${note}"` : '';
-  const roleSection = role ? ` as ${role}` : '';
+  const roleSection = role ? ` as ${roleLabel(role)}` : '';
   const footer =
     footerLine ??
     (role === 'guest' || role === undefined
-      ? 'Enter your code after signing up as a Guest.'
-      : 'Enter your code after signing up.');
+      ? 'Enter your code after signing up. Redeem your invite from the Invitations tab.'
+      : 'Enter your code after signing up. Co-owner invites work the same way.');
   const openSuffix =
     openInvite && !inviteeEmail?.trim()
       ? `\n\n${openInviteSuffix ?? DEFAULT_OPEN_INVITE_SUFFIX}`

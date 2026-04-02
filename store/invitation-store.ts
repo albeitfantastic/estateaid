@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Invitation, InvitationStatus, InvitationRole } from '@/types';
+import { Invitation, InvitationStatus, type EstateInviteRole } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useEstateStore } from '@/store/estate-store';
 import { dedupeById } from '@/lib/dedup-by-id';
@@ -16,7 +16,7 @@ function fromDb(row: Record<string, unknown>): Invitation {
     inviteCode: row.invite_code as string,
     guestEmail: row.guest_email as string | undefined,
     guestId: row.guest_id as string | undefined,
-    role: row.role as InvitationRole | undefined,
+    role: row.role as EstateInviteRole | undefined,
     status: row.status as InvitationStatus,
     message: row.message as string | undefined,
     createdAt: (row.created_at ?? '') as string,
@@ -47,7 +47,7 @@ interface InvitationState {
   sendInvitation: (invitation: Invitation) => Promise<{ error: string | null }>;
   respondToInvitation: (id: string, status: 'accepted' | 'declined', guestId?: string) => void;
   revokeInvitation: (id: string) => void;
-  updateInvitationRole: (id: string, role: InvitationRole) => void;
+  updateInvitationRole: (id: string, role: EstateInviteRole) => void;
   redeemCode: (
     code: string,
     guestId: string

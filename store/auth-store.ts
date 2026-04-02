@@ -18,6 +18,21 @@ export function isOnboardingCompleteForCurrentUser(s: {
   return s.hasCompletedOnboarding && s.onboardingCompletedForUserId === id;
 }
 
+function profileToUser(
+  profile: Record<string, unknown>,
+  email: string
+): User {
+  return {
+    id: profile.id as string,
+    name: profile.name as string,
+    email,
+    avatarUrl: (profile.avatar_url as string | null) ?? undefined,
+    createdAt: (profile.created_at ?? '') as string,
+    trialEndsAt: (profile.trial_ends_at as string | null) ?? null,
+    trialStartedAt: (profile.trial_started_at as string | null) ?? null,
+  };
+}
+
 interface AuthState {
   currentUser: User | null;
   isHydrated: boolean;
@@ -30,7 +45,7 @@ interface AuthState {
   /** Persisted; when false, skip push registration and clear server token. */
   notificationsEnabled: boolean;
   setUser: (user: User) => void;
-  patchUser: (partial: Partial<Pick<User, 'name' | 'avatarUrl' | 'role'>>) => void;
+  patchUser: (partial: Partial<Pick<User, 'name' | 'avatarUrl' | 'trialEndsAt' | 'trialStartedAt'>>) => void;
   clearUser: () => void;
   setHydrated: () => void;
   completeOnboarding: (tier?: OwnerTier) => void;
@@ -39,12 +54,13 @@ interface AuthState {
   setThemePreference: (theme: ThemePreference) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
   bootstrapSession: () => Promise<void>;
+  refreshProfileFromSupabase: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       currentUser: null,
       isHydrated: false,
       hasCompletedOnboarding: false,
@@ -73,23 +89,18 @@ export const useAuthStore = create<AuthState>()(
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       bootstrapSession: async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           if (session?.user) {
             const { data: profile } = await supabase
               .from('profiles')
-              .select('*')
+              .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at')
               .eq('id', session.user.id)
               .single();
             if (profile) {
               set({
-                currentUser: {
-                  id: profile.id,
-                  name: profile.name,
-                  email: session.user.email!,
-                  avatarUrl: profile.avatar_url ?? undefined,
-                  role: profile.role,
-                  createdAt: profile.created_at,
-                },
+                currentUser: profileToUser(profile as Record<string, unknown>, session.user.email!),
               });
             }
           }
@@ -99,13 +110,32 @@ export const useAuthStore = create<AuthState>()(
           set({ isHydrated: true });
         }
       },
+      refreshProfileFromSupabase: async () => {
+        const uid = get().currentUser?.id;
+        if (!uid) return;
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at')
+            .eq('id', uid)
+            .single();
+          if (profile) {
+            const email = get().currentUser?.email;
+            if (email) {
+              set({ currentUser: profileToUser(profile as Record<string, unknown>, email) });
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      },
       signOut: async () => {
         await supabase.auth.signOut();
         set({ currentUser: null });
       },
     }),
     {
-      name: '@estateaid/auth/v9',
+      name: '@estateaid/auth/v10',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         hasCompletedOnboarding: state.hasCompletedOnboarding,

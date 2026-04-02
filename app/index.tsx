@@ -31,9 +31,5 @@ export default function Index() {
     return <Redirect href={'/(onboarding)/q1' as never} />;
   }
 
-  if (currentUser.role === 'owner') {
-    return <Redirect href={'/(owner)/home' as never} />;
-  }
-
-  return <Redirect href={'/(guest)/home' as never} />;
+  return <Redirect href={'/(app)/home' as never} />;
 }

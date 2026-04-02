@@ -19,12 +19,18 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { authRedirectUri, ensureProfileRowForAuthUser, savePendingSignupProfile, signInWithOAuth } from '@/lib/auth-linking';
+import {
+  authRedirectUri,
+  ensureProfileRowForAuthUser,
+  savePendingSignupProfile,
+  signInWithOAuth,
+  type ProfileRow,
+} from '@/lib/auth-linking';
 import { loadAllStores } from '@/lib/load-all-stores';
 import { supabase } from '@/lib/supabase';
 import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { User, type UserRole } from '@/types';
+import { User } from '@/types';
 import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from 'react-i18next';
@@ -113,18 +119,19 @@ export default function AuthScreen() {
   const [loadingOAuth, setLoadingOAuth] = useState<'google' | 'apple' | null>(null);
 
   // ── helpers ────────────────────────────────────────────────────────────────
-  async function finishSignIn(profile: { id: string; name: string; role: UserRole; avatar_url: string | null; created_at: string }, userEmail: string) {
+  async function finishSignIn(profile: ProfileRow, userEmail: string) {
     const user: User = {
       id: profile.id,
       name: profile.name,
       email: userEmail,
       avatarUrl: profile.avatar_url ?? undefined,
-      role: profile.role,
       createdAt: profile.created_at,
+      trialEndsAt: profile.trial_ends_at ?? null,
+      trialStartedAt: profile.trial_started_at ?? null,
     };
     setUser(user);
     await loadAllStores();
-    if (pendingInviteCode && user.role === 'guest') {
+    if (pendingInviteCode) {
       const r = await redeemCode(pendingInviteCode, user.id);
       setPendingInviteCode(null);
       if (!r.success) {
@@ -143,7 +150,7 @@ export default function AuthScreen() {
       router.replace('/(onboarding)/q1' as never);
       return;
     }
-    router.replace(user.role === 'guest' ? '/(guest)/home' : '/(owner)/home' as never);
+    router.replace('/(app)/home' as never);
   }
 
   // ── sign in ────────────────────────────────────────────────────────────────
@@ -198,17 +205,24 @@ export default function AuthScreen() {
         return;
       }
       if (!data.session) {
-        await savePendingSignupProfile({ userId: data.user.id, name: name.trim(), role: 'owner' });
+        await savePendingSignupProfile({ userId: data.user.id, name: name.trim() });
         Alert.alert(t('auth.checkEmailTitle'), t('auth.checkEmailBody'), [
           { text: t('common.ok'), onPress: () => setMode('signin') },
         ]);
         return;
       }
       const now = new Date().toISOString();
-      const { error: profileError } = await supabase.from('profiles').insert({ id: data.user.id, name: name.trim(), role: 'owner', created_at: now });
+      const { error: profileError } = await supabase.from('profiles').insert({ id: data.user.id, name: name.trim(), created_at: now });
       if (profileError) { Alert.alert('Profile setup failed', profileError.message); return; }
       resetOnboarding();
-      setUser({ id: data.user.id, name: name.trim(), email: data.user.email!, role: 'owner', createdAt: now });
+      setUser({
+        id: data.user.id,
+        name: name.trim(),
+        email: data.user.email!,
+        createdAt: now,
+        trialEndsAt: null,
+        trialStartedAt: null,
+      });
       router.replace('/(onboarding)/q1' as never);
     } finally {
       setLoading(false);
@@ -219,7 +233,7 @@ export default function AuthScreen() {
   async function handleOAuth(provider: 'google' | 'apple') {
     setLoadingOAuth(provider);
     try {
-      const result = await signInWithOAuth(provider, 'owner');
+      const result = await signInWithOAuth(provider);
       if (!result.profile) {
         if (result.error !== 'cancelled')
           Alert.alert(t('auth.signInFailedGeneric'), result.error ?? t('auth.tryAgain'));

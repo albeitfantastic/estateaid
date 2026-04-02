@@ -35,7 +35,7 @@ export default function RedeemScreen() {
     }
     completeOnboarding();
     if (withCode) {
-      router.replace('/(guest)/home' as never);
+      router.replace('/(app)/home' as never);
     } else {
       router.replace('/(auth)' as never);
     }

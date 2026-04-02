@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -35,7 +35,6 @@ interface PaywallScreenProps {
 export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
   const { t } = useTranslation();
   const router = useRouter();
-  const segments = useSegments();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -54,9 +53,8 @@ export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
       router.back();
       return;
     }
-    const root = segments[0];
-    router.replace((root === '(guest)' ? '/(guest)/home' : '/(owner)/home') as never);
-  }, [onDismiss, router, segments]);
+    router.replace('/(app)/home' as never);
+  }, [onDismiss, router]);
 
   const pollMirrorUntilActive = useCallback(async (maxAttempts = 8) => {
     setConfirming(true);

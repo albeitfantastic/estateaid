@@ -41,6 +41,9 @@ export const catalogPartA: Record<string, unknown> = {
     privacyPolicy: 'Privacy Policy',
     language: 'Language',
     guest: 'Guest',
+    accessStandard: 'Standard',
+    accessTrial: 'Trial',
+    accessPro: 'Pro',
     premium: 'Premium',
     starter: 'Starter',
     ownerResponse: 'Owner response',
@@ -208,6 +211,15 @@ export const catalogPartA: Record<string, unknown> = {
   },
   subscriptionSettings: {
     planGuest: 'Guest — free',
+    planTrial: 'Trial — full access until {{date}}',
+    planProActive: '{{plan}} (active)',
+    planStandard: 'Standard — host tools locked',
+    trialSub: 'After your trial, subscribe to {{plan}} to keep full host access.',
+    startTrialFlow: 'Start free trial',
+    standardUpgradeHint: 'Start the trial or subscribe to unlock property management.',
+    standardManageTitle: 'No active subscription',
+    standardManageBody:
+      'Subscribe to {{plan}} or start a trial from the paywall flow to manage billing on this account.',
     planOwnerPro: 'Owner — {{plan}}',
     planOwnerProPending: 'Owner — {{plan}} (pending)',
     planOwnerStarter: 'Owner — Starter',
@@ -264,6 +276,22 @@ export const catalogPartA: Record<string, unknown> = {
     purchaseErrorFallback: 'Something went wrong.',
     restoreErrorTitle: 'Restore error',
     restoreErrorBody: 'Restore failed.',
+  },
+  home: {
+    standardSub: 'Guest tools and invites. Upgrade to manage your own properties.',
+    lockedPropertiesTitle_one: '{{count}} property is locked',
+    lockedPropertiesTitle_other: '{{count}} properties are locked',
+    lockedPropertiesSub: 'Tap to start a trial or subscribe and unlock host tools.',
+  },
+  estatesList: {
+    emptyTitle: 'No properties yet',
+    emptySub: 'Accept an invite or upgrade to add your own vacation home.',
+    addEstate: 'Add property',
+    lockedTap: 'Locked — tap to upgrade',
+    lockedDetailTitle: 'Host tools locked',
+    lockedDetailSub:
+      'This property is yours, but managing it needs Pro or an active trial. Upgrade to edit guests, stays, and more.',
+    lockedDetailCta: 'Unlock host tools',
   },
   guestHome: {
     greeting: 'Good day, {{name}}',

@@ -23,7 +23,7 @@ export default function Q3() {
       options={options}
       selectedIndex={selected}
       onSelect={setSelected}
-      onContinue={() => router.push('/(onboarding)/role' as never)}
+      onContinue={() => router.push('/(onboarding)/rating' as never)}
     />
   );
 }
