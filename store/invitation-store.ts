@@ -130,10 +130,7 @@ export const useInvitationStore = create<InvitationState>()(
         let inv =
           get().invitations.find((i) => i.inviteCode === norm && i.status === 'pending') ?? null;
 
-        if (inv) {
-          if (!inv.guestEmail?.trim()) {
-            return { success: false, reason: 'invite_missing_email' as const };
-          }
+        if (inv?.guestEmail?.trim()) {
           if (normalizeGuestEmail(inv.guestEmail) !== sessionEmail) {
             return { success: false, reason: 'wrong_invitee' as const };
           }
@@ -168,8 +165,6 @@ export const useInvitationStore = create<InvitationState>()(
               if (r === 'not_authenticated') return { success: false, reason: 'fetch_error' as const };
               if (r === 'wrong_invitee') return { success: false, reason: 'wrong_invitee' as const };
               if (r === 'no_session_email') return { success: false, reason: 'no_session_email' as const };
-              if (r === 'invite_missing_email')
-                return { success: false, reason: 'invite_missing_email' as const };
               return { success: false, reason: (r as string) ?? 'invalid_or_used' };
             }
           }
@@ -191,11 +186,10 @@ export const useInvitationStore = create<InvitationState>()(
             return { success: false, reason: 'invalid_or_used' };
           }
           inv = fromDb(data);
-          if (!inv.guestEmail?.trim()) {
-            return { success: false, reason: 'invite_missing_email' as const };
-          }
-          if (normalizeGuestEmail(inv.guestEmail) !== sessionEmail) {
-            return { success: false, reason: 'wrong_invitee' as const };
+          if (inv.guestEmail?.trim()) {
+            if (normalizeGuestEmail(inv.guestEmail) !== sessionEmail) {
+              return { success: false, reason: 'wrong_invitee' as const };
+            }
           }
           set((s) =>
             s.invitations.some((i) => i.id === inv!.id)

@@ -21,17 +21,17 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: Emp
   return (
     <View style={styles.container}>
       {icon && (
-        <View style={[styles.iconWrap, { backgroundColor: colors.tint + '12' }]}>
-          <IconSymbol name={icon as never} size={32} color={colors.tint + 'CC'} />
+        <View style={[styles.iconWrap, { backgroundColor: colors.tintMuted }]}>
+          <IconSymbol name={icon as never} size={32} color={colors.tint} />
         </View>
       )}
       <ThemedText style={styles.title}>{title}</ThemedText>
       {subtitle && (
-        <ThemedText style={[styles.subtitle, { color: colors.icon }]}>{subtitle}</ThemedText>
+        <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</ThemedText>
       )}
       {actionLabel && onAction && (
         <TouchableOpacity
-          style={[styles.btn, { backgroundColor: colors.tint }]}
+          style={[styles.btn, { backgroundColor: colors.tint }, Elevation.fab[scheme]]}
           onPress={onAction}
           activeOpacity={0.8}
         >

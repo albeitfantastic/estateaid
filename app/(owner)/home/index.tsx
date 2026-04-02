@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SurfaceCard } from '@/components/ui/surface-card';
-import { Colors, EstateColors, Layout, Radius, elevationStyle } from '@/constants/theme';
+import { Colors, EstateColors, Layout, Radius, elevationStyle, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatDate, formatDateRange, getDaysInRange, today } from '@/lib/date-utils';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
@@ -182,7 +182,14 @@ export default function OwnerDashboard() {
         </View>
         <TouchableOpacity
           onPress={() => setMenuOpen(true)}
-          style={[styles.menuBtn, { backgroundColor: colors.tint + '14' }]}
+          style={[
+            styles.menuBtn,
+            {
+              backgroundColor: colors.tintMuted,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: colors.border,
+            },
+          ]}
           activeOpacity={0.7}
           hitSlop={12}
         >
@@ -254,24 +261,30 @@ export default function OwnerDashboard() {
           <View style={styles.priorityRow}>
             {todayArrivals.length > 0 && (
               <TouchableOpacity
-                style={[styles.priorityChip, { backgroundColor: '#22c55e18', borderColor: '#22c55e33' }]}
+                style={[
+                  styles.priorityChip,
+                  { backgroundColor: colors.success + '16', borderColor: colors.success + '35' },
+                ]}
                 onPress={() => router.push('/(owner)/stays' as never)}
                 activeOpacity={0.75}
               >
-                <IconSymbol name="arrow.down.circle.fill" size={14} color="#22c55e" />
-                <ThemedText style={[styles.priorityText, { color: '#22c55e' }]}>
+                <IconSymbol name="arrow.down.circle.fill" size={14} color={colors.success} />
+                <ThemedText style={[styles.priorityText, { color: colors.success }]}>
                   {t('ownerHome.arriving', { count: todayArrivals.length })}
                 </ThemedText>
               </TouchableOpacity>
             )}
             {todayDepartures.length > 0 && (
               <TouchableOpacity
-                style={[styles.priorityChip, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b33' }]}
+                style={[
+                  styles.priorityChip,
+                  { backgroundColor: colors.warning + '18', borderColor: colors.warning + '40' },
+                ]}
                 onPress={() => router.push('/(owner)/stays' as never)}
                 activeOpacity={0.75}
               >
-                <IconSymbol name="arrow.up.circle.fill" size={14} color="#f59e0b" />
-                <ThemedText style={[styles.priorityText, { color: '#f59e0b' }]}>
+                <IconSymbol name="arrow.up.circle.fill" size={14} color={colors.warning} />
+                <ThemedText style={[styles.priorityText, { color: colors.warning }]}>
                   {t('ownerHome.departing', { count: todayDepartures.length })}
                 </ThemedText>
               </TouchableOpacity>
@@ -303,7 +316,7 @@ export default function OwnerDashboard() {
               style={[styles.actionCardShell, { borderTopWidth: 3, borderTopColor: colors.tint }]}
               contentStyle={styles.actionCardInner}
             >
-              <View style={[styles.actionIcon, { backgroundColor: colors.tint + '18' }]}>
+              <View style={[styles.actionIcon, { backgroundColor: colors.tintMuted }]}>
                 <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
               </View>
               <ThemedText type="defaultSemiBold" style={styles.actionTitle}>
@@ -325,7 +338,7 @@ export default function OwnerDashboard() {
               style={[styles.actionCardShell, { borderTopWidth: 3, borderTopColor: colors.tint }]}
               contentStyle={styles.actionCardInner}
             >
-              <View style={[styles.actionIcon, { backgroundColor: colors.tint + '18' }]}>
+              <View style={[styles.actionIcon, { backgroundColor: colors.tintMuted }]}>
                 <IconSymbol name="envelope.fill" size={22} color={colors.tint} />
               </View>
               <ThemedText type="defaultSemiBold" style={styles.actionTitle}>
@@ -361,7 +374,7 @@ export default function OwnerDashboard() {
               const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
               const relLabel = getStayRelativeLabel(stay.from, stay.to, todayStr);
               const isActive = stay.from <= todayStr && stay.to >= todayStr;
-              const relColor = isActive ? '#22c55e' : colors.tint;
+              const relColor = isActive ? colors.success : colors.tint;
               return (
                 <TouchableOpacity
                   key={stay.id}
@@ -530,7 +543,7 @@ interface StatCardProps {
   value: number;
   label: string;
   color: string;
-  colors: typeof Colors.light;
+  colors: ThemeColors;
   onPress?: () => void;
 }
 
@@ -547,7 +560,9 @@ function StatCard({ icon, value, label, color, colors, onPress }: StatCardProps)
         contentStyle={styles.statCardInner}
         style={{ borderTopWidth: 3, borderTopColor: color }}
       >
-        <IconSymbol name={icon as never} size={22} color={color} />
+        <View style={[styles.statIconWrap, { backgroundColor: colors.tintMuted }]}>
+          <IconSymbol name={icon as never} size={20} color={color} />
+        </View>
         <ThemedText type="statValue" style={{ color }}>
           {value}
         </ThemedText>
@@ -571,17 +586,24 @@ const styles = StyleSheet.create({
   menuBtn: {
     width: Layout.touchMin,
     height: Layout.touchMin,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  greeting: { fontSize: 30, fontWeight: '700', letterSpacing: -0.8 },
+  sub: { marginTop: 6 },
+  scroll: { paddingHorizontal: Layout.screenPaddingX },
+
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: Layout.sectionGap },
+  statTouchable: { flex: 1 },
+  statIconWrap: {
+    width: 40,
+    height: 40,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  greeting: { fontSize: 28, fontWeight: '700' },
-  sub: { marginTop: 4 },
-  scroll: { paddingHorizontal: Layout.screenPaddingX },
-
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: Layout.sectionGap },
-  statTouchable: { flex: 1 },
-  statCardInner: { alignItems: 'center', gap: 6, paddingVertical: 14, paddingHorizontal: 8 },
+  statCardInner: { alignItems: 'center', gap: 8, paddingVertical: 16, paddingHorizontal: 8 },
 
   // Action buttons
   actionRow: { flexDirection: 'row', gap: 12, marginBottom: Layout.sectionGap },
@@ -591,7 +613,7 @@ const styles = StyleSheet.create({
   actionIcon: {
     width: Layout.touchMin,
     height: Layout.touchMin,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -627,7 +649,7 @@ const styles = StyleSheet.create({
 
   // Calendar
   calendarCard: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: StyleSheet.hairlineWidth,
     marginBottom: Layout.sectionGap - 6,
     overflow: 'hidden',

@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SurfaceCard } from '@/components/ui/surface-card';
-import { Colors, EstateColors, Layout, Radius } from '@/constants/theme';
+import { Colors, EstateColors, Layout, Radius, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatDateRange, today } from '@/lib/date-utils';
 import { guestEmailsMatch } from '@/lib/invite-email';
@@ -77,19 +77,28 @@ export default function GuestHome() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap }]}>
         <View style={{ flex: 1 }}>
           <ThemedText type="title" style={styles.greeting}>
             {t('guestHome.greeting', { name: currentUser?.name.split(' ')[0] ?? '' })}
           </ThemedText>
-          <ThemedText style={[styles.sub, { color: colors.icon }]}>{t('guestHome.sub')}</ThemedText>
+          <ThemedText type="caption" style={[styles.sub, { color: colors.textSecondary }]}>
+            {t('guestHome.sub')}
+          </ThemedText>
         </View>
         <TouchableOpacity
           onPress={() => setMenuOpen(true)}
-          style={[styles.menuBtn, { backgroundColor: colors.tint + '12' }]}
+          style={[
+            styles.menuBtn,
+            {
+              backgroundColor: colors.tintMuted,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: colors.border,
+            },
+          ]}
           activeOpacity={0.7}
         >
-          <IconSymbol name="line.3.horizontal" size={20} color={colors.tint} />
+          <IconSymbol name="line.3.horizontal" size={22} color={colors.tint} />
         </TouchableOpacity>
       </View>
 
@@ -145,7 +154,7 @@ export default function GuestHome() {
               style={[styles.actionCardShell, { borderTopWidth: 3, borderTopColor: colors.tint }]}
               contentStyle={styles.actionCardInner}
             >
-              <View style={[styles.actionIcon, { backgroundColor: colors.tint + '18' }]}>
+              <View style={[styles.actionIcon, { backgroundColor: colors.tintMuted }]}>
                 <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
               </View>
               <ThemedText type="defaultSemiBold" style={styles.actionTitle}>
@@ -206,7 +215,7 @@ interface StatCardProps {
   value: number;
   label: string;
   color: string;
-  colors: typeof Colors.light;
+  colors: ThemeColors;
   onPress?: () => void;
 }
 
@@ -223,7 +232,9 @@ function StatCard({ icon, value, label, color, colors, onPress }: StatCardProps)
         contentStyle={styles.statCardInner}
         style={{ borderTopWidth: 3, borderTopColor: color }}
       >
-        <IconSymbol name={icon as never} size={22} color={color} />
+        <View style={[styles.statIconWrap, { backgroundColor: colors.tintMuted }]}>
+          <IconSymbol name={icon as never} size={20} color={color} />
+        </View>
         <ThemedText type="statValue" style={{ color }}>
           {value}
         </ThemedText>
@@ -247,17 +258,24 @@ const styles = StyleSheet.create({
   menuBtn: {
     width: Layout.touchMin,
     height: Layout.touchMin,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  greeting: { fontSize: 30, fontWeight: '700', letterSpacing: -0.8 },
+  sub: { marginTop: 6 },
+  scroll: { paddingHorizontal: Layout.screenPaddingX },
+
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: Layout.sectionGap },
+  statTouchable: { flex: 1 },
+  statIconWrap: {
+    width: 40,
+    height: 40,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  greeting: { fontSize: 28, fontWeight: '700' },
-  sub: { marginTop: 4 },
-  scroll: { paddingHorizontal: Layout.screenPaddingX },
-
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: Layout.sectionGap },
-  statTouchable: { flex: 1 },
-  statCardInner: { alignItems: 'center', gap: 6, paddingVertical: 14, paddingHorizontal: 8 },
+  statCardInner: { alignItems: 'center', gap: 8, paddingVertical: 16, paddingHorizontal: 8 },
 
   actionRow: { flexDirection: 'row', gap: 12, marginBottom: Layout.sectionGap, justifyContent: 'center' },
   actionTouchable: { width: '100%' },
@@ -266,7 +284,7 @@ const styles = StyleSheet.create({
   actionIcon: {
     width: Layout.touchMin,
     height: Layout.touchMin,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },

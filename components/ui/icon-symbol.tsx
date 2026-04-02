@@ -40,6 +40,8 @@ const MAPPING = {
   'questionmark.circle.fill': 'help',
   'lock.doc.fill': 'lock',
   'bubble.left.fill': 'chat-bubble',
+  'bubble.left.and.right.fill': 'forum',
+  'message.fill': 'message',
   'arrow.triangle.2.circlepath': 'sync',
   'star.fill': 'star',
   'slider.horizontal.3': 'tune',
@@ -73,6 +75,8 @@ const MAPPING = {
   'doc.text.fill': 'article',
   'rectangle.portrait.and.arrow.right': 'logout',
   'creditcard.fill': 'credit-card',
+  'key.fill': 'vpn-key',
+  'square.and.arrow.up': 'share',
 } as IconMapping;
 
 /**

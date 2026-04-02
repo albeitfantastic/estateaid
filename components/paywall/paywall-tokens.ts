@@ -4,20 +4,20 @@
  * more parchment-and-forest feel for the purchase flow.
  */
 export const MC = {
-  // Backgrounds
-  bg: '#F7F5F1',
-  surface: '#FFFFFF',
+  // Backgrounds (aligned with app warm stone canvas)
+  bg: '#F6F4EF',
+  surface: '#FFFCF9',
 
-  // Text
-  text: '#1E1E1A',
-  textSecondary: '#7B7B74',
+  // Text (warm ink + stone)
+  text: '#252220',
+  textSecondary: '#6E6862',
 
   // Brand
   brand: '#234536',   // deep forest green — CTAs, accents, selected states
-  tint: '#E7EFEA',    // soft sage — selected card bg, subtle fills
+  tint: '#E8EBE7',    // soft sage-stone — selected card bg, subtle fills
 
   // Borders
-  border: '#DEDAD2',
+  border: '#DED9D0',
   borderStrong: '#234536',
 
   // Spacing

@@ -1,5 +1,5 @@
 import { router, Tabs } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
@@ -39,8 +39,16 @@ export default function OwnerTabLayout() {
           backgroundColor: 'transparent',
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: glass.border,
-          elevation: 0,
-          shadowOpacity: 0,
+          ...Platform.select({
+            ios: {
+              shadowColor: '#252220',
+              shadowOffset: { width: 0, height: -6 },
+              shadowOpacity: 0.06,
+              shadowRadius: 12,
+            },
+            android: { elevation: 12 },
+            default: {},
+          }),
         },
         tabBarLabelStyle: {
           fontFamily: Fonts.label,

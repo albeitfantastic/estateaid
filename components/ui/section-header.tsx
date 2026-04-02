@@ -1,7 +1,7 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, Fonts, Layout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface SectionHeaderProps {
@@ -16,9 +16,9 @@ export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderPro
 
   return (
     <View style={styles.container}>
-      <ThemedText style={styles.title}>{title}</ThemedText>
+      <ThemedText style={[styles.title, { color: colors.textSecondary }]}>{title}</ThemedText>
       {actionLabel && onAction && (
-        <TouchableOpacity onPress={onAction} activeOpacity={0.6} hitSlop={8}>
+        <TouchableOpacity onPress={onAction} activeOpacity={0.65} hitSlop={10}>
           <ThemedText style={[styles.action, { color: colors.tint }]}>{actionLabel}</ThemedText>
         </TouchableOpacity>
       )}
@@ -32,20 +32,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 0,
-    paddingVertical: 12,
-    marginTop: 4,
+    paddingVertical: Layout.sectionGap - 8,
+    marginTop: 6,
   },
   title: {
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    opacity: 0.5,
+    letterSpacing: 1.1,
     fontFamily: Fonts.labelBold,
   },
   action: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
     fontFamily: Fonts.label,
+    letterSpacing: 0.2,
   },
 });

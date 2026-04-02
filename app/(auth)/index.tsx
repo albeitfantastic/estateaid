@@ -31,22 +31,22 @@ import { useTranslation } from 'react-i18next';
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const A = {
-  bg:         '#F7F5F1',
-  bgDark:     '#0F1F1E',
-  card:       '#FFFFFF',
-  cardDark:   '#1A2B28',
+  bg:         '#F6F4EF',
+  bgDark:     '#131210',
+  card:       '#FFFCF9',
+  cardDark:   '#1F1D1A',
   brown:      '#234536',
-  brownMid:   '#3E5C54',
-  creamDark:  '#E0E8E6',
-  creamDarkD: '#233D3A',
-  text:       '#1A2B28',
-  textDark:   '#E8F0EE',
-  textMuted:  '#607D8B',
-  textMutedD: '#5A7A75',
-  white:      '#FFFFFF',
-  whiteDark:  '#1A2B28',
-  border:     '#DDE1E0',
-  borderDark: '#2E4B48',
+  brownMid:   '#3D4A44',
+  creamDark:  '#262422',
+  creamDarkD: '#2C302E',
+  text:       '#252220',
+  textDark:   '#F4F1EB',
+  textMuted:  '#6E6862',
+  textMutedD: '#9C9690',
+  white:      '#FFFCF9',
+  whiteDark:  '#1F1D1A',
+  border:     '#DED9D0',
+  borderDark: '#3A3632',
 };
 
 type Mode = 'signin' | 'signup';

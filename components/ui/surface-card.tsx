@@ -1,6 +1,6 @@
 import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
 
-import { Colors, Elevation, Radius, Spacing, type ColorSchemeName } from '@/constants/theme';
+import { Colors, Elevation, Radius, type ColorSchemeName } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type SurfaceCardProps = ViewProps & {
@@ -36,7 +36,10 @@ export function SurfaceCard({
           backgroundColor:
             variant === 'muted' ? colors.surfaceMuted : colors.surface,
           borderColor: colors.border,
-          borderWidth: variant === 'outline' ? StyleSheet.hairlineWidth : 0,
+          borderWidth:
+            variant === 'outline' || variant === 'elevated'
+              ? StyleSheet.hairlineWidth
+              : 0,
         },
         variant === 'elevated' && shadow,
         style,
@@ -53,7 +56,7 @@ export function SurfaceCard({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     overflow: 'hidden',
     flexDirection: 'row',
   },

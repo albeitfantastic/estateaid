@@ -104,9 +104,9 @@ export const catalogPartA: Record<string, unknown> = {
     noSession: 'No session found.',
     inviteCodeTitle: 'Invite code',
     inviteWrongEmail:
-      'That code is tied to a different email. Sign in with the address your host used when they sent the invite.',
+      'That code is tied to a specific email. Sign in with that address, or ask your host for a new open invite.',
     inviteNoSessionEmail: 'Add an email to your account to redeem invite codes.',
-    inviteOutdated: 'That invite is outdated. Ask your host for a new code sent to your email.',
+    inviteOutdated: 'That invite is outdated. Ask your host for a new code.',
     inviteGenericFail: 'We could not apply your invite code. Open Invitations and enter it again.',
     deleteMailSubject: 'Delete my EstateAid account',
     deleteMailBodyUser: 'Please delete my account.\n\nUser id: {{id}}\nEmail: {{email}}',

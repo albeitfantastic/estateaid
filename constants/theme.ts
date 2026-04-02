@@ -1,42 +1,51 @@
 import type { ViewStyle } from 'react-native';
 
-/** App UI palette — aligned with `.claude/skills/building-native-ui/design.md` */
+/** Canonical brand from `dsg.md` — light mode primary / interactive */
+export const BrandTint = '#234536' as const;
+
+/**
+ * App UI — forest + ink + warm stone.
+ * Brand tint `dsg.md`. Ink = warm near-black; stone = warm grays for borders/UI chrome.
+ */
 export const Colors = {
   light: {
-    background: '#F7F5F1',
-    surface: '#FFFFFF',
-    /** Nested panels, chip wells — warm step between canvas and white cards */
-    surfaceMuted: '#F0EDE6',
-    text: '#1A2B28',
-    textSecondary: '#607D8B',
-    tint: '#234536',
-    accent: '#607D8B',
-    /** Mid tone between brand and secondary — links, subtle emphasis */
-    brownMid: '#3E5C54',
-    border: '#DDE1E0',
-    icon: '#607D8B',
-    tabIconDefault: '#607D8B',
-    tabIconSelected: '#234536',
+    background: '#F6F4EF',
+    surface: '#FFFCF9',
+    surfaceMuted: '#EFEBE3',
+    /** Icon wells — slight sage so brand green still feels native */
+    tintMuted: '#E8EBE7',
+    /** Warm ink (not pure black, not cold blue-black) */
+    text: '#252220',
+    textSecondary: '#6E6862',
+    tint: BrandTint,
+    accent: '#6E6862',
+    brownMid: '#3D4A44',
+    border: '#DED9D0',
+    icon: '#6E6862',
+    tabIconDefault: '#6E6862',
+    tabIconSelected: BrandTint,
     success: '#4A7C59',
     error: '#B04A3A',
-    warning: '#C48B2C',
+    warning: '#B8923A',
   },
   dark: {
-    background: '#0F1F1E',
-    surface: '#1A2B28',
-    surfaceMuted: '#152420',
-    text: '#E8F0EE',
-    textSecondary: '#8FA8A3',
-    tint: '#4A9B8E',
-    accent: '#8FA8A3',
-    brownMid: '#4A9B8E',
-    border: '#2E4B48',
-    icon: '#8FA8A3',
-    tabIconDefault: '#8FA8A3',
-    tabIconSelected: '#4A9B8E',
+    background: '#131210',
+    surface: '#1F1D1A',
+    surfaceMuted: '#262422',
+    tintMuted: '#2C302E',
+    /** Warm paper on ink */
+    text: '#F4F1EB',
+    textSecondary: '#9C9690',
+    tint: '#5CB0A0',
+    accent: '#9C9690',
+    brownMid: '#6A9086',
+    border: '#3A3632',
+    icon: '#9C9690',
+    tabIconDefault: '#9C9690',
+    tabIconSelected: '#5CB0A0',
     success: '#4CAF7D',
     error: '#E57373',
-    warning: '#FFB74D',
+    warning: '#D4A84B',
   },
 };
 
@@ -52,54 +61,57 @@ export const Elevation = {
   card: {
     light: {
       shadowColor: '#1A2B28',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.07,
-      shadowRadius: 12,
-      elevation: 3,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 20,
+      elevation: 4,
     } satisfies ViewStyle,
     dark: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.45,
-      shadowRadius: 14,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.4,
+      shadowRadius: 16,
+      elevation: 6,
     } satisfies ViewStyle,
   },
   row: {
     light: {
-      shadowColor: '#1A2B28',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
+      shadowColor: '#252220',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
       elevation: 2,
     } satisfies ViewStyle,
     dark: {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.35,
+      shadowOpacity: 0.32,
       shadowRadius: 10,
       elevation: 3,
     } satisfies ViewStyle,
   },
   fab: {
     light: {
-      shadowColor: '#234536',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.22,
-      shadowRadius: 12,
-      elevation: 6,
+      shadowColor: BrandTint,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.18,
+      shadowRadius: 16,
+      elevation: 8,
     } satisfies ViewStyle,
     dark: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 12,
-      elevation: 6,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.45,
+      shadowRadius: 14,
+      elevation: 8,
     } satisfies ViewStyle,
   },
 } as const;
 
 export type ColorSchemeName = 'light' | 'dark';
+
+/** Resolved palette for the active scheme (used by sheets, cards, etc.) */
+export type ThemeColors = (typeof Colors)[ColorSchemeName];
 
 export function elevationStyle(
   level: keyof typeof Elevation,
@@ -112,26 +124,26 @@ export function elevationStyle(
 /** Translucent glass surfaces — tab bars, sheets */
 export const Glass = {
   light: {
-    surface: 'rgba(255, 253, 250, 0.90)',
-    border: 'rgba(60, 60, 67, 0.10)',
-    shadow: 'rgba(0, 0, 0, 0.06)',
-    tabBar: 'rgba(255, 253, 250, 0.94)',
+    surface: 'rgba(255, 252, 249, 0.94)',
+    border: 'rgba(37, 34, 32, 0.09)',
+    shadow: 'rgba(37, 34, 32, 0.05)',
+    tabBar: 'rgba(255, 252, 249, 0.97)',
   },
   dark: {
-    surface: 'rgba(26, 43, 40, 0.88)',
-    border: 'rgba(255, 255, 255, 0.10)',
-    shadow: 'rgba(0, 0, 0, 0.35)',
-    tabBar: 'rgba(21, 36, 32, 0.94)',
+    surface: 'rgba(31, 29, 26, 0.92)',
+    border: 'rgba(244, 241, 235, 0.10)',
+    shadow: 'rgba(0, 0, 0, 0.4)',
+    tabBar: 'rgba(31, 29, 26, 0.96)',
   },
 };
 
 export const Spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
 
 export const Radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 22,
   xxl: 28,
   full: 9999,
 };

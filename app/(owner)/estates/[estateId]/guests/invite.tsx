@@ -1,9 +1,10 @@
-import { Alert, Linking, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { InviteShareChannelsModal } from '@/components/invite-share-channels-modal';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,9 +13,12 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { isPlausibleInviteEmail, normalizeGuestEmail } from '@/lib/invite-email';
 import { generateInviteCode, generateUuidV4 } from '@/lib/id';
-import { APP_STORE_URL, buildFullInviteMessage, buildWhatsAppInviteMessage } from '@/lib/invite-messages';
+import {
+  buildMultiInviteShareMessage,
+  buildWhatsAppMultiInviteMessage,
+  inviteEmailSubject,
+} from '@/lib/invite-messages';
 
 export default function InviteGuest() {
   const { t } = useTranslation();
@@ -28,76 +32,84 @@ export default function InviteGuest() {
   const { getEstateById } = useEstateStore();
   const estate = getEstateById(estateId);
 
-  const [inviteeEmail, setInviteeEmail] = useState('');
   const [note, setNote] = useState('');
   const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+
+  const openSuffix = t('ownerInvite.openInviteSuffix');
+  const sharePayload = useMemo(() => {
+    if (!createdCode || !estate) {
+      return { shareBody: '', waBody: '', subject: '' };
+    }
+    const items = [{ estateName: estate.name, inviteCode: createdCode, role: 'guest' as const }];
+    const noteOpt = note.trim() || undefined;
+    return {
+      shareBody: buildMultiInviteShareMessage(items, { note: noteOpt, openInviteSuffix: openSuffix }),
+      waBody: buildWhatsAppMultiInviteMessage(items, { note: noteOpt, openInviteSuffix: openSuffix }),
+      subject: inviteEmailSubject([estate.name]),
+    };
+  }, [createdCode, estate, note, openSuffix]);
 
   async function createInvite() {
-    const emailNorm = inviteeEmail.trim();
-    if (!isPlausibleInviteEmail(emailNorm)) {
-      Alert.alert('Invitee email', 'Enter a valid email for the person you are inviting. Only that account can redeem the code.');
-      return;
-    }
+    if (!estate) return;
     const code = generateInviteCode();
     const { error } = await sendInvitation({
       id: generateUuidV4(),
       estateId,
       ownerId: currentUser!.id,
       inviteCode: code,
-      guestEmail: normalizeGuestEmail(emailNorm),
       role: 'guest',
       message: note.trim() || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
     });
     if (error) {
-      Alert.alert('Could not create invite', error);
+      Alert.alert(t('ownerInvite.saveFailedTitle'), error);
       return;
     }
     setCreatedCode(code);
+    setShareModalVisible(true);
   }
 
-  function shareVia(platform: 'whatsapp' | 'telegram' | 'native') {
-    if (!createdCode || !estate) return;
-    const noteOpt = note.trim() || undefined;
-
-    if (platform === 'whatsapp') {
-      const wa = buildWhatsAppInviteMessage({
-        estateName: estate.name,
-        inviteCode: createdCode,
-        note: noteOpt,
-        inviteeEmail: inviteeEmail.trim(),
-      });
-      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(wa)}`);
-      return;
-    }
-
-    const text = buildFullInviteMessage({
-      estateName: estate.name,
-      inviteCode: createdCode,
-      note: noteOpt,
-      footerLine: 'Enter your code after signing up as a Guest.',
-      inviteeEmail: inviteeEmail.trim(),
-    });
-    if (platform === 'telegram') {
-      Linking.openURL(
-        `https://t.me/share/url?url=${encodeURIComponent(APP_STORE_URL)}&text=${encodeURIComponent(text)}`
-      );
-    } else {
-      Share.share({ message: text });
-    }
+  if (!estate) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+          </TouchableOpacity>
+          <ThemedText type="title" style={styles.title}>
+            {t('titles.invite')}
+          </ThemedText>
+        </View>
+        <ThemedText style={{ padding: 24 }}>Estate not found.</ThemedText>
+      </ThemedView>
+    );
   }
 
   return (
     <ThemedView style={styles.container}>
+      <InviteShareChannelsModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        shareBody={sharePayload.shareBody}
+        waBody={sharePayload.waBody}
+        emailSubject={sharePayload.subject}
+        shareTitle={t('ownerInvite.shareTitle')}
+      />
+
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.invite')}</ThemedText>
+        <ThemedText type="title" style={styles.title}>
+          {t('titles.invite')}
+        </ThemedText>
         {createdCode && (
           <TouchableOpacity onPress={() => router.back()}>
-            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Done</ThemedText>
+            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>
+              {t('ownerInvite.done')}
+            </ThemedText>
           </TouchableOpacity>
         )}
       </View>
@@ -110,30 +122,14 @@ export default function InviteGuest() {
           <>
             <View style={[styles.infoBox, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}>
               <IconSymbol name="info.circle.fill" size={18} color={colors.tint} />
-              <ThemedText style={[styles.infoText, { color: colors.tint }]}>
-                Enter the guest&apos;s email — only that EstateAid account can redeem the code. Share the code with them via WhatsApp, Telegram, or any messaging app.
-              </ThemedText>
+              <ThemedText style={[styles.infoText, { color: colors.tint }]}>{t('ownerInvite.openHint')}</ThemedText>
             </View>
 
             <View style={styles.field}>
-              <ThemedText style={[styles.label, { color: colors.icon }]}>Guest email (required)</ThemedText>
-              <TextInput
-                style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
-                placeholder="guest@example.com"
-                placeholderTextColor={colors.icon}
-                value={inviteeEmail}
-                onChangeText={setInviteeEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.field}>
-              <ThemedText style={[styles.label, { color: colors.icon }]}>Personal Note (optional)</ThemedText>
+              <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ownerInvite.noteLabel')}</ThemedText>
               <TextInput
                 style={[styles.input, styles.multiline, { color: colors.text, borderColor: colors.icon + '44' }]}
-                placeholder="e.g. Looking forward to seeing you this summer!"
+                placeholder={t('ownerInvite.notePlaceholder')}
                 placeholderTextColor={colors.icon}
                 value={note}
                 onChangeText={setNote}
@@ -148,61 +144,40 @@ export default function InviteGuest() {
               onPress={() => void createInvite()}
               activeOpacity={0.85}
             >
-              <IconSymbol name="key.fill" size={18} color="#fff" />
-              <ThemedText style={styles.createBtnText}>Generate Invite Code</ThemedText>
+              <IconSymbol name="paperplane.fill" size={18} color="#fff" />
+              <ThemedText style={styles.createBtnText}>{t('ownerInvite.sendInvitation')}</ThemedText>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            {/* Code display */}
             <View style={[styles.codeCard, { backgroundColor: colors.tint + '08', borderColor: colors.tint + '40' }]}>
               <ThemedText style={[styles.codeLabel, { color: colors.icon }]}>INVITE CODE</ThemedText>
               <ThemedText style={[styles.code, { color: colors.tint }]}>{createdCode}</ThemedText>
-              <ThemedText style={[styles.codeHint, { color: colors.icon }]}>
-                Only {inviteeEmail.trim() || 'that email'} can redeem this code. Single use.
-              </ThemedText>
+              <ThemedText style={[styles.codeHint, { color: colors.icon }]}>{t('ownerInvite.codeHint')}</ThemedText>
             </View>
+
+            <TouchableOpacity
+              style={[styles.secondaryBtn, { borderColor: colors.tint }]}
+              onPress={() => setShareModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              <ThemedText style={[styles.secondaryBtnText, { color: colors.tint }]}>
+                {t('ownerInvite.shareAgain')}
+              </ThemedText>
+            </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => {
                 setCreatedCode(null);
                 setNote('');
-                setInviteeEmail('');
+                setShareModalVisible(false);
               }}
               activeOpacity={0.75}
               style={{ alignSelf: 'center', paddingVertical: 8 }}
             >
               <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 15 }}>
-                Generate another code
+                {t('ownerInvite.createMore')}
               </ThemedText>
-            </TouchableOpacity>
-
-            {/* Share via */}
-            <ThemedText style={[styles.shareLabel, { color: colors.icon }]}>Share via</ThemedText>
-
-            <TouchableOpacity
-              style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
-              onPress={() => shareVia('whatsapp')}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.shareBtnText}>WhatsApp</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.shareBtn, { backgroundColor: '#0088CC' }]}
-              onPress={() => shareVia('telegram')}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.shareBtnText}>Telegram</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.shareBtn, { backgroundColor: colors.tint }]}
-              onPress={() => shareVia('native')}
-              activeOpacity={0.85}
-            >
-              <IconSymbol name="square.and.arrow.up" size={18} color="#fff" />
-              <ThemedText style={styles.shareBtnText}>More options…</ThemedText>
             </TouchableOpacity>
           </>
         )}
@@ -237,14 +212,12 @@ const styles = StyleSheet.create({
   codeLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
   code: { fontSize: 36, fontWeight: '800', letterSpacing: 8 },
   codeHint: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
-  shareLabel: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  shareBtn: {
-    flexDirection: 'row',
+  secondaryBtn: {
+    alignSelf: 'stretch',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+    paddingVertical: 14,
     borderRadius: 14,
-    paddingVertical: 16,
+    borderWidth: 1.5,
   },
-  shareBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  secondaryBtnText: { fontSize: 16, fontWeight: '700' },
 });

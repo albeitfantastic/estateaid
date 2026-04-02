@@ -3,13 +3,11 @@ import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
+import { Colors, Elevation, Layout, Radius, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supportMailto } from '@/lib/support';
 import type { OwnerTier } from '@/store/auth-store';
 import type { UserRole } from '@/types';
-
-type ThemeColors = (typeof Colors)['light'];
 
 export type SettingsDestination = 'profile' | 'language' | 'subscription' | 'account';
 
