@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -50,19 +50,112 @@ export default function OwnerEstates() {
     [allEstates, currentUser?.id, invitedEstateIds]
   );
 
+  const titleText = t('titles.properties');
+  const tabTitleText = t('tabs.properties');
+
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7339/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '648fc5' },
+      body: JSON.stringify({
+        sessionId: '648fc5',
+        runId: 'post-fix',
+        hypothesisId: 'H1',
+        location: 'app/(app)/estates/index.tsx:useEffect',
+        message: 'Properties screen title i18n',
+        data: {
+          titleKey: 'titles.properties',
+          titleLen: titleText?.length ?? -1,
+          titleHead: typeof titleText === 'string' ? titleText.slice(0, 24) : null,
+          tabLen: tabTitleText?.length ?? -1,
+          tabHead: typeof tabTitleText === 'string' ? tabTitleText.slice(0, 24) : null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, [titleText, tabTitleText]);
+  // #endregion
+
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
-        <ThemedText type="title" style={styles.title}>{t('titles.properties')}</ThemedText>
-        <HostProLockTouchable
-          locked={!hasHostAccess}
-          onPress={() => router.push('/(app)/estates/new' as never)}
-          style={[styles.addBtn, { backgroundColor: colors.tint }, Elevation.fab[colorScheme ?? 'light']]}
-          activeOpacity={0.8}
+      <View
+        style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}
+        onLayout={(e) => {
+          // #region agent log
+          const { x, y, width, height } = e.nativeEvent.layout;
+          fetch('http://127.0.0.1:7339/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '648fc5' },
+            body: JSON.stringify({
+              sessionId: '648fc5',
+              runId: 'post-fix',
+              hypothesisId: 'H2',
+              location: 'app/(app)/estates/index.tsx:header.onLayout',
+              message: 'Properties header layout',
+              data: { x, y, width, height },
+              timestamp: Date.now(),
+            }),
+          }).catch(() => {});
+          // #endregion
+        }}
+      >
+        <ThemedText
+          type="title"
+          style={styles.title}
+          onLayout={(e) => {
+            // #region agent log
+            const { width, height } = e.nativeEvent.layout;
+            fetch('http://127.0.0.1:7339/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '648fc5' },
+              body: JSON.stringify({
+                sessionId: '648fc5',
+                runId: 'post-fix',
+                hypothesisId: 'H2',
+                location: 'app/(app)/estates/index.tsx:title.onLayout',
+                message: 'Properties title layout',
+                data: { width, height },
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {});
+            // #endregion
+          }}
         >
-          <IconSymbol name="plus" size={18} color="#fff" />
-          <ThemedText style={styles.addBtnText}>Add New</ThemedText>
-        </HostProLockTouchable>
+          {titleText}
+        </ThemedText>
+        <View
+          onLayout={(e) => {
+            // #region agent log
+            const { x, y, width, height } = e.nativeEvent.layout;
+            fetch('http://127.0.0.1:7339/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '648fc5' },
+              body: JSON.stringify({
+                sessionId: '648fc5',
+                runId: 'post-fix',
+                hypothesisId: 'H3',
+                location: 'app/(app)/estates/index.tsx:addBtnWrap.onLayout',
+                message: 'Add button layout',
+                data: { x, y, width, height, expectW: Layout.touchMin, expectH: Layout.touchMin },
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {});
+            // #endregion
+          }}
+        >
+          <HostProLockTouchable
+            locked={!hasHostAccess}
+            shrinkToContent
+            accessibilityRole="button"
+            accessibilityLabel={t('estatesList.addEstate')}
+            onPress={() => router.push('/(app)/estates/new' as never)}
+            style={[styles.addBtn, { backgroundColor: colors.tint }, Elevation.fab[colorScheme ?? 'light']]}
+            activeOpacity={0.8}
+          >
+            <IconSymbol name="plus" size={20} color="#fff" />
+          </HostProLockTouchable>
+        </View>
       </View>
 
       {estates.length === 0 ? (
@@ -120,22 +213,21 @@ export default function OwnerEstates() {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: Layout.screenPaddingX,
     paddingBottom: Layout.sectionGap,
     gap: 12,
   },
-  title: { flex: 1, fontSize: 28, fontWeight: '700' },
+  title: { flex: 1, flexShrink: 1, fontSize: 28, fontWeight: '700', paddingRight: 8 },
   container: { flex: 1 },
   addBtn: {
-    flexDirection: 'row',
+    width: Layout.touchMin,
+    height: Layout.touchMin,
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    borderRadius: Radius.full,
+    justifyContent: 'center',
+    borderRadius: Radius.md,
   },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14, fontFamily: Fonts.headingSemiBold },
   back: { padding: 4 },
   list: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 10, gap: 4 },
   cardWrap: { position: 'relative', borderRadius: Radius.lg, overflow: 'hidden' },

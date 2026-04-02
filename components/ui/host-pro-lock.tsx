@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  type StyleProp,
+  type ViewStyle,
+  type TouchableOpacityProps,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -14,19 +21,37 @@ type Props = {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   activeOpacity?: number;
+  /**
+   * When true, the outer view does not stretch in flex rows; the inner pressable fills only this box.
+   * Use with explicit width/height on `style` (e.g. header icon buttons).
+   */
+  shrinkToContent?: boolean;
+  accessibilityLabel?: TouchableOpacityProps['accessibilityLabel'];
+  accessibilityRole?: TouchableOpacityProps['accessibilityRole'];
 };
 
 /**
  * Wraps a tappable control; shows a small lock badge when `locked` (Standard tier host features).
  */
-export function HostProLockTouchable({ locked, onPress, children, style, activeOpacity = 0.75 }: Props) {
+export function HostProLockTouchable({
+  locked,
+  onPress,
+  children,
+  style,
+  activeOpacity = 0.75,
+  shrinkToContent = false,
+  accessibilityLabel,
+  accessibilityRole,
+}: Props) {
   const { t } = useTranslation();
   return (
-    <View style={[styles.wrap, style]}>
+    <View style={[styles.wrap, shrinkToContent && styles.wrapShrink, style]}>
       <TouchableOpacity
         onPress={() => (locked ? showMaisonProUpgradePrompt(t) : onPress())}
         activeOpacity={activeOpacity}
-        style={styles.fill}
+        style={shrinkToContent ? styles.fillBox : styles.fill}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole={accessibilityRole}
       >
         {children}
       </TouchableOpacity>
@@ -41,7 +66,13 @@ export function HostProLockTouchable({ locked, onPress, children, style, activeO
 
 const styles = StyleSheet.create({
   wrap: { position: 'relative' },
+  wrapShrink: { alignSelf: 'flex-start' },
   fill: { width: '100%' },
+  fillBox: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   badge: {
     position: 'absolute',
     top: 6,
