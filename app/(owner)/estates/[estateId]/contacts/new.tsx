@@ -8,7 +8,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, Layout, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useContactStore } from '@/store/contact-store';
 import { generateId } from '@/lib/id';
@@ -44,7 +44,7 @@ export default function NewContact() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
@@ -53,7 +53,10 @@ export default function NewContact() {
           <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + Spacing.xxl }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <FocusInput label="Name *" placeholder="e.g. Giovanni Ferraro" value={name} onChangeText={setName} />
         <FocusInput label="Role *" placeholder="e.g. Caretaker" value={role} onChangeText={setRole} />
         <FocusInput label="Phone" placeholder="+39 055 123 4567" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoCapitalize="none" />
@@ -76,14 +79,20 @@ export default function NewContact() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap,
+    gap: 12,
+  },
   back: { padding: 4 },
   title: { flex: 1, fontSize: 24, fontWeight: '700' },
-  form: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
+  form: { paddingHorizontal: Layout.screenPaddingX, gap: Layout.sectionGap, paddingTop: 8 },
   field: { gap: 6 },
-  label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: 'sans-serif' },
+  label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: Fonts.labelBold },
   multi: { height: 90, paddingTop: 14 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
-  pillText: { fontSize: 13, fontWeight: '600', fontFamily: 'sans-serif' },
+  pillText: { fontSize: 13, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
 });

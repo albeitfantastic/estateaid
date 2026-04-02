@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Elevation, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
@@ -40,7 +40,8 @@ export default function EstateHub() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const scheme = colorScheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[scheme];
   const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
   const currentUser = useAuthStore((s) => s.currentUser);
   const allInvitations = useInvitationStore((s) => s.invitations);
@@ -75,7 +76,7 @@ export default function EstateHub() {
   if (estateRole === 'owner') {
     return (
       <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.back}>
             <IconSymbol name="arrow.left" size={22} color={colors.tint} />
           </TouchableOpacity>
@@ -90,7 +91,7 @@ export default function EstateHub() {
             <IconSymbol name="pencil" size={20} color={colors.tint} />
           </TouchableOpacity>
         </View>
-        <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}>
+        <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + Spacing.xl }]}>
           {estate.description && (
             <ThemedText style={[styles.description, { color: colors.icon }]}>{estate.description}</ThemedText>
           )}
@@ -98,7 +99,11 @@ export default function EstateHub() {
             {OWNER_ITEMS.map((item) => (
               <TouchableOpacity
                 key={item.route}
-                style={[styles.tile, { backgroundColor: colors.tint + '11', borderColor: colors.tint + '22' }]}
+                style={[
+                  styles.tile,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  Elevation.card[scheme],
+                ]}
                 onPress={() => router.push(`/(owner)/estates/${estateId}/${item.route}` as never)}
                 activeOpacity={0.75}
               >
@@ -115,7 +120,7 @@ export default function EstateHub() {
   // Guest (owner invited to another owner's estate): time-gated tiles
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
@@ -132,7 +137,7 @@ export default function EstateHub() {
           </View>
         </View>
       </View>
-      <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}>
+      <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + Spacing.xl }]}>
         {estate.description && (
           <ThemedText style={[styles.description, { color: colors.icon }]}>{estate.description}</ThemedText>
         )}
@@ -167,7 +172,7 @@ export default function EstateHub() {
           })}
         </View>
         {!hasContextAccess && (
-          <View style={[styles.hint, { backgroundColor: colors.icon + '0E' }]}>
+          <View style={[styles.hint, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
             <IconSymbol name="lock.fill" size={13} color={colors.icon} />
             <ThemedText style={[styles.hintText, { color: colors.icon }]}>
               FAQ, Documents, Contacts and Tickets unlock 3 days before your stay.
@@ -182,7 +187,13 @@ export default function EstateHub() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap,
+    gap: 12,
+  },
   back: { padding: 4 },
   headerText: { flex: 1, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -191,16 +202,29 @@ const styles = StyleSheet.create({
   adminBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   location: { fontSize: 13 },
-  grid: { paddingHorizontal: 20, paddingTop: 8 },
-  description: { fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  grid: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 10 },
+  description: { fontSize: 14, lineHeight: 20, marginBottom: Layout.sectionGap },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: {
-    width: '47%', padding: 20, borderRadius: 18, borderWidth: 1, alignItems: 'center', gap: 10,
-    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    width: '47%',
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    gap: 10,
   },
-  tileLabel: { fontSize: 14, textAlign: 'center', fontFamily: 'sans-serif', fontWeight: '500' },
+  tileLabel: { fontSize: 14, textAlign: 'center', fontFamily: Fonts.label, fontWeight: '500' },
   tileLocked: { opacity: 0.38 },
   lockBadge: { position: 'absolute', bottom: 8, right: 8 },
-  hint: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 14, borderRadius: 14, marginTop: 16 },
-  hintText: { flex: 1, fontSize: 12, lineHeight: 17, fontFamily: 'sans-serif' },
+  hint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 14,
+    borderRadius: Radius.lg,
+    marginTop: Layout.sectionGap,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  hintText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: Fonts.body },
 });

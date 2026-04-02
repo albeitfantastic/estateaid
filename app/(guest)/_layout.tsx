@@ -1,15 +1,16 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, Glass } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function GuestTabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const glass = Glass[colorScheme ?? 'light'];
   const { t, i18n } = useTranslation();
 
   return (
@@ -17,12 +18,28 @@ export default function GuestTabLayout() {
       key={i18n.resolvedLanguage}
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
+        tabBarInactiveTintColor: colors.tabIconDefault,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarStyle: Platform.select({
-          ios: { position: 'absolute' },
-          default: {},
-        }),
+        tabBarBackground: () => (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: glass.tabBar }]} />
+        ),
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: glass.border,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarLabelStyle: {
+          fontFamily: Fonts.label,
+          fontSize: 10,
+          letterSpacing: 0.15,
+        },
+        tabBarItemStyle: {
+          paddingTop: 6,
+        },
       }}
     >
       <Tabs.Screen
@@ -32,7 +49,7 @@ export default function GuestTabLayout() {
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'house.fill' : 'house'} color={color} />,
         }}
       />
-       <Tabs.Screen
+      <Tabs.Screen
         name="estates"
         options={{
           title: t('tabs.properties'),
@@ -55,15 +72,13 @@ export default function GuestTabLayout() {
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
         }}
       />
-        <Tabs.Screen
+      <Tabs.Screen
         name="invitations/index"
         options={{
           title: t('tabs.invites'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'envelope.fill' : 'envelope'} color={color} />,
         }}
       />
-
-      
       <Tabs.Screen name="requests/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />

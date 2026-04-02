@@ -19,9 +19,13 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.text }]}
+      style={[styles.card, {
+        backgroundColor: colors.surface,
+        borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
+        shadowColor: colors.text,
+      }]}
       onPress={onPress}
-      activeOpacity={0.8}
+      activeOpacity={0.75}
     >
       {estate.coverImageUrl ? (
         <Image
@@ -30,34 +34,40 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
           contentFit="cover"
         />
       ) : (
-        <View style={[styles.imagePlaceholder, { backgroundColor: colors.tint + '22' }]}>
-          <IconSymbol name="building.2.fill" size={32} color={colors.tint} />
+        <View style={[styles.imagePlaceholder, { backgroundColor: colors.tint + '14' }]}>
+          <IconSymbol name="building.2.fill" size={36} color={colors.tint + 'AA'} />
         </View>
       )}
+
       <View style={styles.body}>
         <View style={styles.row}>
-          <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={1}>
+          <ThemedText style={styles.name} numberOfLines={1}>
             {estate.name}
           </ThemedText>
           {badge && (
-            <View style={[styles.badge, { backgroundColor: badge.color + '22' }]}>
+            <View style={[styles.badge, { backgroundColor: badge.color + '18' }]}>
               <ThemedText style={[styles.badgeText, { color: badge.color }]}>{badge.label}</ThemedText>
             </View>
           )}
         </View>
+
         <View style={styles.locationRow}>
-          <IconSymbol name="map.fill" size={13} color={colors.icon} />
+          <IconSymbol name="map.fill" size={12} color={colors.icon + 'BB'} />
           <ThemedText style={[styles.location, { color: colors.icon }]} numberOfLines={1}>
             {estate.location}
           </ThemedText>
         </View>
+
         {estate.description && (
           <ThemedText style={[styles.description, { color: colors.icon }]} numberOfLines={2}>
             {estate.description}
           </ThemedText>
         )}
       </View>
-      <IconSymbol name="chevron.right" size={18} color={colors.icon} style={styles.chevron} />
+
+      <View style={[styles.chevronWrap, { backgroundColor: colors.tint + '12' }]}>
+        <IconSymbol name="chevron.right" size={13} color={colors.tint} />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -65,17 +75,17 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.xl,
-    borderWidth: 1,
-    marginBottom: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 16,
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 4,
   },
   image: {
     width: '100%',
-    height: 160,
+    height: 168,
   },
   imagePlaceholder: {
     width: '100%',
@@ -84,23 +94,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: {
-    padding: 16,
-    gap: 4,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 18,
+    gap: 5,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   name: {
     fontSize: 17,
+    fontWeight: '600',
     flex: 1,
     fontFamily: Fonts.headingSemiBold,
+    letterSpacing: -0.2,
   },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: Radius.lg,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
   },
   badgeText: {
     fontSize: 11,
@@ -110,23 +124,30 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
+    gap: 5,
+    marginTop: 1,
   },
   location: {
     fontSize: 13,
     flex: 1,
     fontFamily: Fonts.body,
+    opacity: 0.8,
   },
   description: {
     fontSize: 13,
-    lineHeight: 18,
-    marginTop: 4,
+    lineHeight: 19,
+    marginTop: 3,
     fontFamily: Fonts.body,
+    opacity: 0.7,
   },
-  chevron: {
+  chevronWrap: {
     position: 'absolute',
     right: 16,
-    bottom: 20,
+    bottom: 18,
+    width: 26,
+    height: 26,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

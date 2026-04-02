@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Layout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatDate } from '@/lib/date-utils';
 import { loadAllStores } from '@/lib/load-all-stores';
@@ -245,7 +245,7 @@ export function SubscriptionSettingsContent() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { paddingHorizontal: 20, paddingTop: 16 },
+  inner: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '600', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   card: { borderRadius: 14, borderWidth: 1, padding: 16 },
   planText: { fontSize: 18 },

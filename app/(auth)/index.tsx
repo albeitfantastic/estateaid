@@ -25,17 +25,18 @@ import { supabase } from '@/lib/supabase';
 import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { User, type UserRole } from '@/types';
+import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from 'react-i18next';
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const A = {
-  bg:         '#F4F4F2',
+  bg:         '#F7F5F1',
   bgDark:     '#0F1F1E',
   card:       '#FFFFFF',
   cardDark:   '#1A2B28',
-  brown:      '#2C554E',
-  brownMid:   '#4A7A6E',
+  brown:      '#234536',
+  brownMid:   '#3E5C54',
   creamDark:  '#E0E8E6',
   creamDarkD: '#233D3A',
   text:       '#1A2B28',
@@ -99,6 +100,7 @@ export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const dark = colorScheme === 'dark';
+  const scheme = dark ? 'dark' : 'light';
   const { setUser, resetOnboarding, pendingInviteCode, setPendingInviteCode } = useAuthStore();
   const { redeemCode } = useInvitationStore();
 
@@ -255,11 +257,8 @@ export default function AuthScreen() {
           <View
             style={[
               s.card,
-              {
-                backgroundColor: cardBg,
-                borderColor: dark ? A.borderDark : '#E2D9CC',
-                shadowColor: '#1A2B28',
-              },
+              { backgroundColor: cardBg, borderColor: Colors[scheme].border },
+              Elevation.card[scheme],
             ]}
           >
             {/* ── Header ── */}
@@ -392,14 +391,15 @@ export default function AuthScreen() {
             )}
 
             {/* ── CTA ── */}
-            {showEmailForm && <TouchableOpacity
-              style={[s.ctaWrap, anyLoading && { opacity: 0.7 }]}
+            {showEmailForm && (
+            <TouchableOpacity
+              style={[s.ctaWrap, Elevation.fab[scheme], anyLoading && { opacity: 0.7 }]}
               onPress={mode === 'signin' ? handleSignIn : handleSignUp}
               disabled={anyLoading}
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={['#3D7268', '#2C554E']}
+                colors={['#2F5349', '#234536']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={s.cta}
@@ -413,7 +413,8 @@ export default function AuthScreen() {
                   )
                 }
               </LinearGradient>
-            </TouchableOpacity>}
+            </TouchableOpacity>
+            )}
 
             {/* ── Footer ── */}
             {mode === 'signin' && (
@@ -439,17 +440,18 @@ export default function AuthScreen() {
 
 const s = StyleSheet.create({
   screen:    { flex: 1 },
-  scroll:    { alignItems: 'center', justifyContent: 'center', paddingVertical: 32, paddingHorizontal: 16 },
+  scroll: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Layout.sectionGap + 12,
+    paddingHorizontal: Layout.screenPaddingX,
+  },
   card: {
     width: '100%',
     maxWidth: 390,
-    borderRadius: 16,
-    padding: 32,
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.10,
-    shadowRadius: 32,
-    elevation: 8,
+    borderRadius: Radius.lg,
+    padding: Layout.sectionGap + 12,
+    borderWidth: StyleSheet.hairlineWidth,
     gap: 0,
   },
   // header
@@ -464,7 +466,16 @@ const s = StyleSheet.create({
   tabText:   { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // oauth
   oauthGroup: { gap: 10, marginBottom: 20 },
-  oauthBtn:  { height: 50, borderRadius: 10, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  oauthBtn: {
+    minHeight: Layout.touchMin,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
   oauthText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // divider
   divRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
@@ -476,8 +487,8 @@ const s = StyleSheet.create({
   emailBtn:  { height: 50, borderRadius: 10, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 4 },
   emailBtnText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // cta
-  ctaWrap:   { borderRadius: 10, shadowColor: '#2C554E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 6, marginBottom: 16 },
-  cta:       { height: 52, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  ctaWrap:   { borderRadius: Radius.md, marginBottom: Layout.sectionGap - 4 },
+  cta:       { minHeight: Layout.touchMin, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   ctaText:   { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'Manrope_700Bold', letterSpacing: 0.3 },
   // footer
   footerText: { textAlign: 'center', fontSize: 13, fontFamily: 'Manrope_400Regular', lineHeight: 20 },

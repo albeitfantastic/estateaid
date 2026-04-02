@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { isRevenueCatConfigured } from '@/lib/revenuecat-client';
 import { MAISON_PRO_DISPLAY_NAME, PRIMARY_ENTITLEMENT_ID, RC_PRODUCT_IDS } from '@/lib/subscription-config';
@@ -100,7 +100,7 @@ export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
           <ThemedText type="title" style={styles.title}>
             {MAISON_PRO_DISPLAY_NAME}
           </ThemedText>
-          <View style={{ width: 30 }} />
+          <View style={{ width: Layout.touchMin }} />
         </View>
         <View style={styles.fallback}>
           <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>
@@ -125,7 +125,7 @@ export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
           <ThemedText type="title" style={styles.title}>
             {MAISON_PRO_DISPLAY_NAME}
           </ThemedText>
-          <View style={{ width: 30 }} />
+          <View style={{ width: Layout.touchMin }} />
         </View>
         <View style={styles.fallback}>
           <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>{t('paywall.nativeOnlyHint')}</ThemedText>
@@ -143,7 +143,7 @@ export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
         <ThemedText type="title" style={styles.title}>
           {MAISON_PRO_DISPLAY_NAME}
         </ThemedText>
-        <View style={{ width: 30 }} />
+        <View style={{ width: Layout.touchMin }} />
       </View>
 
       {isPro && (
@@ -183,19 +183,25 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap - 12,
     gap: 8,
   },
-  back: { padding: 4 },
+  back: { minWidth: Layout.touchMin, minHeight: Layout.touchMin, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontSize: 20, fontWeight: '700' },
-  banner: { marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 12, borderWidth: 1 },
+  banner: {
+    marginHorizontal: Layout.screenPaddingX,
+    marginBottom: Layout.sectionGap - 12,
+    padding: Layout.sectionGap - 8,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   confirmRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: Layout.screenPaddingX,
   },
   paywall: { flex: 1 },
-  fallback: { flex: 1, padding: 24 },
+  fallback: { flex: 1, paddingHorizontal: Layout.screenPaddingX, paddingVertical: Layout.sectionGap },
 });

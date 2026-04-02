@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Layout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   type AppLanguage,
@@ -121,7 +121,7 @@ export function LanguageSettingsContent() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  inner: { paddingHorizontal: 20, paddingTop: 16 },
+  inner: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 16 },
   description: { fontSize: 14, lineHeight: 20, marginBottom: 20 },
   section: { fontSize: 13, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.6 },
   option: {

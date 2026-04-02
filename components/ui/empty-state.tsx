@@ -2,7 +2,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from './icon-symbol';
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { Colors, Elevation, Fonts, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface EmptyStateProps {
@@ -15,14 +15,17 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: EmptyStateProps) {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const scheme = colorScheme ?? 'light';
+  const colors = Colors[scheme];
 
   return (
     <View style={styles.container}>
       {icon && (
-        <IconSymbol name={icon as never} size={48} color={colors.icon} style={styles.icon} />
+        <View style={[styles.iconWrap, { backgroundColor: colors.tint + '12' }]}>
+          <IconSymbol name={icon as never} size={32} color={colors.tint + 'CC'} />
+        </View>
       )}
-      <ThemedText type="defaultSemiBold" style={styles.title}>{title}</ThemedText>
+      <ThemedText style={styles.title}>{title}</ThemedText>
       {subtitle && (
         <ThemedText style={[styles.subtitle, { color: colors.icon }]}>{subtitle}</ThemedText>
       )}
@@ -44,40 +47,46 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
-    gap: 8,
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingVertical: Layout.sectionGap * 2,
+    gap: 12,
   },
-  icon: {
-    marginBottom: 8,
-    opacity: 0.35,
+  iconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: Radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
+    fontWeight: '600',
     textAlign: 'center',
-    fontFamily: Fonts.heading,
-    fontWeight: '700',
+    fontFamily: Fonts.headingSemiBold,
+    letterSpacing: -0.2,
   },
   subtitle: {
     fontSize: 14,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 21,
     fontFamily: Fonts.body,
+    opacity: 0.75,
   },
   btn: {
-    marginTop: 16,
+    marginTop: 4,
+    minHeight: Layout.touchMin,
     paddingHorizontal: 28,
-    paddingVertical: 13,
-    borderRadius: Radius.xl,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingVertical: 12,
+    borderRadius: Radius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   btnText: {
     color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-    fontFamily: Fonts.heading,
-    letterSpacing: 0.3,
+    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: Fonts.headingSemiBold,
+    letterSpacing: 0.1,
   },
 });

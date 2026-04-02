@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supportMailto } from '@/lib/support';
 import type { OwnerTier } from '@/store/auth-store';
 import type { UserRole } from '@/types';
@@ -44,6 +45,7 @@ export function SettingsSheet({
   onSignOut,
 }: SettingsSheetProps) {
   const { t } = useTranslation();
+  const scheme = useColorScheme() ?? 'light';
   const initials =
     currentUser?.name
       .split(' ')
@@ -92,7 +94,11 @@ export function SettingsSheet({
         <Pressable
           style={[
             styles.sheet,
-            { backgroundColor: colors.surface, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 },
+            {
+              backgroundColor: colors.surface,
+              paddingTop: insets.top + Layout.sectionGap - 4,
+              paddingBottom: insets.bottom + Layout.sectionGap,
+            },
           ]}
         >
           <View style={styles.sheetHeader}>
@@ -104,7 +110,13 @@ export function SettingsSheet({
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.profileCard, { backgroundColor: colors.tint + '08', borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.profileCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              Elevation.card[scheme],
+            ]}
+          >
             <View style={[styles.avatar, { backgroundColor: colors.tint }]}>
               <ThemedText style={styles.avatarText}>{initials}</ThemedText>
             </View>
@@ -179,18 +191,29 @@ export function SettingsSheet({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
-  sheet: { flex: 1, maxWidth: 340, paddingHorizontal: 20 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  sheet: { flex: 1, maxWidth: 360, paddingHorizontal: Layout.screenPaddingX },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Layout.sectionGap,
+  },
   sheetTitle: { fontSize: 24, fontWeight: '700' },
-  closeBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  closeBtn: {
+    width: Layout.touchMin,
+    height: Layout.touchMin,
+    borderRadius: Layout.touchMin / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 20,
-    gap: 12,
+    padding: 16,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: Layout.sectionGap,
+    gap: 14,
   },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
@@ -201,7 +224,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    minHeight: Layout.touchMin,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
@@ -213,9 +237,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
+    minHeight: Layout.touchMin,
+    paddingVertical: 12,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     marginTop: 8,
   },
 });

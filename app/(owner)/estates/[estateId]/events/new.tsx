@@ -8,7 +8,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEventStore } from '@/store/event-store';
 import { EventType, RecurrenceFrequency } from '@/types';
@@ -94,14 +94,14 @@ export default function NewEvent() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.headerTitle}>{t('titles.newEvent')}</ThemedText>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 24 }]}>
+      <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + Spacing.xl }]}>
         {/* Type picker */}
         <ThemedText style={[styles.label, { color: colors.icon }]}>Type</ThemedText>
         <View style={styles.typePicker}>
@@ -240,25 +240,40 @@ export default function NewEvent() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12, gap: 12 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap - 8,
+    gap: 12,
+  },
   back: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 28, fontWeight: '700' },
-  form: { paddingHorizontal: 20, gap: 16 },
-  label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: 'sans-serif' },
+  form: { paddingHorizontal: Layout.screenPaddingX, gap: 16 },
+  label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: Fonts.labelBold },
   textArea: { minHeight: 80, paddingTop: 14, textAlignVertical: 'top' },
   typePicker: { flexDirection: 'row', gap: 10 },
   typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5 },
-  typeBtnText: { fontSize: 14, fontWeight: '600', fontFamily: 'sans-serif' },
+  typeBtnText: { fontSize: 14, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
   colorRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   colorDot: { width: 34, height: 34, borderRadius: 17 },
   colorDotSelected: { borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4 },
   freqRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   freqBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
-  freqBtnText: { fontSize: 13, fontWeight: '600', fontFamily: 'sans-serif' },
+  freqBtnText: { fontSize: 13, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
   dayRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   dayBtn: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
-  dayBtnText: { fontSize: 13, fontWeight: '600', fontFamily: 'sans-serif' },
+  dayBtnText: { fontSize: 13, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
   dayOfMonthRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  saveBtn: { marginTop: 8, paddingVertical: 16, borderRadius: 14, alignItems: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 5 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'sans-serif', letterSpacing: 0.3 },
+  saveBtn: {
+    marginTop: 8,
+    paddingVertical: 16,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: Fonts.heading, letterSpacing: 0.3 },
 });

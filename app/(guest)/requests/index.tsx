@@ -9,7 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StatusBadge } from '@/components/ui/badge';
-import { Colors, EstateColors } from '@/constants/theme';
+import { Colors, EstateColors, Layout, Radius, elevationStyle } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatDateRange } from '@/lib/date-utils';
 import { guestEmailsMatch } from '@/lib/invite-email';
@@ -23,7 +23,8 @@ export default function GuestRequests() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const scheme = colorScheme ?? 'light';
+  const colors = Colors[scheme];
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
@@ -71,14 +72,18 @@ export default function GuestRequests() {
           subtitle={t('guestRequests.emptySub')}
         />
       ) : (
-        <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
+        <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + Layout.sectionGap }]}>
           {myRequests.map((req) => {
             const estate = acceptedEstates.find((e) => e.id === req.estateId);
             const dotColor = estateColorMap[req.estateId] ?? colors.tint;
             return (
               <View
                 key={req.id}
-                style={[styles.row, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}
+                style={[
+                  styles.row,
+                  { borderColor: colors.border, backgroundColor: colors.surface },
+                  elevationStyle('row', scheme),
+                ]}
               >
                 <View style={[styles.colorBar, { backgroundColor: dotColor }]} />
                 <View style={styles.info}>
@@ -121,16 +126,22 @@ export default function GuestRequests() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 10 },
-  back: { padding: 4 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap - 4,
+    gap: 10,
+  },
+  back: { minWidth: Layout.touchMin, minHeight: Layout.touchMin, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontSize: 22, fontWeight: '700' },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.md },
   badgeText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  list: { paddingHorizontal: 20 },
+  list: { paddingHorizontal: Layout.screenPaddingX },
   row: {
     flexDirection: 'row',
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     marginBottom: 10,
     overflow: 'hidden',
   },
@@ -139,7 +150,7 @@ const styles = StyleSheet.create({
   rowTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   dates: { fontSize: 13, marginTop: 2 },
   note: { fontSize: 13, lineHeight: 18 },
-  ownerNote: { padding: 10, borderRadius: 10, gap: 4 },
+  ownerNote: { padding: 10, borderRadius: Radius.md, gap: 4 },
   ownerNoteLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   altDates: { fontSize: 13, fontWeight: '600' },
 });

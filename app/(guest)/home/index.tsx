@@ -10,7 +10,8 @@ import { ThemedView } from '@/components/themed-view';
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Colors, EstateColors } from '@/constants/theme';
+import { SurfaceCard } from '@/components/ui/surface-card';
+import { Colors, EstateColors, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatDateRange, today } from '@/lib/date-utils';
 import { guestEmailsMatch } from '@/lib/invite-email';
@@ -111,7 +112,7 @@ export default function GuestHome() {
       />
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Layout.sectionGap + 12 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.statsRow}>
@@ -135,15 +136,25 @@ export default function GuestHome() {
 
         <View style={styles.actionRow}>
           <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}
+            style={styles.actionTouchable}
             onPress={() => router.push('/(guest)/stays/plan' as never)}
             activeOpacity={0.75}
           >
-            <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
-              <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
-            </View>
-            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>{t('guestHome.planStay')}</ThemedText>
-            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>{t('guestHome.planStaySub')}</ThemedText>
+            <SurfaceCard
+              variant="elevated"
+              style={[styles.actionCardShell, { borderTopWidth: 3, borderTopColor: colors.tint }]}
+              contentStyle={styles.actionCardInner}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: colors.tint + '18' }]}>
+                <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
+              </View>
+              <ThemedText type="defaultSemiBold" style={styles.actionTitle}>
+                {t('guestHome.planStay')}
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: colors.textSecondary, textAlign: 'center' }}>
+                {t('guestHome.planStaySub')}
+              </ThemedText>
+            </SurfaceCard>
           </TouchableOpacity>
         </View>
 
@@ -164,20 +175,23 @@ export default function GuestHome() {
               const estate = estates.find((e) => e.id === stay.estateId);
               const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
               return (
-                <View
+                <SurfaceCard
                   key={stay.id}
-                  style={[styles.stayRow, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}
+                  variant="elevated"
+                  padded={false}
+                  accentColor={dotColor}
+                  accentWidth={4}
+                  contentStyle={styles.stayRowInner}
                 >
-                  <View style={[styles.colorBar, { backgroundColor: dotColor }]} />
                   <View style={styles.stayInfo}>
                     <ThemedText type="defaultSemiBold" style={styles.stayGuest}>
                       {currentUser?.name ?? t('common.you')}
                     </ThemedText>
-                    <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
+                    <ThemedText type="caption" style={{ color: colors.textSecondary }}>
                       {estate?.name} · {formatDateRange(stay.from, stay.to)}
                     </ThemedText>
                   </View>
-                </View>
+                </SurfaceCard>
               );
             })}
           </View>
@@ -199,50 +213,67 @@ interface StatCardProps {
 function StatCard({ icon, value, label, color, colors, onPress }: StatCardProps) {
   return (
     <TouchableOpacity
-      style={[styles.statCard, { backgroundColor: color + '12', borderColor: color + '33' }]}
+      style={styles.statTouchable}
       onPress={onPress}
       disabled={!onPress}
       activeOpacity={onPress ? 0.75 : 1}
     >
-      <IconSymbol name={icon as never} size={22} color={color} />
-      <ThemedText style={[styles.statValue, { color }]}>{value}</ThemedText>
-      <ThemedText style={[styles.statLabel, { color: colors.icon }]}>{label}</ThemedText>
+      <SurfaceCard
+        variant="elevated"
+        contentStyle={styles.statCardInner}
+        style={{ borderTopWidth: 3, borderTopColor: color }}
+      >
+        <IconSymbol name={icon as never} size={22} color={color} />
+        <ThemedText type="statValue" style={{ color }}>
+          {value}
+        </ThemedText>
+        <ThemedText type="statLabel" style={{ color: colors.textSecondary, textAlign: 'center' }}>
+          {label}
+        </ThemedText>
+      </SurfaceCard>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  menuBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap,
+    gap: 12,
+  },
+  menuBtn: {
+    width: Layout.touchMin,
+    height: Layout.touchMin,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   greeting: { fontSize: 28, fontWeight: '700' },
-  sub: { fontSize: 14, marginTop: 2 },
-  scroll: { paddingHorizontal: 20 },
+  sub: { marginTop: 4 },
+  scroll: { paddingHorizontal: Layout.screenPaddingX },
 
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  statCard: {
-    flex: 1, padding: 12, borderRadius: 16, borderWidth: 1, alignItems: 'center', gap: 4,
-    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  statValue: { fontSize: 22, fontWeight: '700', fontFamily: 'serif' },
-  statLabel: { fontSize: 10, textAlign: 'center', fontFamily: 'sans-serif', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: Layout.sectionGap },
+  statTouchable: { flex: 1 },
+  statCardInner: { alignItems: 'center', gap: 6, paddingVertical: 14, paddingHorizontal: 8 },
 
-  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8, justifyContent: 'center' },
-  actionCard: {
-    width: '100%', borderRadius: 18, borderWidth: 1, padding: 16, gap: 6, alignItems: 'center',
-    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  actionRow: { flexDirection: 'row', gap: 12, marginBottom: Layout.sectionGap, justifyContent: 'center' },
+  actionTouchable: { width: '100%' },
+  actionCardShell: { width: '100%' },
+  actionCardInner: { gap: 8, paddingVertical: 16, paddingHorizontal: 14, alignItems: 'center' },
+  actionIcon: {
+    width: Layout.touchMin,
+    height: Layout.touchMin,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  actionTitle: { fontSize: 14, fontFamily: 'sans-serif', fontWeight: '600' },
-  actionSub: { fontSize: 12, fontFamily: 'sans-serif' },
+  actionTitle: { fontSize: 15 },
 
-  upcomingList: { gap: 8, marginBottom: 4 },
-  stayRow: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, overflow: 'hidden',
-    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
-  },
-  colorBar: { width: 4, alignSelf: 'stretch' },
-  stayInfo: { flex: 1, padding: 12, gap: 2 },
-  stayGuest: { fontSize: 14 },
-  stayMeta: { fontSize: 12 },
+  upcomingList: { gap: 10, marginBottom: 8 },
+  stayRowInner: { paddingVertical: 14, paddingHorizontal: 14, gap: 4 },
+  stayInfo: { flex: 1, gap: 4 },
+  stayGuest: { fontSize: 15 },
 });

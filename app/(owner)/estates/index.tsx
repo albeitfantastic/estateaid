@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Elevation, Fonts, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
@@ -49,11 +49,10 @@ export default function OwnerEstates() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        
+      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
         <ThemedText type="title" style={styles.title}>{t('titles.properties')}</ThemedText>
         <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.tint }]}
+          style={[styles.addBtn, { backgroundColor: colors.tint }, Elevation.fab[colorScheme ?? 'light']]}
           onPress={() => router.push('/(owner)/estates/new' as never)}
           activeOpacity={0.8}
         >
@@ -103,24 +102,40 @@ export default function OwnerEstates() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 10 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap,
+    gap: 12,
+  },
   title: { flex: 1, fontSize: 28, fontWeight: '700' },
   container: { flex: 1 },
-  saddBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-
-  },
   addBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20,
-    shadowColor: '#5C3D2E', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.22, shadowRadius: 8, elevation: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: Radius.full,
   },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14, fontFamily: 'sans-serif' },
+  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14, fontFamily: Fonts.headingSemiBold },
   back: { padding: 4 },
-  list: { paddingHorizontal: 20, paddingTop: 8 },
-  roleBadge: { alignSelf: 'flex-start', marginTop: -8, marginBottom: 8, marginLeft: 20, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
-  roleBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.0, fontFamily: 'sans-serif' },
+  list: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 10, gap: 4 },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    marginTop: -6,
+    marginBottom: 10,
+    marginLeft: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+  },
+  roleBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontFamily: Fonts.labelBold,
+  },
 });

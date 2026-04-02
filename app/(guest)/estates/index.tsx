@@ -9,7 +9,7 @@ import { EstateCard } from '@/components/ui/estate-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Layout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
@@ -48,7 +48,7 @@ export default function GuestEstatesList() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Layout.sectionGap }]}
         showsVerticalScrollIndicator={false}
       >
         {acceptedEstates.length === 0 ? (
@@ -75,9 +75,15 @@ export default function GuestEstatesList() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap - 4,
+    gap: 12,
+  },
+  back: { minWidth: Layout.touchMin, minHeight: Layout.touchMin, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 22, fontWeight: '700' },
-  scroll: { paddingHorizontal: 20 },
+  scroll: { paddingHorizontal: Layout.screenPaddingX },
   list: { gap: 0 },
 });

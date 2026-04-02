@@ -11,9 +11,10 @@ import { ThemedView } from '@/components/themed-view';
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Colors, EstateColors } from '@/constants/theme';
+import { SurfaceCard } from '@/components/ui/surface-card';
+import { Colors, EstateColors, Layout, Radius, elevationStyle } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { formatDateRange, getDaysInRange, today } from '@/lib/date-utils';
+import { formatDate, formatDateRange, getDaysInRange, today } from '@/lib/date-utils';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
 import { getEventOccurrences, describeRecurrence } from '@/lib/event-utils';
 import { useAuthStore } from '@/store/auth-store';
@@ -29,7 +30,8 @@ export default function OwnerDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const scheme = colorScheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[scheme];
 
   const monthNames = t('calendar.months', { returnObjects: true }) as string[];
 
@@ -169,19 +171,22 @@ export default function OwnerDashboard() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap }]}>
         <View style={{ flex: 1 }}>
           <ThemedText type="title" style={styles.greeting}>
             {t('ownerHome.greeting', { name: currentUser?.name.split(' ')[0] ?? '' })}
           </ThemedText>
-          <ThemedText style={[styles.sub, { color: colors.icon }]}>{t('ownerHome.sub')}</ThemedText>
+          <ThemedText type="caption" style={[styles.sub, { color: colors.textSecondary }]}>
+            {t('ownerHome.sub')}
+          </ThemedText>
         </View>
         <TouchableOpacity
           onPress={() => setMenuOpen(true)}
-          style={[styles.menuBtn, { backgroundColor: colors.tint + '12' }]}
+          style={[styles.menuBtn, { backgroundColor: colors.tint + '14' }]}
           activeOpacity={0.7}
+          hitSlop={12}
         >
-          <IconSymbol name="line.3.horizontal" size={20} color={colors.tint} />
+          <IconSymbol name="line.3.horizontal" size={22} color={colors.tint} />
         </TouchableOpacity>
       </View>
 
@@ -204,7 +209,7 @@ export default function OwnerDashboard() {
       />
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Layout.sectionGap + 12 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Stats row */}
@@ -289,27 +294,47 @@ export default function OwnerDashboard() {
         {/* Action buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}
+            style={styles.actionTouchable}
             onPress={() => router.push('/(owner)/plan-stay' as never)}
             activeOpacity={0.75}
           >
-            <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
-              <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
-            </View>
-            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>{t('ownerHome.planStay')}</ThemedText>
-            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>{t('ownerHome.planStaySub')}</ThemedText>
+            <SurfaceCard
+              variant="elevated"
+              style={[styles.actionCardShell, { borderTopWidth: 3, borderTopColor: colors.tint }]}
+              contentStyle={styles.actionCardInner}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: colors.tint + '18' }]}>
+                <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
+              </View>
+              <ThemedText type="defaultSemiBold" style={styles.actionTitle}>
+                {t('ownerHome.planStay')}
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: colors.textSecondary }}>
+                {t('ownerHome.planStaySub')}
+              </ThemedText>
+            </SurfaceCard>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}
+            style={styles.actionTouchable}
             onPress={() => router.push('/(owner)/invite' as never)}
             activeOpacity={0.75}
           >
-            <View style={[styles.actionIcon, { backgroundColor: colors.tint + '20' }]}>
-              <IconSymbol name="envelope.fill" size={22} color={colors.tint} />
-            </View>
-            <ThemedText type="defaultSemiBold" style={styles.actionTitle}>{t('ownerHome.inviteUser')}</ThemedText>
-            <ThemedText style={[styles.actionSub, { color: colors.icon }]}>{t('ownerHome.inviteUserSub')}</ThemedText>
+            <SurfaceCard
+              variant="elevated"
+              style={[styles.actionCardShell, { borderTopWidth: 3, borderTopColor: colors.tint }]}
+              contentStyle={styles.actionCardInner}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: colors.tint + '18' }]}>
+                <IconSymbol name="envelope.fill" size={22} color={colors.tint} />
+              </View>
+              <ThemedText type="defaultSemiBold" style={styles.actionTitle}>
+                {t('ownerHome.inviteUser')}
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: colors.textSecondary }}>
+                {t('ownerHome.inviteUserSub')}
+              </ThemedText>
+            </SurfaceCard>
           </TouchableOpacity>
         </View>
 
@@ -340,22 +365,29 @@ export default function OwnerDashboard() {
               return (
                 <TouchableOpacity
                   key={stay.id}
-                  style={[styles.stayRow, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}
                   onPress={() => router.push('/(owner)/stays' as never)}
                   activeOpacity={0.75}
+                  style={styles.stayRowOuter}
                 >
-                  <View style={[styles.colorBar, { backgroundColor: dotColor }]} />
-                  <View style={styles.stayInfo}>
-                    <ThemedText type="defaultSemiBold" style={styles.stayGuest}>
-                      {guestLabel}
-                    </ThemedText>
-                    <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
-                      {estate?.name} · {formatDateRange(stay.from, stay.to)}
-                    </ThemedText>
-                  </View>
-                  <View style={[styles.relBadge, { backgroundColor: relColor + '15' }]}>
-                    <ThemedText style={[styles.relBadgeText, { color: relColor }]}>{relLabel}</ThemedText>
-                  </View>
+                  <SurfaceCard
+                    variant="elevated"
+                    padded={false}
+                    accentColor={dotColor}
+                    accentWidth={4}
+                    contentStyle={styles.stayRowInner}
+                  >
+                    <View style={styles.stayInfo}>
+                      <ThemedText type="defaultSemiBold" style={styles.stayGuest}>
+                        {guestLabel}
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ color: colors.textSecondary }}>
+                        {estate?.name} · {formatDateRange(stay.from, stay.to)}
+                      </ThemedText>
+                    </View>
+                    <View style={[styles.relBadge, { backgroundColor: relColor + '18' }]}>
+                      <ThemedText style={[styles.relBadgeText, { color: relColor }]}>{relLabel}</ThemedText>
+                    </View>
+                  </SurfaceCard>
                 </TouchableOpacity>
               );
             })}
@@ -364,24 +396,33 @@ export default function OwnerDashboard() {
 
         {/* Interactive Calendar */}
         <SectionHeader title={t('ownerHome.thisMonth')} />
-        <View style={styles.calendarNav}>
-          <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-            <IconSymbol name="arrow.left" size={18} color={colors.tint} />
-          </TouchableOpacity>
-          <ThemedText type="defaultSemiBold" style={styles.monthLabel}>
-            {monthNames[viewMonth]} {viewYear}
-          </ThemedText>
-          <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-            <IconSymbol name="arrow.right" size={18} color={colors.tint} />
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.calendarWrap, { backgroundColor: colors.background, borderColor: colors.icon + '22' }]}>
-          <MonthGrid
-            year={viewYear}
-            month={viewMonth}
-            dayInfoMap={dayInfoMap}
-            onDayPress={(d) => setSelectedDay(selectedDay === d ? null : d)}
-          />
+        <View
+          style={[
+            styles.calendarCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            elevationStyle('card', scheme),
+          ]}
+        >
+          <View style={[styles.calendarNav, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={prevMonth} style={[styles.navBtn, { backgroundColor: colors.surfaceMuted }]}>
+              <IconSymbol name="arrow.left" size={20} color={colors.tint} />
+            </TouchableOpacity>
+            <ThemedText type="defaultSemiBold" style={[styles.monthLabel, { color: colors.text }]}>
+              {monthNames[viewMonth]} {viewYear}
+            </ThemedText>
+            <TouchableOpacity onPress={nextMonth} style={[styles.navBtn, { backgroundColor: colors.surfaceMuted }]}>
+              <IconSymbol name="arrow.right" size={20} color={colors.tint} />
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.calendarGridPad, { backgroundColor: colors.surfaceMuted }]}>
+            <MonthGrid
+              year={viewYear}
+              month={viewMonth}
+              dayInfoMap={dayInfoMap}
+              selectedDay={selectedDay ?? undefined}
+              onDayPress={(d) => setSelectedDay(selectedDay === d ? null : d)}
+            />
+          </View>
         </View>
 
         {(estates.length > 0 || estateEvents.length > 0) && (
@@ -391,21 +432,33 @@ export default function OwnerDashboard() {
               onPress={() => setLegendOpen((o) => !o)}
               activeOpacity={0.7}
             >
-              <ThemedText style={[styles.legendToggleText, { color: colors.icon }]}>{t('ownerHome.legend')}</ThemedText>
-              <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
+              <ThemedText style={[styles.legendToggleText, { color: colors.textSecondary }]}>
+                {t('ownerHome.legend')}
+              </ThemedText>
+              <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={14} color={colors.textSecondary} />
             </TouchableOpacity>
             {legendOpen && (
               <View style={styles.legend}>
                 {estates.map((e, i) => (
-                  <View key={e.id} style={styles.legendItem}>
+                  <View
+                    key={e.id}
+                    style={[styles.legendItem, { backgroundColor: colors.surfaceMuted, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
+                  >
                     <View style={[styles.legendDot, { backgroundColor: EstateColors[i % EstateColors.length] }]} />
-                    <ThemedText style={[styles.legendText, { color: colors.icon }]} numberOfLines={1}>{e.name}</ThemedText>
+                    <ThemedText style={[styles.legendText, { color: colors.text }]} numberOfLines={1}>
+                      {e.name}
+                    </ThemedText>
                   </View>
                 ))}
                 {estateEvents.map((ev) => (
-                  <View key={ev.id} style={styles.legendItem}>
+                  <View
+                    key={ev.id}
+                    style={[styles.legendItem, { backgroundColor: colors.surfaceMuted, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
+                  >
                     <View style={[styles.legendDot, { backgroundColor: ev.color ?? '#64748B' }]} />
-                    <ThemedText style={[styles.legendText, { color: colors.icon }]} numberOfLines={1}>{ev.title}</ThemedText>
+                    <ThemedText style={[styles.legendText, { color: colors.text }]} numberOfLines={1}>
+                      {ev.title}
+                    </ThemedText>
                   </View>
                 ))}
               </View>
@@ -414,15 +467,29 @@ export default function OwnerDashboard() {
         )}
 
         {selectedDay && (
-          <View style={[styles.dayDetail, { backgroundColor: colors.surface, borderColor: colors.icon + '22' }]}>
+          <View
+            style={[
+              styles.dayDetail,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              elevationStyle('row', scheme),
+            ]}
+          >
             <View style={styles.dayDetailHeader}>
-              <ThemedText type="defaultSemiBold" style={styles.dayDetailTitle}>{selectedDay}</ThemedText>
-              <TouchableOpacity onPress={() => setSelectedDay(null)}>
-                <IconSymbol name="xmark" size={22} color={colors.icon} />
+              <ThemedText type="defaultSemiBold" style={[styles.dayDetailTitle, { color: colors.text }]}>
+                {formatDate(selectedDay)}
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => setSelectedDay(null)}
+                style={[styles.dayDetailClose, { backgroundColor: colors.surfaceMuted }]}
+                hitSlop={8}
+              >
+                <IconSymbol name="xmark" size={18} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             {staysOnSelectedDay.length === 0 && eventsOnSelectedDay.length === 0 && (
-              <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>{t('ownerHome.nothingScheduled')}</ThemedText>
+              <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
+                {t('ownerHome.nothingScheduled')}
+              </ThemedText>
             )}
             {staysOnSelectedDay.map((stay) => {
               const estate = estates.find((e) => e.id === stay.estateId);
@@ -434,7 +501,7 @@ export default function OwnerDashboard() {
               return (
                 <View key={stay.id} style={[styles.dayStayRow, { borderLeftColor: dotColor }]}>
                   <ThemedText type="defaultSemiBold">{guestLabel}</ThemedText>
-                  <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
+                  <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
                     {estate?.name} · {formatDateRange(stay.from, stay.to)}
                   </ThemedText>
                 </View>
@@ -445,7 +512,7 @@ export default function OwnerDashboard() {
               return (
                 <View key={ev.id} style={[styles.dayStayRow, { borderLeftColor: ev.color ?? '#64748B' }]}>
                   <ThemedText type="defaultSemiBold">{ev.title}</ThemedText>
-                  <ThemedText style={[styles.stayMeta, { color: colors.icon }]}>
+                  <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
                     {estate?.name} · {describeRecurrence(ev)}
                   </ThemedText>
                 </View>
@@ -470,75 +537,166 @@ interface StatCardProps {
 function StatCard({ icon, value, label, color, colors, onPress }: StatCardProps) {
   return (
     <TouchableOpacity
-      style={[styles.statCard, { backgroundColor: color + '12', borderColor: color + '33' }]}
+      style={styles.statTouchable}
       onPress={onPress}
       disabled={!onPress}
       activeOpacity={onPress ? 0.75 : 1}
     >
-      <IconSymbol name={icon as never} size={22} color={color} />
-      <ThemedText style={[styles.statValue, { color }]}>{value}</ThemedText>
-      <ThemedText style={[styles.statLabel, { color: colors.icon }]}>{label}</ThemedText>
+      <SurfaceCard
+        variant="elevated"
+        contentStyle={styles.statCardInner}
+        style={{ borderTopWidth: 3, borderTopColor: color }}
+      >
+        <IconSymbol name={icon as never} size={22} color={color} />
+        <ThemedText type="statValue" style={{ color }}>
+          {value}
+        </ThemedText>
+        <ThemedText type="statLabel" style={{ color: colors.textSecondary, textAlign: 'center' }}>
+          {label}
+        </ThemedText>
+      </SurfaceCard>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  menuBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  greeting: { fontSize: 28, fontWeight: '700' },
-  sub: { fontSize: 14, marginTop: 2 },
-  scroll: { paddingHorizontal: 20 },
-
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  statCard: {
-    flex: 1, padding: 12, borderRadius: 16, borderWidth: 1, alignItems: 'center', gap: 4,
-    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap,
+    gap: 12,
   },
-  statValue: { fontSize: 22, fontWeight: '700', fontFamily: 'serif' },
-  statLabel: { fontSize: 10, textAlign: 'center', fontFamily: 'sans-serif', textTransform: 'uppercase', letterSpacing: 0.5 },
+  menuBtn: {
+    width: Layout.touchMin,
+    height: Layout.touchMin,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  greeting: { fontSize: 28, fontWeight: '700' },
+  sub: { marginTop: 4 },
+  scroll: { paddingHorizontal: Layout.screenPaddingX },
+
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: Layout.sectionGap },
+  statTouchable: { flex: 1 },
+  statCardInner: { alignItems: 'center', gap: 6, paddingVertical: 14, paddingHorizontal: 8 },
 
   // Action buttons
-  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
-  actionCard: {
-    flex: 1, borderRadius: 18, borderWidth: 1, padding: 16, gap: 6,
-    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  actionRow: { flexDirection: 'row', gap: 12, marginBottom: Layout.sectionGap },
+  actionTouchable: { flex: 1 },
+  actionCardShell: { flex: 1 },
+  actionCardInner: { gap: 8, paddingVertical: 16, paddingHorizontal: 14 },
+  actionIcon: {
+    width: Layout.touchMin,
+    height: Layout.touchMin,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  actionTitle: { fontSize: 14, fontFamily: 'sans-serif', fontWeight: '600' },
-  actionSub: { fontSize: 12, fontFamily: 'sans-serif' },
+  actionTitle: { fontSize: 15 },
 
   // Today's priorities
-  priorityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  priorityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  priorityText: { fontSize: 12, fontWeight: '600' },
+  priorityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: Layout.sectionGap },
+  priorityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  priorityText: { fontSize: 13, fontWeight: '600' },
 
   // Upcoming stays
-  upcomingList: { gap: 8, marginBottom: 4 },
-  stayRow: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, overflow: 'hidden',
-    shadowColor: '#2A1F18', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  upcomingList: { gap: 10, marginBottom: 8 },
+  stayRowOuter: { marginBottom: 2 },
+  stayRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingRight: 12,
+    gap: 8,
   },
-  colorBar: { width: 4, alignSelf: 'stretch' },
-  stayInfo: { flex: 1, padding: 12, gap: 2 },
-  stayGuest: { fontSize: 14 },
-  stayMeta: { fontSize: 12 },
-  relBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 10 },
-  relBadgeText: { fontSize: 10, fontWeight: '700' },
+  stayInfo: { flex: 1, gap: 4 },
+  stayGuest: { fontSize: 15 },
+  relBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.sm, marginRight: 4 },
+  relBadgeText: { fontSize: 11, fontWeight: '700' },
 
   // Calendar
-  calendarNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  navBtn: { padding: 8 },
-  monthLabel: { fontSize: 16 },
-  calendarWrap: { padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
-  legendToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 6 },
-  legendToggleText: { fontSize: 12, fontWeight: '600' },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 12 },
-  dayDetail: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10, marginBottom: 4 },
-  dayDetailHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dayDetailTitle: { fontSize: 14 },
-  dayStayRow: { paddingLeft: 10, borderLeftWidth: 3, gap: 2 },
+  calendarCard: {
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: Layout.sectionGap - 6,
+    overflow: 'hidden',
+  },
+  calendarNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  navBtn: {
+    minWidth: Layout.touchMin,
+    minHeight: Layout.touchMin,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthLabel: { fontSize: 18, letterSpacing: -0.3 },
+  calendarGridPad: { paddingHorizontal: 8, paddingTop: 10, paddingBottom: 12 },
+  legendToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  legendToggleText: { fontSize: 13, fontWeight: '600' },
+  legend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: Layout.sectionGap - 8,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: Radius.full,
+    maxWidth: '100%',
+  },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 13, flexShrink: 1 },
+  dayDetail: {
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Layout.sectionGap - 4,
+    gap: 12,
+    marginBottom: 8,
+  },
+  dayDetailHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  dayDetailTitle: { fontSize: 17, flex: 1 },
+  dayDetailClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stayMeta: { fontSize: 13, lineHeight: 18 },
+  dayStayRow: {
+    paddingLeft: 12,
+    paddingVertical: 4,
+    borderLeftWidth: 3,
+    gap: 4,
+  },
 });

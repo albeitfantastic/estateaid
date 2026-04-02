@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/auth-store';
 
 const C = {
   bg: '#F4F4F2',
-  navy: '#2C554E',
+  navy: '#234536',
   gold: '#607D8B',
   text: '#1A2B28',
   muted: '#607D8B',

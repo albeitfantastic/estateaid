@@ -9,7 +9,7 @@ export function PrimaryButton({ label, style, ...rest }: PrimaryButtonProps) {
   return (
     <TouchableOpacity
       style={[styles.btn, rest.disabled && styles.disabled, style]}
-      activeOpacity={0.82}
+      activeOpacity={0.80}
       {...rest}
     >
       <Text style={styles.label}>{label}</Text>
@@ -25,9 +25,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: MC.hPad,
+    shadowColor: MC.brand,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 6,
   },
   disabled: {
-    opacity: 0.45,
+    opacity: 0.40,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   label: {
     color: '#FFFFFF',

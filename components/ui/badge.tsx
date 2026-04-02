@@ -16,7 +16,7 @@ export function Badge({ label, variant }: BadgeProps) {
   const color = variant === 'neutral' ? NEUTRAL_COLOR : StatusColors[variant] ?? NEUTRAL_COLOR;
 
   return (
-    <View style={[styles.pill, { backgroundColor: color + '22', borderColor: color + '55' }]}>
+    <View style={[styles.pill, { backgroundColor: color + '18', borderColor: color + '44' }]}>
       <ThemedText style={[styles.text, { color }]}>{label}</ThemedText>
     </View>
   );
@@ -30,10 +30,10 @@ export function StatusBadge({ status }: { status: string }) {
 
 const styles = StyleSheet.create({
   pill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: Radius.full,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     alignSelf: 'flex-start',
   },
   text: {
@@ -41,5 +41,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: Fonts.label,
     textTransform: 'capitalize',
+    letterSpacing: 0.1,
   },
 });

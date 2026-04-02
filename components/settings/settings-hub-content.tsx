@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supportMailto } from '@/lib/support';
 import { useAuthStore } from '@/store/auth-store';
@@ -19,7 +19,8 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const scheme = colorScheme ?? 'light';
+  const colors = Colors[scheme];
   const currentUser = useAuthStore((s) => s.currentUser);
   const selectedTier = useAuthStore((s) => s.selectedTier);
   const themePreference = useAuthStore((s) => s.themePreference);
@@ -74,10 +75,16 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
   return (
     <ThemedView style={styles.container}>
       <ScrollView
-        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + Layout.sectionGap + 12 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.profileCard, { backgroundColor: colors.tint + '08', borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.profileCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            Elevation.card[scheme],
+          ]}
+        >
           <View style={[styles.avatar, { backgroundColor: colors.tint }]}>
             <ThemedText style={styles.avatarText}>{initials}</ThemedText>
           </View>
@@ -85,7 +92,7 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
             <ThemedText type="defaultSemiBold" style={{ fontSize: 16 }}>
               {currentUser?.name}
             </ThemedText>
-            <ThemedText style={[styles.email, { color: colors.icon }]}>{currentUser?.email}</ThemedText>
+            <ThemedText style={[styles.email, { color: colors.textSecondary }]}>{currentUser?.email}</ThemedText>
           </View>
           <View style={[styles.tierBadge, { backgroundColor: colors.tint + '18' }]}>
             <ThemedText style={[styles.tierText, { color: colors.tint }]}>{tierLabel}</ThemedText>
@@ -155,15 +162,15 @@ export function SettingsHubContent({ settingsBase }: { settingsBase: '/(owner)/s
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { paddingHorizontal: 20, paddingTop: 12 },
+  list: { paddingHorizontal: Layout.screenPaddingX, paddingTop: Layout.sectionGap - 8 },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 20,
-    gap: 12,
+    padding: 16,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: Layout.sectionGap,
+    gap: 14,
   },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
@@ -173,11 +180,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    minHeight: Layout.touchMin,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    gap: 14,
   },
-  rowIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  rowIcon: { width: 36, height: 36, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
   rowLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
   notifRowLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
   signOutBtn: {
@@ -186,8 +194,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 16,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: Layout.sectionGap - 4,
   },
 });

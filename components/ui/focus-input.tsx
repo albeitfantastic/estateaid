@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface FocusInputProps extends TextInputProps {
@@ -50,7 +50,7 @@ export const inputBaseStyle = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.labelBold,
   },
   input: {
     height: 50,
@@ -58,7 +58,7 @@ export const inputBaseStyle = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 15,
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.body,
   },
 });
 
@@ -69,7 +69,7 @@ const s = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.labelBold,
   },
   input: {
     height: 50,
@@ -77,6 +77,6 @@ const s = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 15,
-    fontFamily: 'sans-serif',
+    fontFamily: Fonts.body,
   },
 });

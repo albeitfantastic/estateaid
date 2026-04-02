@@ -1,4 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
+
+import { Layout } from '@/constants/theme';
+
 import { MC } from '../paywall-tokens';
 
 interface ExitOfferCardProps {
@@ -25,7 +28,7 @@ const styles = StyleSheet.create({
     borderColor: MC.brand,
     backgroundColor: MC.tint,
     paddingVertical: 24,
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.screenPaddingX,
     alignItems: 'center',
     gap: 6,
   },

@@ -19,11 +19,11 @@ Both contexts support light and dark modes. The paywall is intentionally distinc
 
 | Role | Light | Dark |
 |---|---|---|
-| Background | `#F4F4F2` | `#0F1F1E` |
+| Background | `#F7F5F1` | `#0F1F1E` |
 | Surface (cards) | `#FFFFFF` | `#1A2B28` |
 | Primary text | `#1A2B28` | `#E8F0EE` |
 | Secondary text / icons | `#607D8B` | `#8FA8A3` |
-| Brand / tint | `#2C554E` | `#4A9B8E` |
+| Brand / tint | `#234536` | `#4A9B8E` |
 | Border | `#DDE1E0` | `#2E4B48` |
 | Success | `#4A7C59` | `#4CAF7D` |
 | Error | `#B04A3A` | `#E57373` |

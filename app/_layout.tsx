@@ -16,6 +16,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { hydrateStoredLanguage, initI18n } from '@/lib/i18n';
 import { loadAllStores } from '@/lib/load-all-stores';
@@ -29,12 +30,12 @@ SplashScreen.preventAutoHideAsync();
 const LightNavTheme: Theme = {
   dark: false,
   colors: {
-    primary: '#2C554E',
-    background: '#F4F4F2',
-    card: '#FFFFFF',
-    text: '#1A2B28',
-    border: '#DDE1E0',
-    notification: '#607D8B',
+    primary: Colors.light.tint,
+    background: Colors.light.background,
+    card: Colors.light.surface,
+    text: Colors.light.text,
+    border: Colors.light.border,
+    notification: Colors.light.textSecondary,
   },
   fonts: {
     regular: { fontFamily: 'Manrope_400Regular', fontWeight: '400' },
@@ -47,12 +48,12 @@ const LightNavTheme: Theme = {
 const DarkNavTheme: Theme = {
   dark: true,
   colors: {
-    primary: '#4A9B8E',
-    background: '#0F1F1E',
-    card: '#1A2B28',
-    text: '#E8F0EE',
-    border: '#2E4B48',
-    notification: '#607D8B',
+    primary: Colors.dark.tint,
+    background: Colors.dark.background,
+    card: Colors.dark.surface,
+    text: Colors.dark.text,
+    border: Colors.dark.border,
+    notification: Colors.dark.textSecondary,
   },
   fonts: LightNavTheme.fonts,
 };

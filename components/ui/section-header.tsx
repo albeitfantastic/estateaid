@@ -16,9 +16,9 @@ export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderPro
 
   return (
     <View style={styles.container}>
-      <ThemedText type="defaultSemiBold" style={styles.title}>{title}</ThemedText>
+      <ThemedText style={styles.title}>{title}</ThemedText>
       {actionLabel && onAction && (
-        <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
+        <TouchableOpacity onPress={onAction} activeOpacity={0.6} hitSlop={8}>
           <ThemedText style={[styles.action, { color: colors.tint }]}>{actionLabel}</ThemedText>
         </TouchableOpacity>
       )}
@@ -31,20 +31,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingVertical: 12,
+    marginTop: 4,
   },
   title: {
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-    opacity: 0.55,
+    opacity: 0.5,
     fontFamily: Fonts.labelBold,
   },
   action: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     fontFamily: Fonts.label,
   },
 });

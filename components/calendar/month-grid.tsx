@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { DayCell, DotData, DayAvailability } from './day-cell';
 import { toISODate } from '@/lib/date-utils';
@@ -36,9 +36,11 @@ export function MonthGrid({ year, month, dayInfoMap, onDayPress, selectedDay }: 
 
   return (
     <View>
-      <View style={styles.weekRow}>
+      <View style={[styles.weekRow, { borderBottomColor: colors.border }]}>
         {DAYS.map((d) => (
-          <ThemedText key={d} style={[styles.dayHeader, { color: colors.icon }]}>{d}</ThemedText>
+          <ThemedText key={d} style={[styles.dayHeader, { color: colors.textSecondary }]}>
+            {d}
+          </ThemedText>
         ))}
       </View>
       <View style={styles.grid}>
@@ -70,8 +72,20 @@ export function MonthGrid({ year, month, dayInfoMap, onDayPress, selectedDay }: 
 }
 
 const styles = StyleSheet.create({
-  weekRow: { flexDirection: 'row', marginBottom: 4 },
-  dayHeader: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600' },
+  weekRow: {
+    flexDirection: 'row',
+    paddingBottom: 10,
+    marginBottom: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  dayHeader: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Fonts.labelBold,
+    letterSpacing: 0.4,
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  empty: { width: `${100 / 7}%` },
+  empty: { width: `${100 / 7}%`, minHeight: 52 },
 });

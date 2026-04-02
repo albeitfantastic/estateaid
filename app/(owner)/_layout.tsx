@@ -1,11 +1,11 @@
 import { router, Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, Glass } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const PAYWALL_ROUTES = new Set([
@@ -20,6 +20,7 @@ const PAYWALL_ROUTES = new Set([
 export default function OwnerTabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const glass = Glass[colorScheme ?? 'light'];
   const { t, i18n } = useTranslation();
 
   return (
@@ -27,12 +28,28 @@ export default function OwnerTabLayout() {
       key={i18n.resolvedLanguage}
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
+        tabBarInactiveTintColor: colors.tabIconDefault,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarStyle: Platform.select({
-          ios: { position: 'absolute' },
-          default: {},
-        }),
+        tabBarBackground: () => (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: glass.tabBar }]} />
+        ),
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: glass.border,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarLabelStyle: {
+          fontFamily: Fonts.label,
+          fontSize: 10,
+          letterSpacing: 0.15,
+        },
+        tabBarItemStyle: {
+          paddingTop: 6,
+        },
       }}
     >
       <Tabs.Screen
@@ -54,9 +71,6 @@ export default function OwnerTabLayout() {
           },
         }}
       />
-      
-
-
       <Tabs.Screen
         name="calendar/index"
         options={{
@@ -66,22 +80,6 @@ export default function OwnerTabLayout() {
           ),
         }}
       />
-      
-      {/*<Tabs.Screen
-        name="calendar/index"
-        options={{
-          title: 'Calendar',
-          tabBarIcon: ({ color }) => <IconSymbol name="calendar" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile/index"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol name="person.fill" color={color} />,
-        }}
-      
-      />*/}
       <Tabs.Screen
         name="stays"
         options={{
@@ -104,7 +102,6 @@ export default function OwnerTabLayout() {
       <Tabs.Screen name="tickets/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
-      
     </Tabs>
   );
 }

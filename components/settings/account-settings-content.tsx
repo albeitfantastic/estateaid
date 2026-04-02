@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Layout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supportMailto } from '@/lib/support';
 import { useAuthStore } from '@/store/auth-store';
@@ -60,7 +60,7 @@ export function AccountSettingsContent() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { paddingHorizontal: 20, paddingTop: 16 },
+  inner: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 16 },
   copy: { fontSize: 15, lineHeight: 22, marginBottom: 24 },
   dangerBtn: {
     paddingVertical: 16,

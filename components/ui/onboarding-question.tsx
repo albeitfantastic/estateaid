@@ -2,17 +2,8 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { Fonts, Radius } from '@/constants/theme';
-
-const C = {
-  bg: '#F4F4F2',
-  navy: '#2C554E',
-  text: '#1A2B28',
-  muted: '#607D8B',
-  border: '#DDE1E0',
-  surface: '#FFFFFF',
-  selectedBg: '#EBF2F0',
-};
+import { Colors, Elevation, Fonts, Layout, Radius } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface OnboardingQuestionProps {
   step: number;
@@ -36,22 +27,28 @@ export function OnboardingQuestion({
   onContinue,
 }: OnboardingQuestionProps) {
   const { t } = useTranslation();
+  const colorScheme = useColorScheme();
+  const scheme = colorScheme ?? 'light';
+  const colors = Colors[scheme];
+
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* Progress dots */}
-      <View style={styles.dotsRow}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <View style={styles.progressRow}>
         {Array.from({ length: total }).map((_, i) => (
           <View
             key={i}
-            style={[styles.dot, i < step ? styles.dotFilled : styles.dotEmpty]}
+            style={[
+              styles.progressSegment,
+              { backgroundColor: i < step ? colors.tint : colors.border },
+            ]}
           />
         ))}
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.stepLabel}>{t('onboardingUi.stepOf', { step, total })}</Text>
-        <Text style={styles.question}>{question}</Text>
-        {hint && <Text style={styles.hint}>{hint}</Text>}
+        <Text style={[styles.stepLabel, { color: colors.textSecondary }]}>{t('onboardingUi.stepOf', { step, total })}</Text>
+        <Text style={[styles.question, { color: colors.text }]}>{question}</Text>
+        {hint && <Text style={[styles.hint, { color: colors.textSecondary }]}>{hint}</Text>}
 
         <View style={styles.options}>
           {options.map((label, i) => {
@@ -59,15 +56,36 @@ export function OnboardingQuestion({
             return (
               <TouchableOpacity
                 key={i}
-                style={[styles.option, selected && styles.optionSelected]}
+                style={[
+                  styles.option,
+                  { borderColor: colors.border, backgroundColor: colors.surface },
+                  Elevation.row[scheme],
+                  selected && {
+                    borderColor: colors.tint,
+                    borderWidth: 1.5,
+                    backgroundColor: colors.tint + '12',
+                  },
+                ]}
                 onPress={() => onSelect(i)}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                <Text
+                  style={[
+                    styles.optionText,
+                    { color: colors.text },
+                    selected && { color: colors.tint, fontFamily: Fonts.headingSemiBold, fontWeight: '600' },
+                  ]}
+                >
                   {label}
                 </Text>
-                <View style={[styles.radio, selected && styles.radioSelected]}>
-                  {selected && <View style={styles.radioInner} />}
+                <View
+                  style={[
+                    styles.radio,
+                    { borderColor: colors.icon + '44' },
+                    selected && { borderColor: colors.tint, backgroundColor: colors.tint + '10' },
+                  ]}
+                >
+                  {selected && <View style={[styles.radioInner, { backgroundColor: colors.tint }]} />}
                 </View>
               </TouchableOpacity>
             );
@@ -77,12 +95,20 @@ export function OnboardingQuestion({
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.btn, selectedIndex === null && styles.btnDisabled]}
+          style={[
+            styles.btn,
+            {
+              backgroundColor: selectedIndex === null ? colors.surfaceMuted : colors.tint,
+            },
+            selectedIndex === null ? styles.btnDisabled : Elevation.fab[scheme],
+          ]}
           onPress={onContinue}
           disabled={selectedIndex === null}
-          activeOpacity={0.85}
+          activeOpacity={0.82}
         >
-          <Text style={styles.btnText}>{t('onboardingUi.continue')}</Text>
+          <Text style={[styles.btnText, selectedIndex === null && { color: colors.textSecondary }]}>
+            {t('onboardingUi.continue')}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -92,39 +118,36 @@ export function OnboardingQuestion({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: C.bg,
   },
-  dotsRow: {
+  progressRow: {
     flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    gap: 6,
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingTop: Layout.sectionGap,
     paddingBottom: 8,
   },
-  dot: {
-    width: 32,
-    height: 4,
-    borderRadius: 2,
+  progressSegment: {
+    flex: 1,
+    height: 3,
+    borderRadius: Radius.full,
   },
-  dotFilled: { backgroundColor: C.navy },
-  dotEmpty: { backgroundColor: C.border },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingTop: 36,
   },
   stepLabel: {
-    fontSize: 13,
-    color: C.muted,
+    fontSize: 12,
     fontWeight: '500',
     fontFamily: Fonts.label,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     marginBottom: 16,
+    opacity: 0.9,
   },
   question: {
     fontSize: 28,
     fontWeight: '700',
-    color: C.text,
     lineHeight: 36,
     letterSpacing: -0.5,
     fontFamily: Fonts.heading,
@@ -132,78 +155,65 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 15,
-    color: C.muted,
     lineHeight: 22,
     fontFamily: Fonts.body,
     marginBottom: 32,
   },
   options: {
-    marginTop: 24,
-    gap: 12,
+    marginTop: 28,
+    gap: 10,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: C.border,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.sectionGap,
     gap: 12,
-  },
-  optionSelected: {
-    borderColor: C.navy,
-    backgroundColor: C.selectedBg,
   },
   optionText: {
     flex: 1,
     fontSize: 16,
-    color: C.text,
     lineHeight: 22,
     fontFamily: Fonts.body,
-  },
-  optionTextSelected: {
-    color: C.navy,
-    fontWeight: '600',
-    fontFamily: Fonts.headingSemiBold,
   },
   radio: {
     width: 22,
     height: 22,
     borderRadius: Radius.full,
-    borderWidth: 2,
-    borderColor: C.border,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  radioSelected: {
-    borderColor: C.navy,
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: Radius.full,
-    backgroundColor: C.navy,
   },
   footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap - 4,
   },
   btn: {
-    backgroundColor: C.navy,
-    borderRadius: Radius.md,
-    paddingVertical: 18,
+    borderRadius: Radius.lg,
+    minHeight: Layout.touchMin,
+    paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   btnDisabled: {
-    backgroundColor: C.border,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   btnText: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
     fontFamily: Fonts.heading,
-    letterSpacing: 0.3,
+    letterSpacing: 0.1,
   },
 });

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Layout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
@@ -93,7 +93,7 @@ export function ProfileSettingsContent() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { paddingHorizontal: 20, paddingTop: 16 },
+  inner: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 16 },
   label: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
   readonly: { fontSize: 16 },
   input: {

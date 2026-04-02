@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Layout, Radius, elevationStyle } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
@@ -24,7 +24,8 @@ export default function OwnerRequests() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const scheme = colorScheme ?? 'light';
+  const colors = Colors[scheme];
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const estates = useMemo(
@@ -72,7 +73,11 @@ export default function OwnerRequests() {
             return (
               <TouchableOpacity
                 key={req.id}
-                style={[styles.row, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}
+                style={[
+                  styles.row,
+                  { borderColor: colors.border, backgroundColor: colors.surface },
+                  elevationStyle('row', scheme),
+                ]}
                 onPress={() => router.push(`/(owner)/estates/${req.estateId}/stays/${req.id}` as never)}
                 activeOpacity={0.8}
               >
@@ -99,12 +104,26 @@ export default function OwnerRequests() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 10 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap - 4,
+    gap: 10,
+  },
   title: { flex: 1, fontSize: 28, fontWeight: '700' },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.md },
   badgeText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  list: { paddingHorizontal: 20 },
-  row: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 10, gap: 12 },
+  list: { paddingHorizontal: Layout.screenPaddingX },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 10,
+    gap: 12,
+  },
   info: { flex: 1, gap: 2 },
   estate: { fontSize: 12, fontWeight: '600' },
   dates: { fontSize: 13 },

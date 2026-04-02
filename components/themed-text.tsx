@@ -3,11 +3,22 @@ import { StyleSheet, Text, type TextProps } from 'react-native';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Fonts } from '@/constants/theme';
+import { Typography } from '@/constants/typography';
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+  type?:
+    | 'default'
+    | 'title'
+    | 'defaultSemiBold'
+    | 'subtitle'
+    | 'link'
+    | 'overline'
+    | 'caption'
+    | 'statValue'
+    | 'statLabel'
+    | 'label';
 };
 
 export function ThemedText({
@@ -31,6 +42,11 @@ export function ThemedText({
         type === 'subtitle' ? styles.subtitle : undefined,
         type === 'link' ? styles.link : undefined,
         type === 'link' ? { color: linkColor } : undefined,
+        type === 'overline' ? styles.overline : undefined,
+        type === 'caption' ? styles.caption : undefined,
+        type === 'statValue' ? styles.statValue : undefined,
+        type === 'statLabel' ? styles.statLabel : undefined,
+        type === 'label' ? styles.label : undefined,
         style,
       ]}
       {...rest}
@@ -40,30 +56,35 @@ export function ThemedText({
 
 const styles = StyleSheet.create({
   default: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontFamily: Fonts.body,
+    ...Typography.body,
   },
   defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
-    fontFamily: Fonts.headingSemiBold,
+    ...Typography.bodySemiBold,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    lineHeight: 36,
-    fontFamily: Fonts.heading,
+    ...Typography.hero,
   },
   subtitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: Fonts.heading,
+    ...Typography.subtitle,
   },
   link: {
-    lineHeight: 30,
     fontSize: 16,
+    lineHeight: 24,
     fontFamily: Fonts.body,
+  },
+  overline: {
+    ...Typography.overline,
+  },
+  caption: {
+    ...Typography.caption,
+  },
+  statValue: {
+    ...Typography.statValue,
+  },
+  statLabel: {
+    ...Typography.statLabel,
+  },
+  label: {
+    ...Typography.label,
   },
 });
