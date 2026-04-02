@@ -72,7 +72,7 @@ export const catalogPartB: Record<string, unknown> = {
     channelTelegram: 'Telegram',
     channelMessenger: 'More apps',
     openInviteSuffix:
-      'Each code is single-use. Sign in to EstateAid and redeem it from the Invitations tab (or when prompted).',
+      'Each code is single-use. Sign in to Maison and redeem it from the Invitations tab (or when prompted).',
     codesGenerated: '{{count}} invite code(s) created',
     codeHint: 'Single-use · any guest can redeem once after signing in',
     shareAgain: 'Share again',
@@ -88,7 +88,7 @@ export const catalogPartB: Record<string, unknown> = {
     estateRoleCoOwnerLabel: 'Co-owner',
     createMore: 'Create more invite codes',
     done: 'Done',
-    emailSubject: 'EstateAid invitation',
+    emailSubject: 'Maison invitation',
     messengerHint: 'Pick Messenger or another app from the share sheet.',
   },
   ownerInvitations: {

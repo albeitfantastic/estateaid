@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { EstateCard } from '@/components/ui/estate-card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -17,6 +18,7 @@ import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { getEstateRole } from '@/lib/estate-role';
 import { guestEmailsMatch } from '@/lib/invite-email';
+import { showMaisonProUpgradePrompt } from '@/lib/maison-pro-upgrade';
 
 export default function OwnerEstates() {
   const { t } = useTranslation();
@@ -52,16 +54,15 @@ export default function OwnerEstates() {
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
         <ThemedText type="title" style={styles.title}>{t('titles.properties')}</ThemedText>
-        {hasHostAccess && (
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.tint }, Elevation.fab[colorScheme ?? 'light']]}
-            onPress={() => router.push('/(app)/estates/new' as never)}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="plus" size={18} color="#fff" />
-            <ThemedText style={styles.addBtnText}>Add New</ThemedText>
-          </TouchableOpacity>
-        )}
+        <HostProLockTouchable
+          locked={!hasHostAccess}
+          onPress={() => router.push('/(app)/estates/new' as never)}
+          style={[styles.addBtn, { backgroundColor: colors.tint }, Elevation.fab[colorScheme ?? 'light']]}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name="plus" size={18} color="#fff" />
+          <ThemedText style={styles.addBtnText}>Add New</ThemedText>
+        </HostProLockTouchable>
       </View>
 
       {estates.length === 0 ? (
@@ -69,8 +70,12 @@ export default function OwnerEstates() {
           icon="building.2.fill"
           title={t('estatesList.emptyTitle')}
           subtitle={t('estatesList.emptySub')}
-          actionLabel={hasHostAccess ? t('estatesList.addEstate') : undefined}
-          onAction={hasHostAccess ? () => router.push('/(app)/estates/new' as never) : undefined}
+          actionLabel={t('estatesList.addEstate')}
+          onAction={() =>
+            hasHostAccess
+              ? router.push('/(app)/estates/new' as never)
+              : showMaisonProUpgradePrompt(t)
+          }
         />
       ) : (
         <ScrollView
@@ -87,18 +92,11 @@ export default function OwnerEstates() {
               <View key={estate.id} style={styles.cardWrap}>
                 <EstateCard
                   estate={estate}
-                  onPress={() => {
-                    if (lockedOwned) {
-                      router.push('/(app)/settings/paywall-trust' as never);
-                      return;
-                    }
-                    router.push(`/(app)/estates/${estate.id}` as never);
-                  }}
+                  onPress={() => router.push(`/(app)/estates/${estate.id}` as never)}
                 />
                 {lockedOwned && (
-                  <View pointerEvents="none" style={[styles.lockOverlay, { backgroundColor: colors.text + '55' }]}>
-                    <IconSymbol name="lock.fill" size={28} color="#fff" />
-                    <ThemedText style={styles.lockOverlayText}>{t('estatesList.lockedTap')}</ThemedText>
+                  <View pointerEvents="none" style={styles.cardLockBadge}>
+                    <IconSymbol name="lock.fill" size={11} color="#fff" />
                   </View>
                 )}
                 {invRole && (
@@ -141,14 +139,18 @@ const styles = StyleSheet.create({
   back: { padding: 4 },
   list: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 10, gap: 4 },
   cardWrap: { position: 'relative', borderRadius: Radius.lg, overflow: 'hidden' },
-  lockOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  cardLockBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    borderRadius: Radius.lg,
+    zIndex: 2,
   },
-  lockOverlayText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center', paddingHorizontal: 16 },
   roleBadge: {
     alignSelf: 'flex-start',
     marginTop: -6,

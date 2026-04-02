@@ -134,7 +134,7 @@ export function SettingsHubContent() {
         </View>
         {menuRow('gearshape.fill', 'Account', () => pushSection('account'))}
         {menuRow('questionmark.circle.fill', 'Help & Support', () => {
-          void Linking.openURL(supportMailto('Help & Support', 'I need help with EstateAid.'));
+          void Linking.openURL(supportMailto('Help & Support', 'I need help with Maison.'));
         })}
         {menuRow('doc.text.fill', 'Privacy Policy', () => {
           Alert.alert(

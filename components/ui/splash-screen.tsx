@@ -51,7 +51,7 @@ export function SplashScreenOverlay({ isHydrated, onDone }: Props) {
     <View style={styles.container}>
       <Animated.View style={{ opacity, transform: [{ scale }] }}>
         <Image
-          source={require('../../assets/images/splash-icon.png')}
+          source={require('../../logo_1426.png')}
           style={styles.logo}
           resizeMode="contain"
         />

@@ -24,7 +24,7 @@ export const catalogPartA: Record<string, unknown> = {
     skip: 'Skip',
     close: 'Close',
     error: 'Error',
-    estateAid: 'EstateAid',
+    estateAid: 'Maison',
     you: 'You',
     unknownEstate: 'Unknown Estate',
     emailSupport: 'Email support',
@@ -48,6 +48,10 @@ export const catalogPartA: Record<string, unknown> = {
     starter: 'Starter',
     ownerResponse: 'Owner response',
     proposed: 'Proposed',
+  },
+  access: {
+    maisonProTitle: 'Maison Pro',
+    upgradeToUnpause: 'Upgrade to Maison Pro to unpause access.',
   },
   calendar: {
     months: [
@@ -111,7 +115,7 @@ export const catalogPartA: Record<string, unknown> = {
     inviteNoSessionEmail: 'Add an email to your account to redeem invite codes.',
     inviteOutdated: 'That invite is outdated. Ask your host for a new code.',
     inviteGenericFail: 'We could not apply your invite code. Open Invitations and enter it again.',
-    deleteMailSubject: 'Delete my EstateAid account',
+    deleteMailSubject: 'Delete my Maison account',
     deleteMailBodyUser: 'Please delete my account.\n\nUser id: {{id}}\nEmail: {{email}}',
     deleteMailBodyGeneric: 'Please delete my account.',
   },
@@ -127,14 +131,14 @@ export const catalogPartA: Record<string, unknown> = {
     q2o1: 'I manage, but it takes real effort',
     q2o2: "I have a system, but it's far from ideal",
     q3q: 'How much mental space do your properties take up?',
-    q3h: 'Your time is valuable. EstateAid gives it back.',
+    q3h: 'Your time is valuable. Maison gives it back.',
     q3o0: "More than I'd like — it's overwhelming",
     q3o1: 'Several hours a week at least',
     q3o2: "I've delegated it, but oversight is still needed",
   },
   role: {
     eyebrow: 'Almost there',
-    title: "How will you use\nEstateAid?",
+    title: "How will you use\nMaison?",
     subtitle: 'Choose your role. You can always switch later.',
     ownerTitle: "I'm a Property Owner",
     ownerDesc: 'Manage estates, invite guests, approve stays and keep everything in one place.',
@@ -159,7 +163,7 @@ export const catalogPartA: Record<string, unknown> = {
   },
   rating: {
     eyebrow: 'Quick favour',
-    title: 'Enjoying EstateAid\nso far?',
+    title: 'Enjoying Maison\nso far?',
     subtitle: 'Your rating helps others discover the app and helps us keep improving it.',
     poor: 'Poor',
     fair: 'Fair',
@@ -184,7 +188,7 @@ export const catalogPartA: Record<string, unknown> = {
   settingsHub: {
     manageSubscription: 'Manage subscription',
     helpSubject: 'Help & Support',
-    helpBody: 'I need help with EstateAid.',
+    helpBody: 'I need help with Maison.',
     privacyTitle: 'Privacy Policy',
     privacyBody:
       'Our privacy policy will be published on the website soon. Contact support if you need details now.',
@@ -204,7 +208,7 @@ export const catalogPartA: Record<string, unknown> = {
   },
   accountSettings: {
     copy:
-      'Manage your account and data. Deleting your account removes access to EstateAid; our team completes removal on the backend.',
+      'Manage your account and data. Deleting your account removes access to Maison; our team completes removal on the backend.',
     deleteTitle: 'Delete account',
     deleteBody:
       'Account deletion is processed by support. We will sign you out after you send the request.',
@@ -254,11 +258,16 @@ export const catalogPartA: Record<string, unknown> = {
     guestsBody: 'Guest accounts do not have an app subscription. Contact the property host if needed.',
     cancelChangeTitle: 'Cancel or change subscription',
     cancelChangeBody:
-      'We do not see {{plan}} on this EstateAid account or from the store on this device. If you subscribed with this Apple/Google account, use subscription settings to cancel or change your plan. You can also sync to refresh after purchases.',
+      'We do not see {{plan}} on this Maison account or from the store on this device. If you subscribed with this Apple/Google account, use subscription settings to cancel or change your plan. You can also sync to refresh after purchases.',
     openSubSettings: 'Open subscription settings',
     syncWithStore: 'Sync with store',
     subscriptionMailSubject: 'Subscription',
     subscriptionMailBody: 'I need help with my {{plan}} subscription.',
+  },
+  trialFlow: {
+    errorTitle: 'Trial',
+    rpcNotDeployedBody:
+      'Your Supabase project is missing the start_app_trial database function. Open the Supabase Dashboard → SQL Editor for this app’s project, paste and run the script from the repo file supabase/manual/quick_fix_start_app_trial.sql (or run supabase db push from the project folder). Then try again.',
   },
   paywall: {
     welcomeTitle: 'Welcome to {{plan}}',

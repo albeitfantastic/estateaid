@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { OutcomeScreen } from '@/components/paywall/screens/OutcomeScreen';
-import { startAppTrialRpc } from '@/lib/start-app-trial';
+import { isTrialRpcMissingError, startAppTrialRpc } from '@/lib/start-app-trial';
 import { useAuthStore } from '@/store/auth-store';
 
 export default function PaywallOutcome() {
+  const { t } = useTranslation();
   const router = useRouter();
   const refreshProfile = useAuthStore((s) => s.refreshProfileFromSupabase);
   const [busy, setBusy] = useState(false);
@@ -18,7 +20,10 @@ export default function PaywallOutcome() {
     try {
       const r = await startAppTrialRpc();
       if (!r.ok) {
-        Alert.alert('Trial', r.reason);
+        Alert.alert(
+          t('trialFlow.errorTitle'),
+          isTrialRpcMissingError(r.reason) ? t('trialFlow.rpcNotDeployedBody') : r.reason
+        );
         return;
       }
       await refreshProfile();

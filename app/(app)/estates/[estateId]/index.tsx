@@ -1,8 +1,7 @@
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
-
+import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -38,7 +37,6 @@ const GUEST_ITEMS = [
 ] as const;
 
 export default function EstateHub() {
-  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -76,44 +74,7 @@ export default function EstateHub() {
     );
   }
 
-  if (estateRole === 'owner' && !hasFullHost) {
-    return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-          <View style={styles.headerText}>
-            <ThemedText type="title" style={styles.name} numberOfLines={1}>
-              {estate.name}
-            </ThemedText>
-            <View style={styles.locationRow}>
-              <IconSymbol name="map.fill" size={13} color={colors.icon} />
-              <ThemedText style={[styles.location, { color: colors.icon }]}>{estate.location}</ThemedText>
-            </View>
-          </View>
-        </View>
-        <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + Spacing.xl }]}>
-          <View style={[styles.lockedPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <IconSymbol name="lock.fill" size={32} color={colors.tint} />
-            <ThemedText type="defaultSemiBold" style={styles.lockedTitle}>
-              {t('estatesList.lockedDetailTitle')}
-            </ThemedText>
-            <ThemedText style={[styles.description, { color: colors.icon }]}>{t('estatesList.lockedDetailSub')}</ThemedText>
-            <TouchableOpacity
-              style={[styles.unlockBtn, { backgroundColor: colors.tint }]}
-              onPress={() => router.push('/(app)/settings/paywall-trust' as never)}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.unlockBtnText}>{t('estatesList.lockedDetailCta')}</ThemedText>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </ThemedView>
-    );
-  }
-
-  // Owner: full control
+  // Owner: full hub (Standard tier: host tiles show lock until Maison Pro / trial)
   if (estateRole === 'owner') {
     return (
       <ThemedView style={styles.container}>
@@ -128,9 +89,13 @@ export default function EstateHub() {
               <ThemedText style={[styles.location, { color: colors.icon }]}>{estate.location}</ThemedText>
             </View>
           </View>
-          <TouchableOpacity onPress={() => router.push(`/(app)/estates/${estateId}/edit` as never)}>
+          <HostProLockTouchable
+            locked={!hasFullHost}
+            onPress={() => router.push(`/(app)/estates/${estateId}/edit` as never)}
+            style={styles.editBtn}
+          >
             <IconSymbol name="pencil" size={20} color={colors.tint} />
-          </TouchableOpacity>
+          </HostProLockTouchable>
         </View>
         <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + Spacing.xl }]}>
           {estate.description && (
@@ -138,19 +103,19 @@ export default function EstateHub() {
           )}
           <View style={styles.tiles}>
             {OWNER_ITEMS.map((item) => (
-              <TouchableOpacity
+              <HostProLockTouchable
                 key={item.route}
+                locked={!hasFullHost}
+                onPress={() => router.push(`/(app)/estates/${estateId}/${item.route}` as never)}
                 style={[
                   styles.tile,
                   { backgroundColor: colors.surface, borderColor: colors.border },
                   Elevation.card[scheme],
                 ]}
-                onPress={() => router.push(`/(app)/estates/${estateId}/${item.route}` as never)}
-                activeOpacity={0.75}
               >
                 <IconSymbol name={item.icon} size={28} color={colors.tint} />
                 <ThemedText type="defaultSemiBold" style={styles.tileLabel}>{item.label}</ThemedText>
-              </TouchableOpacity>
+              </HostProLockTouchable>
             ))}
           </View>
         </ScrollView>
@@ -236,6 +201,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   back: { padding: 4 },
+  editBtn: { padding: 8, minWidth: 40, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
   headerText: { flex: 1, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   name: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
@@ -268,21 +234,4 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   hintText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: Fonts.body },
-  lockedPanel: {
-    alignItems: 'center',
-    gap: 14,
-    padding: Layout.sectionGap + 8,
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 8,
-  },
-  lockedTitle: { fontSize: 18, textAlign: 'center' },
-  unlockBtn: {
-    marginTop: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-  },
-  unlockBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

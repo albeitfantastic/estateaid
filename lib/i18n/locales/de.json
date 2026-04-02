@@ -22,7 +22,7 @@
     "skip": "Überspringen",
     "close": "Schließen",
     "error": "Fehler",
-    "estateAid": "EstateAid",
+    "estateAid": "Maison",
     "you": "Du",
     "unknownEstate": "Unbekanntes Anwesen",
     "emailSupport": "Support per E-Mail",
@@ -72,7 +72,7 @@
   "settingsHub": {
     "manageSubscription": "Abo verwalten",
     "helpSubject": "Hilfe & Support",
-    "helpBody": "Ich brauche Hilfe mit EstateAid.",
+    "helpBody": "Ich brauche Hilfe mit Maison.",
     "privacyTitle": "Datenschutz",
     "privacyBody": "Unsere Datenschutzerklärung erschein bald auf der Website. Bei Fragen kontaktiere den Support.",
     "signOutTitle": "Abmelden",

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -9,14 +9,15 @@ import { SettingsSheet, type SettingsDestination } from '@/components/settings/s
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SurfaceCard } from '@/components/ui/surface-card';
 import { Colors, EstateColors, Layout, Radius, elevationStyle, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAccessTier } from '@/lib/access-tier';
+import { useAccessTier, useHasFullHostAccess } from '@/lib/access-tier';
 import { formatDate, formatDateRange, getDaysInRange, today } from '@/lib/date-utils';
-import { guestEmailsMatch } from '@/lib/invite-email';
+import { showMaisonProUpgradePrompt } from '@/lib/maison-pro-upgrade';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
 import { getEventOccurrences, describeRecurrence } from '@/lib/event-utils';
 import { useAuthStore } from '@/store/auth-store';
@@ -66,50 +67,7 @@ export default function OwnerDashboard() {
   const todayStr = today();
   const profileById = useProfileStore((s) => s.byId);
   const accessTier = useAccessTier();
-
-  const guestInviteIds = useMemo(() => {
-    if (!currentUser) return [] as string[];
-    return allInvitations
-      .filter(
-        (inv) =>
-          (guestEmailsMatch(inv.guestEmail, currentUser.email) || inv.guestId === currentUser.id) &&
-          inv.status === 'accepted'
-      )
-      .map((inv) => inv.estateId);
-  }, [allInvitations, currentUser]);
-
-  const guestEstates = useMemo(
-    () => allEstates.filter((e) => guestInviteIds.includes(e.id)),
-    [allEstates, guestInviteIds]
-  );
-
-  const guestPendingCount = useMemo(
-    () =>
-      allStayRequests.filter((r) => r.guestId === currentUser?.id && r.status === 'pending').length,
-    [allStayRequests, currentUser?.id]
-  );
-
-  const guestUpcomingStays = useMemo(
-    () =>
-      allStays
-        .filter((s) => s.guestId === currentUser?.id && s.to >= todayStr)
-        .sort((a, b) => a.from.localeCompare(b.from))
-        .slice(0, 5),
-    [allStays, currentUser?.id, todayStr]
-  );
-
-  const ownedLockedCount = useMemo(
-    () => allEstates.filter((e) => e.ownerId === currentUser?.id).length,
-    [allEstates, currentUser?.id]
-  );
-
-  const guestEstateColorMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    guestEstates.forEach((e, i) => {
-      map[e.id] = EstateColors[i % EstateColors.length];
-    });
-    return map;
-  }, [guestEstates]);
+  const hasHost = useHasFullHostAccess();
 
   const estates = useMemo(
     () => allEstates.filter((e) => e.ownerId === currentUser?.id),
@@ -216,167 +174,6 @@ export default function OwnerDashboard() {
     ? estateEvents.filter((ev) => getEventOccurrences(ev, selectedDay, selectedDay).length > 0)
     : [];
 
-  if (accessTier === 'standard') {
-    return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap }]}>
-          <View style={{ flex: 1 }}>
-            <ThemedText type="title" style={styles.greeting}>
-              {t('guestHome.greeting', { name: currentUser?.name.split(' ')[0] ?? '' })}
-            </ThemedText>
-            <ThemedText type="caption" style={[styles.sub, { color: colors.textSecondary }]}>
-              {t('home.standardSub')}
-            </ThemedText>
-          </View>
-          <TouchableOpacity
-            onPress={() => setMenuOpen(true)}
-            style={[
-              styles.menuBtn,
-              {
-                backgroundColor: colors.tintMuted,
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: colors.border,
-              },
-            ]}
-            activeOpacity={0.7}
-            hitSlop={12}
-          >
-            <IconSymbol name="line.3.horizontal" size={22} color={colors.tint} />
-          </TouchableOpacity>
-        </View>
-
-        <SettingsSheet
-          visible={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          colors={colors}
-          insets={insets}
-          currentUser={currentUser ? { name: currentUser.name, email: currentUser.email } : null}
-          accessTier={accessTier}
-          selectedTier={selectedTier}
-          isDark={isDark}
-          notificationsOn={notificationsEnabled}
-          onToggleDark={(v: boolean) => setThemePreference(v ? 'dark' : 'light')}
-          onToggleNotifications={setNotificationsEnabled}
-          onNavigate={(dest: SettingsDestination) => navigateToSettingsSection(router, dest)}
-          onSignOut={() => {
-            void signOut().then(() => router.replace('/(auth)' as never));
-          }}
-        />
-
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Layout.sectionGap + 12 }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {ownedLockedCount > 0 && (
-            <TouchableOpacity
-              style={{ marginBottom: Layout.sectionGap }}
-              onPress={() => router.push('/(app)/settings/paywall-trust' as never)}
-              activeOpacity={0.85}
-            >
-              <SurfaceCard
-                variant="elevated"
-                style={[styles.actionCardShell, { borderTopWidth: 3, borderTopColor: colors.warning }]}
-                contentStyle={styles.actionCardInner}
-              >
-                <View style={[styles.actionIcon, { backgroundColor: colors.warning + '22' }]}>
-                  <IconSymbol name="lock.fill" size={22} color={colors.warning} />
-                </View>
-                <ThemedText type="defaultSemiBold" style={styles.actionTitle}>
-                  {t('home.lockedPropertiesTitle', { count: ownedLockedCount })}
-                </ThemedText>
-                <ThemedText type="caption" style={{ color: colors.textSecondary, textAlign: 'center' }}>
-                  {t('home.lockedPropertiesSub')}
-                </ThemedText>
-              </SurfaceCard>
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.statsRow}>
-            <StatCard
-              icon="building.2.fill"
-              value={guestEstates.length}
-              label={t('guestHome.properties')}
-              color={colors.tint}
-              colors={colors}
-              onPress={() => router.push('/(app)/estates' as never)}
-            />
-            <StatCard
-              icon="suitcase.fill"
-              value={guestPendingCount}
-              label={t('guestHome.staysPending')}
-              color={colors.tint}
-              colors={colors}
-              onPress={() => router.push('/(app)/stays' as never)}
-            />
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={styles.actionTouchable}
-              onPress={() => router.push('/(app)/stays/plan' as never)}
-              activeOpacity={0.75}
-            >
-              <SurfaceCard
-                variant="elevated"
-                style={[styles.actionCardShell, { borderTopWidth: 3, borderTopColor: colors.tint }]}
-                contentStyle={styles.actionCardInner}
-              >
-                <View style={[styles.actionIcon, { backgroundColor: colors.tintMuted }]}>
-                  <IconSymbol name="calendar.badge.plus" size={22} color={colors.tint} />
-                </View>
-                <ThemedText type="defaultSemiBold" style={styles.actionTitle}>
-                  {t('guestHome.planStay')}
-                </ThemedText>
-                <ThemedText type="caption" style={{ color: colors.textSecondary, textAlign: 'center' }}>
-                  {t('guestHome.planStaySub')}
-                </ThemedText>
-              </SurfaceCard>
-            </TouchableOpacity>
-          </View>
-
-          <SectionHeader
-            title={t('guestHome.upcomingStays')}
-            actionLabel={t('guestHome.seeAll')}
-            onAction={() => router.push('/(app)/stays' as never)}
-          />
-          {guestUpcomingStays.length === 0 ? (
-            <EmptyState
-              icon="calendar"
-              title={t('guestHome.noUpcomingTitle')}
-              subtitle={t('guestHome.noUpcomingSub')}
-            />
-          ) : (
-            <View style={styles.upcomingList}>
-              {guestUpcomingStays.map((stay) => {
-                const estate = guestEstates.find((e) => e.id === stay.estateId);
-                const dotColor = guestEstateColorMap[stay.estateId] ?? colors.tint;
-                return (
-                  <SurfaceCard
-                    key={stay.id}
-                    variant="elevated"
-                    padded={false}
-                    accentColor={dotColor}
-                    accentWidth={4}
-                    contentStyle={styles.stayRowInner}
-                  >
-                    <View style={styles.stayInfo}>
-                      <ThemedText type="defaultSemiBold" style={styles.stayGuest}>
-                        {currentUser?.name ?? t('common.you')}
-                      </ThemedText>
-                      <ThemedText type="caption" style={{ color: colors.textSecondary }}>
-                        {estate?.name} · {formatDateRange(stay.from, stay.to)}
-                      </ThemedText>
-                    </View>
-                  </SurfaceCard>
-                );
-              })}
-            </View>
-          )}
-        </ScrollView>
-      </ThemedView>
-    );
-  }
-
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap }]}>
@@ -435,6 +232,7 @@ export default function OwnerDashboard() {
             label={t('ownerHome.properties')}
             color={colors.tint}
             colors={colors}
+            hostLocked={!hasHost}
             onPress={() => router.push('/(app)/estates' as never)}
           />
           <StatCard
@@ -443,6 +241,7 @@ export default function OwnerDashboard() {
             label={t('ownerHome.guests')}
             color={colors.tint}
             colors={colors}
+            hostLocked={!hasHost}
             onPress={() => router.push('/(app)/guests' as never)}
           />
           <StatCard
@@ -451,6 +250,7 @@ export default function OwnerDashboard() {
             label={t('ownerHome.requests')}
             color={colors.tint}
             colors={colors}
+            hostLocked={!hasHost}
             onPress={() => router.push('/(app)/stays' as never)}
           />
           {/*}
@@ -468,56 +268,56 @@ export default function OwnerDashboard() {
         {(todayArrivals.length > 0 || todayDepartures.length > 0 || pendingCount > 0) && (
           <View style={styles.priorityRow}>
             {todayArrivals.length > 0 && (
-              <TouchableOpacity
+              <HostProLockTouchable
+                locked={!hasHost}
+                onPress={() => router.push('/(app)/stays' as never)}
                 style={[
                   styles.priorityChip,
                   { backgroundColor: colors.success + '16', borderColor: colors.success + '35' },
                 ]}
-                onPress={() => router.push('/(app)/stays' as never)}
-                activeOpacity={0.75}
               >
                 <IconSymbol name="arrow.down.circle.fill" size={14} color={colors.success} />
                 <ThemedText style={[styles.priorityText, { color: colors.success }]}>
                   {t('ownerHome.arriving', { count: todayArrivals.length })}
                 </ThemedText>
-              </TouchableOpacity>
+              </HostProLockTouchable>
             )}
             {todayDepartures.length > 0 && (
-              <TouchableOpacity
+              <HostProLockTouchable
+                locked={!hasHost}
+                onPress={() => router.push('/(app)/stays' as never)}
                 style={[
                   styles.priorityChip,
                   { backgroundColor: colors.warning + '18', borderColor: colors.warning + '40' },
                 ]}
-                onPress={() => router.push('/(app)/stays' as never)}
-                activeOpacity={0.75}
               >
                 <IconSymbol name="arrow.up.circle.fill" size={14} color={colors.warning} />
                 <ThemedText style={[styles.priorityText, { color: colors.warning }]}>
                   {t('ownerHome.departing', { count: todayDepartures.length })}
                 </ThemedText>
-              </TouchableOpacity>
+              </HostProLockTouchable>
             )}
             {pendingCount > 0 && (
-              <TouchableOpacity
-                style={[styles.priorityChip, { backgroundColor: colors.tint + '18', borderColor: colors.tint + '33' }]}
+              <HostProLockTouchable
+                locked={!hasHost}
                 onPress={() => router.push('/(app)/requests' as never)}
-                activeOpacity={0.75}
+                style={[styles.priorityChip, { backgroundColor: colors.tint + '18', borderColor: colors.tint + '33' }]}
               >
                 <IconSymbol name="tray.fill" size={14} color={colors.tint} />
                 <ThemedText style={[styles.priorityText, { color: colors.tint }]}>
                   {t('ownerHome.pending', { count: pendingCount })}
                 </ThemedText>
-              </TouchableOpacity>
+              </HostProLockTouchable>
             )}
           </View>
         )}
 
         {/* Action buttons */}
         <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.actionTouchable}
+          <HostProLockTouchable
+            locked={!hasHost}
             onPress={() => router.push('/(app)/plan-stay' as never)}
-            activeOpacity={0.75}
+            style={styles.actionTouchable}
           >
             <SurfaceCard
               variant="elevated"
@@ -534,12 +334,12 @@ export default function OwnerDashboard() {
                 {t('ownerHome.planStaySub')}
               </ThemedText>
             </SurfaceCard>
-          </TouchableOpacity>
+          </HostProLockTouchable>
 
-          <TouchableOpacity
-            style={styles.actionTouchable}
+          <HostProLockTouchable
+            locked={!hasHost}
             onPress={() => router.push('/(app)/invite' as never)}
-            activeOpacity={0.75}
+            style={styles.actionTouchable}
           >
             <SurfaceCard
               variant="elevated"
@@ -556,7 +356,7 @@ export default function OwnerDashboard() {
                 {t('ownerHome.inviteUserSub')}
               </ThemedText>
             </SurfaceCard>
-          </TouchableOpacity>
+          </HostProLockTouchable>
         </View>
 
         {/* Upcoming Stays */}
@@ -564,6 +364,7 @@ export default function OwnerDashboard() {
           title={t('ownerHome.upcomingStays')}
           actionLabel={t('ownerHome.seeAll')}
           onAction={() => router.push('/(app)/stays' as never)}
+          actionHostLocked={!hasHost}
         />
         {upcomingStays.length === 0 ? (
           <EmptyState
@@ -584,10 +385,10 @@ export default function OwnerDashboard() {
               const isActive = stay.from <= todayStr && stay.to >= todayStr;
               const relColor = isActive ? colors.success : colors.tint;
               return (
-                <TouchableOpacity
+                <HostProLockTouchable
                   key={stay.id}
+                  locked={!hasHost}
                   onPress={() => router.push('/(app)/stays' as never)}
-                  activeOpacity={0.75}
                   style={styles.stayRowOuter}
                 >
                   <SurfaceCard
@@ -609,138 +410,149 @@ export default function OwnerDashboard() {
                       <ThemedText style={[styles.relBadgeText, { color: relColor }]}>{relLabel}</ThemedText>
                     </View>
                   </SurfaceCard>
-                </TouchableOpacity>
+                </HostProLockTouchable>
               );
             })}
           </View>
         )}
 
-        {/* Interactive Calendar */}
-        <SectionHeader title={t('ownerHome.thisMonth')} />
-        <View
-          style={[
-            styles.calendarCard,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-            elevationStyle('card', scheme),
-          ]}
-        >
-          <View style={[styles.calendarNav, { borderBottomColor: colors.border }]}>
-            <TouchableOpacity onPress={prevMonth} style={[styles.navBtn, { backgroundColor: colors.surfaceMuted }]}>
-              <IconSymbol name="arrow.left" size={20} color={colors.tint} />
-            </TouchableOpacity>
-            <ThemedText type="defaultSemiBold" style={[styles.monthLabel, { color: colors.text }]}>
-              {monthNames[viewMonth]} {viewYear}
-            </ThemedText>
-            <TouchableOpacity onPress={nextMonth} style={[styles.navBtn, { backgroundColor: colors.surfaceMuted }]}>
-              <IconSymbol name="arrow.right" size={20} color={colors.tint} />
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.calendarGridPad, { backgroundColor: colors.surfaceMuted }]}>
-            <MonthGrid
-              year={viewYear}
-              month={viewMonth}
-              dayInfoMap={dayInfoMap}
-              selectedDay={selectedDay ?? undefined}
-              onDayPress={(d) => setSelectedDay(selectedDay === d ? null : d)}
-            />
-          </View>
-        </View>
-
-        {(estates.length > 0 || estateEvents.length > 0) && (
-          <>
-            <TouchableOpacity
-              style={styles.legendToggle}
-              onPress={() => setLegendOpen((o) => !o)}
-              activeOpacity={0.7}
+        {/* Interactive Calendar (host-gated for Standard) */}
+        <View style={styles.calendarSectionWrap}>
+          <View pointerEvents={hasHost ? 'auto' : 'none'}>
+            <SectionHeader title={t('ownerHome.thisMonth')} />
+            <View
+              style={[
+                styles.calendarCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                elevationStyle('card', scheme),
+              ]}
             >
-              <ThemedText style={[styles.legendToggleText, { color: colors.textSecondary }]}>
-                {t('ownerHome.legend')}
-              </ThemedText>
-              <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={14} color={colors.textSecondary} />
-            </TouchableOpacity>
-            {legendOpen && (
-              <View style={styles.legend}>
-                {estates.map((e, i) => (
-                  <View
-                    key={e.id}
-                    style={[styles.legendItem, { backgroundColor: colors.surfaceMuted, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
-                  >
-                    <View style={[styles.legendDot, { backgroundColor: EstateColors[i % EstateColors.length] }]} />
-                    <ThemedText style={[styles.legendText, { color: colors.text }]} numberOfLines={1}>
-                      {e.name}
-                    </ThemedText>
+              <View style={[styles.calendarNav, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity onPress={prevMonth} style={[styles.navBtn, { backgroundColor: colors.surfaceMuted }]}>
+                  <IconSymbol name="arrow.left" size={20} color={colors.tint} />
+                </TouchableOpacity>
+                <ThemedText type="defaultSemiBold" style={[styles.monthLabel, { color: colors.text }]}>
+                  {monthNames[viewMonth]} {viewYear}
+                </ThemedText>
+                <TouchableOpacity onPress={nextMonth} style={[styles.navBtn, { backgroundColor: colors.surfaceMuted }]}>
+                  <IconSymbol name="arrow.right" size={20} color={colors.tint} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.calendarGridPad, { backgroundColor: colors.surfaceMuted }]}>
+                <MonthGrid
+                  year={viewYear}
+                  month={viewMonth}
+                  dayInfoMap={dayInfoMap}
+                  selectedDay={selectedDay ?? undefined}
+                  onDayPress={(d) => setSelectedDay(selectedDay === d ? null : d)}
+                />
+              </View>
+            </View>
+
+            {(estates.length > 0 || estateEvents.length > 0) && (
+              <>
+                <TouchableOpacity
+                  style={styles.legendToggle}
+                  onPress={() => setLegendOpen((o) => !o)}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={[styles.legendToggleText, { color: colors.textSecondary }]}>
+                    {t('ownerHome.legend')}
+                  </ThemedText>
+                  <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={14} color={colors.textSecondary} />
+                </TouchableOpacity>
+                {legendOpen && (
+                  <View style={styles.legend}>
+                    {estates.map((e, i) => (
+                      <View
+                        key={e.id}
+                        style={[styles.legendItem, { backgroundColor: colors.surfaceMuted, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
+                      >
+                        <View style={[styles.legendDot, { backgroundColor: EstateColors[i % EstateColors.length] }]} />
+                        <ThemedText style={[styles.legendText, { color: colors.text }]} numberOfLines={1}>
+                          {e.name}
+                        </ThemedText>
+                      </View>
+                    ))}
+                    {estateEvents.map((ev) => (
+                      <View
+                        key={ev.id}
+                        style={[styles.legendItem, { backgroundColor: colors.surfaceMuted, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
+                      >
+                        <View style={[styles.legendDot, { backgroundColor: ev.color ?? '#64748B' }]} />
+                        <ThemedText style={[styles.legendText, { color: colors.text }]} numberOfLines={1}>
+                          {ev.title}
+                        </ThemedText>
+                      </View>
+                    ))}
                   </View>
-                ))}
-                {estateEvents.map((ev) => (
-                  <View
-                    key={ev.id}
-                    style={[styles.legendItem, { backgroundColor: colors.surfaceMuted, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
+                )}
+              </>
+            )}
+
+            {selectedDay && (
+              <View
+                style={[
+                  styles.dayDetail,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  elevationStyle('row', scheme),
+                ]}
+              >
+                <View style={styles.dayDetailHeader}>
+                  <ThemedText type="defaultSemiBold" style={[styles.dayDetailTitle, { color: colors.text }]}>
+                    {formatDate(selectedDay)}
+                  </ThemedText>
+                  <TouchableOpacity
+                    onPress={() => setSelectedDay(null)}
+                    style={[styles.dayDetailClose, { backgroundColor: colors.surfaceMuted }]}
+                    hitSlop={8}
                   >
-                    <View style={[styles.legendDot, { backgroundColor: ev.color ?? '#64748B' }]} />
-                    <ThemedText style={[styles.legendText, { color: colors.text }]} numberOfLines={1}>
-                      {ev.title}
-                    </ThemedText>
-                  </View>
-                ))}
+                    <IconSymbol name="xmark" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                {staysOnSelectedDay.length === 0 && eventsOnSelectedDay.length === 0 && (
+                  <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
+                    {t('ownerHome.nothingScheduled')}
+                  </ThemedText>
+                )}
+                {staysOnSelectedDay.map((stay) => {
+                  const estate = estates.find((e) => e.id === stay.estateId);
+                  const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
+                  const guestLabel =
+                    stay.guestId === currentUser?.id
+                      ? (currentUser?.name ?? t('common.you'))
+                      : resolveUserDisplayName(stay.guestId, profileById);
+                  return (
+                    <View key={stay.id} style={[styles.dayStayRow, { borderLeftColor: dotColor }]}>
+                      <ThemedText type="defaultSemiBold">{guestLabel}</ThemedText>
+                      <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
+                        {estate?.name} · {formatDateRange(stay.from, stay.to)}
+                      </ThemedText>
+                    </View>
+                  );
+                })}
+                {eventsOnSelectedDay.map((ev) => {
+                  const estate = estates.find((e) => e.id === ev.estateId);
+                  return (
+                    <View key={ev.id} style={[styles.dayStayRow, { borderLeftColor: ev.color ?? '#64748B' }]}>
+                      <ThemedText type="defaultSemiBold">{ev.title}</ThemedText>
+                      <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
+                        {estate?.name} · {describeRecurrence(ev)}
+                      </ThemedText>
+                    </View>
+                  );
+                })}
               </View>
             )}
-          </>
-        )}
-
-        {selectedDay && (
-          <View
-            style={[
-              styles.dayDetail,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              elevationStyle('row', scheme),
-            ]}
-          >
-            <View style={styles.dayDetailHeader}>
-              <ThemedText type="defaultSemiBold" style={[styles.dayDetailTitle, { color: colors.text }]}>
-                {formatDate(selectedDay)}
-              </ThemedText>
-              <TouchableOpacity
-                onPress={() => setSelectedDay(null)}
-                style={[styles.dayDetailClose, { backgroundColor: colors.surfaceMuted }]}
-                hitSlop={8}
-              >
-                <IconSymbol name="xmark" size={18} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            {staysOnSelectedDay.length === 0 && eventsOnSelectedDay.length === 0 && (
-              <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
-                {t('ownerHome.nothingScheduled')}
-              </ThemedText>
-            )}
-            {staysOnSelectedDay.map((stay) => {
-              const estate = estates.find((e) => e.id === stay.estateId);
-              const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
-              const guestLabel =
-                stay.guestId === currentUser?.id
-                  ? (currentUser?.name ?? t('common.you'))
-                  : resolveUserDisplayName(stay.guestId, profileById);
-              return (
-                <View key={stay.id} style={[styles.dayStayRow, { borderLeftColor: dotColor }]}>
-                  <ThemedText type="defaultSemiBold">{guestLabel}</ThemedText>
-                  <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
-                    {estate?.name} · {formatDateRange(stay.from, stay.to)}
-                  </ThemedText>
-                </View>
-              );
-            })}
-            {eventsOnSelectedDay.map((ev) => {
-              const estate = estates.find((e) => e.id === ev.estateId);
-              return (
-                <View key={ev.id} style={[styles.dayStayRow, { borderLeftColor: ev.color ?? '#64748B' }]}>
-                  <ThemedText type="defaultSemiBold">{ev.title}</ThemedText>
-                  <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
-                    {estate?.name} · {describeRecurrence(ev)}
-                  </ThemedText>
-                </View>
-              );
-            })}
           </View>
-        )}
+          {!hasHost && (
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => showMaisonProUpgradePrompt(t)}>
+              <View style={styles.calendarLockBadge} pointerEvents="none">
+                <IconSymbol name="lock.fill" size={11} color="#fff" />
+              </View>
+            </Pressable>
+          )}
+        </View>
       </ScrollView>
     </ThemedView>
   );
@@ -753,32 +565,39 @@ interface StatCardProps {
   color: string;
   colors: ThemeColors;
   onPress?: () => void;
+  /** Standard tier: show lock; tap opens upgrade prompt. */
+  hostLocked?: boolean;
 }
 
-function StatCard({ icon, value, label, color, colors, onPress }: StatCardProps) {
-  return (
-    <TouchableOpacity
-      style={styles.statTouchable}
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={onPress ? 0.75 : 1}
+function StatCard({ icon, value, label, color, colors, onPress, hostLocked }: StatCardProps) {
+  const body = (
+    <SurfaceCard
+      variant="elevated"
+      contentStyle={styles.statCardInner}
+      style={{ borderTopWidth: 3, borderTopColor: color }}
     >
-      <SurfaceCard
-        variant="elevated"
-        contentStyle={styles.statCardInner}
-        style={{ borderTopWidth: 3, borderTopColor: color }}
-      >
-        <View style={[styles.statIconWrap, { backgroundColor: colors.tintMuted }]}>
-          <IconSymbol name={icon as never} size={20} color={color} />
-        </View>
-        <ThemedText type="statValue" style={{ color }}>
-          {value}
-        </ThemedText>
-        <ThemedText type="statLabel" style={{ color: colors.textSecondary, textAlign: 'center' }}>
-          {label}
-        </ThemedText>
-      </SurfaceCard>
-    </TouchableOpacity>
+      <View style={[styles.statIconWrap, { backgroundColor: colors.tintMuted }]}>
+        <IconSymbol name={icon as never} size={20} color={color} />
+      </View>
+      <ThemedText type="statValue" style={{ color }}>
+        {value}
+      </ThemedText>
+      <ThemedText type="statLabel" style={{ color: colors.textSecondary, textAlign: 'center' }}>
+        {label}
+      </ThemedText>
+    </SurfaceCard>
+  );
+  if (!onPress) {
+    return <View style={styles.statTouchable}>{body}</View>;
+  }
+  return (
+    <HostProLockTouchable
+      style={styles.statTouchable}
+      locked={!!hostLocked}
+      onPress={onPress}
+    >
+      {body}
+    </HostProLockTouchable>
   );
 }
 
@@ -855,6 +674,18 @@ const styles = StyleSheet.create({
   relBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.sm, marginRight: 4 },
   relBadgeText: { fontSize: 11, fontWeight: '700' },
 
+  calendarSectionWrap: { position: 'relative', marginBottom: Layout.sectionGap - 8 },
+  calendarLockBadge: {
+    position: 'absolute',
+    top: 40,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // Calendar
   calendarCard: {
     borderRadius: Radius.xl,

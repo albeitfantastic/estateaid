@@ -5,7 +5,7 @@ export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com
 
 /** Default English suffix for open (non-email-bound) invites; override via i18n in UI when building messages. */
 export const DEFAULT_OPEN_INVITE_SUFFIX =
-  'Each code is single-use. Sign in to EstateAid and redeem it from the Invitations tab (or when prompted).';
+  'Each code is single-use. Sign in to Maison and redeem it from the Invitations tab (or when prompted).';
 
 function inviteEmailLine(inviteeEmail?: string): string {
   const e = inviteeEmail?.trim();
@@ -55,9 +55,9 @@ export function buildMultiInviteShareMessage(
   const footer =
     opts?.inviteeEmail?.trim() ? '' : `\n\n${opts?.openInviteSuffix ?? DEFAULT_OPEN_INVITE_SUFFIX}`;
   const store =
-    `\n\nDownload EstateAid:\n` + `iOS: ${APP_STORE_URL}\n` + `Android: ${PLAY_STORE_URL}`;
+    `\n\nDownload Maison:\n` + `iOS: ${APP_STORE_URL}\n` + `Android: ${PLAY_STORE_URL}`;
   return (
-    `You're invited to EstateAid!${noteSection}\n\n${lines}${store}\n\n` +
+    `You're invited to Maison!${noteSection}\n\n${lines}${store}\n\n` +
     `Redeem your code after signing in.` +
     footer +
     inviteEmailLine(opts?.inviteeEmail)
@@ -88,8 +88,8 @@ export function buildWhatsAppInviteMessage(opts: {
   const roleSection = role ? ` as ${roleLabel(role)}` : '';
   return (
     `${APP_STORE_URL}\n\n` +
-    `Already have EstateAid? Your invite code: ${inviteCode}\n\n` +
-    `You're invited to ${estateName} on EstateAid${roleSection}.${noteSection}` +
+    `Already have Maison? Your invite code: ${inviteCode}\n\n` +
+    `You're invited to ${estateName} on Maison${roleSection}.${noteSection}` +
     inviteEmailLine(inviteeEmail)
   );
 }
@@ -119,7 +119,7 @@ export function buildFullInviteMessage(opts: {
       ? `\n\n${openInviteSuffix ?? DEFAULT_OPEN_INVITE_SUFFIX}`
       : '';
   return (
-    `🏡 You're invited to ${estateName} on EstateAid${roleSection}!${noteSection}\n\n` +
+    `🏡 You're invited to ${estateName} on Maison${roleSection}!${noteSection}\n\n` +
     `Your invite code: ${inviteCode}\n\n` +
     `Download the app:\n` +
     `iOS: ${APP_STORE_URL}\n` +
@@ -131,6 +131,6 @@ export function buildFullInviteMessage(opts: {
 }
 
 export function inviteEmailSubject(estateNames: string[]): string {
-  if (estateNames.length === 1) return `Invitation to ${estateNames[0]} — EstateAid`;
-  return `Invitation to EstateAid (${estateNames.length} properties)`;
+  if (estateNames.length === 1) return `Invitation to ${estateNames[0]} — Maison`;
+  return `Invitation to Maison (${estateNames.length} properties)`;
 }

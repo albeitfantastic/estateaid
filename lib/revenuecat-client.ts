@@ -39,6 +39,7 @@ export async function logInRevenueCatUser(userId: string): Promise<void> {
 export async function logOutRevenueCatUser(): Promise<void> {
   if (!supportedNative() || !configured || !getRevenueCatApiKey()) return;
   try {
+    if (await Purchases.isAnonymous()) return;
     await Purchases.logOut();
   } catch {
     /* idempotent / already logged out */

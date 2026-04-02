@@ -22,7 +22,7 @@
     "skip": "Пропустить",
     "close": "Закрыть",
     "error": "Ошибка",
-    "estateAid": "EstateAid",
+    "estateAid": "Maison",
     "you": "Вы",
     "unknownEstate": "Неизвестный объект",
     "emailSupport": "Написать в поддержку",
@@ -72,7 +72,7 @@
   "settingsHub": {
     "manageSubscription": "Управление подпиской",
     "helpSubject": "Помощь и поддержка",
-    "helpBody": "Нужна помощь с EstateAid.",
+    "helpBody": "Нужна помощь с Maison.",
     "privacyTitle": "Конфиденциальность",
     "privacyBody": "Политика конфиденциальности скоро на сайте. Пишите в поддержку, если нужно сейчас.",
     "signOutTitle": "Выйти",

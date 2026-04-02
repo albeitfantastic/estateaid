@@ -119,6 +119,10 @@ export async function ensureProfileRowForAuthUser(
   return { profile: row as ProfileRow };
 }
 
+export type CreateSessionFromUrlResult =
+  | { ok: true }
+  | { ok: false; stage: 'url' | 'exchange' | 'session' | 'profile'; detail?: string };
+
 /** OAuth sign-in with Google or Apple (single account model). */
 export async function signInWithOAuth(
   provider: 'google' | 'apple'
@@ -134,43 +138,74 @@ export async function signInWithOAuth(
   if (result.type !== 'success') {
     return { profile: null, error: 'cancelled' };
   }
-  const ok = await createSessionFromUrl(result.url);
-  if (!ok) return { profile: null, error: 'Sign-in failed. Please try again.' };
+  const sessionResult = await createSessionFromUrl(result.url);
+  if (!sessionResult.ok) {
+    const msg =
+      sessionResult.detail?.trim() ||
+      (sessionResult.stage === 'profile'
+        ? 'Could not create or load your profile.'
+        : 'Sign-in failed. Please try again.');
+    return { profile: null, error: msg };
+  }
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) return { profile: null, error: 'No session.' };
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+
+  let { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    const ensured = await ensureProfileRowForAuthUser(session.user);
+    if (ensured.profile) {
+      profile = ensured.profile;
+    } else {
+      return {
+        profile: null,
+        error:
+          ensured.error ??
+          profileErr?.message ??
+          'Could not create or load your profile.',
+      };
+    }
+  }
+
   return { profile: profile as ProfileRow };
 }
 
 /** Parses Supabase email-confirm / magic-link URL and restores the session. */
-export async function createSessionFromUrl(url: string): Promise<boolean> {
+export async function createSessionFromUrl(url: string): Promise<CreateSessionFromUrlResult> {
   try {
     const { params, errorCode } = QueryParams.getQueryParams(url);
-    if (errorCode) return false;
+    if (errorCode) return { ok: false, stage: 'url' };
 
     if (params.code) {
       const { error } = await supabase.auth.exchangeCodeForSession(params.code);
-      if (error) return false;
+      if (error) return { ok: false, stage: 'exchange', detail: error.message };
     } else if (params.access_token && params.refresh_token) {
       const { error } = await supabase.auth.setSession({
         access_token: params.access_token,
         refresh_token: params.refresh_token,
       });
-      if (error) return false;
+      if (error) return { ok: false, stage: 'exchange', detail: error.message };
     } else {
-      return false;
+      return { ok: false, stage: 'url' };
     }
 
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (!session?.user) return false;
+    if (!session?.user) return { ok: false, stage: 'session' };
 
-    await ensureProfileRowForAuthUser(session.user);
-    return true;
+    const ensured = await ensureProfileRowForAuthUser(session.user);
+    if (!ensured.profile) {
+      return { ok: false, stage: 'profile', detail: ensured.error };
+    }
+    return { ok: true };
   } catch {
-    return false;
+    return { ok: false, stage: 'exchange' };
   }
 }

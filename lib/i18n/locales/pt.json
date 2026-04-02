@@ -22,7 +22,7 @@
     "skip": "Pular",
     "close": "Fechar",
     "error": "Erro",
-    "estateAid": "EstateAid",
+    "estateAid": "Maison",
     "you": "Você",
     "unknownEstate": "Propriedade desconhecida",
     "emailSupport": "Suporte por e-mail",
@@ -72,7 +72,7 @@
   "settingsHub": {
     "manageSubscription": "Gerenciar assinatura",
     "helpSubject": "Ajuda e suporte",
-    "helpBody": "Preciso de ajuda com o EstateAid.",
+    "helpBody": "Preciso de ajuda com Maison.",
     "privacyTitle": "Privacidade",
     "privacyBody": "A política de privacidade estará no site em breve. Fale com o suporte se precisar agora.",
     "signOutTitle": "Sair",
