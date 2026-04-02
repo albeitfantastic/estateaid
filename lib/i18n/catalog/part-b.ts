@@ -89,6 +89,10 @@ export const catalogPartB: Record<string, unknown> = {
     emailSubject: 'EstateAid invitation',
     messengerHint: 'Pick Messenger or another app from the share sheet.',
   },
+  ownerInvitations: {
+    receiveTab: 'Receive',
+    sendTab: 'Send',
+  },
   guestInvitations: {
     title: 'Invitations',
     redeemTitle: 'Have an invite code?',

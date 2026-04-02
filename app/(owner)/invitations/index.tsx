@@ -3,7 +3,7 @@ import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { EmptyState } from '@/components/ui/empty-state';
+import { OwnerInviteContent } from '@/components/owner-invite-content';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -24,6 +24,7 @@ export default function OwnerInvitations() {
   const { getPendingInvitationsForGuest, respondToInvitation, redeemCode } = useInvitationStore();
   const { getEstateById } = useEstateStore();
 
+  const [tab, setTab] = useState<'receive' | 'send'>('receive');
   const [codeInput, setCodeInput] = useState('');
   const [redeemError, setRedeemError] = useState('');
 
@@ -74,113 +75,152 @@ export default function OwnerInvitations() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 20 }]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <ThemedText type="title" style={styles.title}>{t('guestInvitations.title')}</ThemedText>
-        </View>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <ThemedText type="title" style={styles.title}>{t('guestInvitations.title')}</ThemedText>
+      </View>
 
-        <View style={[styles.redeemBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <ThemedText style={[styles.redeemTitle, { color: colors.text }]}>{t('guestInvitations.redeemTitle')}</ThemedText>
-          <ThemedText style={[styles.redeemSub, { color: colors.icon }]}>{t('guestInvitations.redeemSub')}</ThemedText>
-          <View style={styles.redeemRow}>
-            <TextInput
-              style={[styles.codeInput, { color: colors.text, borderColor: redeemError ? colors.error : colors.icon + '44' }]}
-              value={codeInput}
-              onChangeText={(v) => {
-                setCodeInput(v.toUpperCase().replace(/[^A-Z0-9]/g, ''));
-                setRedeemError('');
-              }}
-              placeholder={t('guestInvitations.placeholder')}
-              placeholderTextColor={colors.icon}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              maxLength={8}
-            />
-            <TouchableOpacity
-              style={[styles.redeemBtn, { backgroundColor: codeInput.length === 8 ? colors.tint : colors.border }]}
-              onPress={() => void handleRedeem()}
-              disabled={codeInput.length !== 8}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={[styles.redeemBtnText, { color: codeInput.length === 8 ? '#fff' : colors.icon }]}>
-                {t('actions.redeem')}
+      <View style={[styles.tabRow, { backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === 'receive' && { backgroundColor: colors.tint }]}
+          onPress={() => setTab('receive')}
+          activeOpacity={0.8}
+        >
+          <ThemedText style={[styles.tabLabel, tab === 'receive' && styles.tabLabelActive]}>
+            {t('Redeem Code')}
+          </ThemedText>
+          {invitations.length > 0 && (
+            <View style={[styles.tabBadge, { backgroundColor: tab === 'receive' ? '#fff' : colors.tint }]}>
+              <ThemedText style={[styles.tabBadgeText, { color: tab === 'receive' ? colors.tint : '#fff' }]}>
+                {invitations.length}
               </ThemedText>
-            </TouchableOpacity>
-          </View>
-          {redeemError ? (
-            <ThemedText style={[styles.redeemError, { color: colors.error }]}>{redeemError}</ThemedText>
-          ) : null}
-        </View>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === 'send' && { backgroundColor: colors.tint }]}
+          onPress={() => setTab('send')}
+          activeOpacity={0.8}
+        >
+          <ThemedText style={[styles.tabLabel, tab === 'send' && styles.tabLabelActive]}>
+            {t('Send Invitation')}
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
 
-        {invitations.length === 0 ? (
-          <EmptyState
-            icon="envelope.fill"
-            title={t('guestInvitations.emptyTitle')}
-            subtitle={t('guestInvitations.emptySubOwner')}
-          />
-        ) : (
-          <View style={styles.list}>
-            {invitations.map((inv) => {
-              const estate = getEstateById(inv.estateId);
-              const ownerName = ownerLabels[inv.ownerId] ?? t('guestInvitations.ownerFallback');
-              return (
-                <View
-                  key={inv.id}
-                  style={[styles.card, { borderColor: colors.tint + '44', backgroundColor: colors.surface }]}
-                >
-                  <View style={[styles.iconWrap, { backgroundColor: colors.tint + '18' }]}>
-                    <IconSymbol name="building.2.fill" size={24} color={colors.tint} />
-                  </View>
-                  <View style={styles.body}>
-                    <ThemedText type="defaultSemiBold" style={styles.estateName}>
-                      {estate?.name ?? t('common.unknownEstate')}
-                    </ThemedText>
-                    <ThemedText style={[styles.meta, { color: colors.icon }]}>
-                      {estate?.location} · {t('guestInvitations.fromHost', { name: ownerName })}
-                    </ThemedText>
-                    {inv.message && (
-                      <ThemedText style={[styles.message, { color: colors.text }]} numberOfLines={3}>
-                        "{inv.message}"
+      {tab === 'receive' && (
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.redeemBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <ThemedText style={[styles.redeemTitle, { color: colors.text }]}>{t('guestInvitations.redeemTitle')}</ThemedText>
+            <ThemedText style={[styles.redeemSub, { color: colors.icon }]}>{t('guestInvitations.redeemSub')}</ThemedText>
+            <View style={styles.redeemRow}>
+              <TextInput
+                style={[styles.codeInput, { color: colors.text, borderColor: redeemError ? colors.error : colors.icon + '44' }]}
+                value={codeInput}
+                onChangeText={(v) => {
+                  setCodeInput(v.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+                  setRedeemError('');
+                }}
+                placeholder={t('guestInvitations.placeholder')}
+                placeholderTextColor={colors.icon}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={8}
+              />
+              <TouchableOpacity
+                style={[styles.redeemBtn, { backgroundColor: codeInput.length === 8 ? colors.tint : colors.border }]}
+                onPress={() => void handleRedeem()}
+                disabled={codeInput.length !== 8}
+                activeOpacity={0.85}
+              >
+                <ThemedText style={[styles.redeemBtnText, { color: codeInput.length === 8 ? '#fff' : colors.icon }]}>
+                  {t('actions.redeem')}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+            {redeemError ? (
+              <ThemedText style={[styles.redeemError, { color: colors.error }]}>{redeemError}</ThemedText>
+            ) : null}
+          </View>
+
+          {invitations.length > 0 && (
+            <View style={styles.list}>
+              {invitations.map((inv) => {
+                const estate = getEstateById(inv.estateId);
+                const ownerName = ownerLabels[inv.ownerId] ?? t('guestInvitations.ownerFallback');
+                return (
+                  <View
+                    key={inv.id}
+                    style={[styles.card, { borderColor: colors.tint + '44', backgroundColor: colors.surface }]}
+                  >
+                    <View style={[styles.iconWrap, { backgroundColor: colors.tint + '18' }]}>
+                      <IconSymbol name="building.2.fill" size={24} color={colors.tint} />
+                    </View>
+                    <View style={styles.body}>
+                      <ThemedText type="defaultSemiBold" style={styles.estateName}>
+                        {estate?.name ?? t('common.unknownEstate')}
                       </ThemedText>
-                    )}
-                    <ThemedText style={[styles.date, { color: colors.icon }]}>
-                      {formatDate(inv.createdAt.slice(0, 10))}
-                    </ThemedText>
-                    <View style={styles.actions}>
-                      <TouchableOpacity
-                        style={[styles.btn, { backgroundColor: colors.tint }]}
-                        onPress={() => accept(inv.id)}
-                        activeOpacity={0.8}
-                      >
-                        <ThemedText style={styles.btnText}>{t('actions.accept')}</ThemedText>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.btn, styles.btnOutline, { borderColor: colors.icon + '55' }]}
-                        onPress={() => decline(inv.id)}
-                        activeOpacity={0.8}
-                      >
-                        <ThemedText style={[styles.btnText, { color: colors.icon }]}>{t('actions.decline')}</ThemedText>
-                      </TouchableOpacity>
+                      <ThemedText style={[styles.meta, { color: colors.icon }]}>
+                        {estate?.location} · {t('guestInvitations.fromHost', { name: ownerName })}
+                      </ThemedText>
+                      {inv.message && (
+                        <ThemedText style={[styles.message, { color: colors.text }]} numberOfLines={3}>
+                          "{inv.message}"
+                        </ThemedText>
+                      )}
+                      <ThemedText style={[styles.date, { color: colors.icon }]}>
+                        {formatDate(inv.createdAt.slice(0, 10))}
+                      </ThemedText>
+                      <View style={styles.actions}>
+                        <TouchableOpacity
+                          style={[styles.btn, { backgroundColor: colors.tint }]}
+                          onPress={() => accept(inv.id)}
+                          activeOpacity={0.8}
+                        >
+                          <ThemedText style={styles.btnText}>{t('actions.accept')}</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.btn, styles.btnOutline, { borderColor: colors.icon + '55' }]}
+                          onPress={() => decline(inv.id)}
+                          activeOpacity={0.8}
+                        >
+                          <ThemedText style={[styles.btnText, { color: colors.icon }]}>{t('actions.decline')}</ThemedText>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {tab === 'send' && (
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <OwnerInviteContent layout="embedded" showPersonalNote={false} />
+        </ScrollView>
+      )}
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 8 },
+  title: { flex: 1, fontSize: 28, fontWeight: '700' },
+  tabRow: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 12, gap: 8 },
+  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20 },
+  tabLabel: { fontSize: 14, fontWeight: '600' },
+  tabLabelActive: { color: '#fff' },
+  tabBadge: { minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  tabBadgeText: { fontSize: 11, fontWeight: '700' },
   scroll: { paddingHorizontal: 20 },
-  header: { paddingBottom: 16 },
-  title: { fontSize: 32, fontWeight: '700' },
   redeemBox: {
     borderRadius: 16,
     borderWidth: 1,
