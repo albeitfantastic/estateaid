@@ -56,8 +56,26 @@ export function today(): string {
   return toISODate(new Date());
 }
 
+/** Add (or subtract) N days from a "YYYY-MM-DD" string */
+export function addDays(dateStr: string, n: number): string {
+  const d = parseDateStr(dateStr);
+  d.setDate(d.getDate() + n);
+  return toISODate(d);
+}
+
 /** Number of nights between two date strings */
 export function nightCount(from: string, to: string): number {
   const diff = parseDateStr(to).getTime() - parseDateStr(from).getTime();
   return Math.round(diff / (1000 * 60 * 60 * 24));
+}
+
+/** Every calendar date in a month as "YYYY-MM-DD" (month is 0-based, like Date). */
+export function eachDateInMonth(year: number, monthIndex0: number): string[] {
+  const last = new Date(year, monthIndex0 + 1, 0).getDate();
+  const m = String(monthIndex0 + 1).padStart(2, '0');
+  const out: string[] = [];
+  for (let d = 1; d <= last; d++) {
+    out.push(`${year}-${m}-${String(d).padStart(2, '0')}`);
+  }
+  return out;
 }

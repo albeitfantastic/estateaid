@@ -1,62 +1,148 @@
+import {
+    Inter_500Medium,
+    Inter_700Bold,
+} from '@expo-google-fonts/inter';
+import {
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+} from '@expo-google-fonts/manrope';
 import { Theme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { seedStores } from '@/store/seed-data';
+import { hydrateStoredLanguage, initI18n } from '@/lib/i18n';
+import { loadAllStores } from '@/lib/load-all-stores';
+import { clearPushToken, registerPushToken } from '@/lib/notifications';
+import { supabase } from '@/lib/supabase';
+import { SubscriptionProvider } from '@/providers/subscription-provider';
+import { useAuthStore } from '@/store/auth-store';
+
+SplashScreen.preventAutoHideAsync();
 
 const LightNavTheme: Theme = {
   dark: false,
   colors: {
-    primary: '#1C3D5A',
-    background: '#FAFAF8',
-    card: '#FFFFFF',
-    text: '#0E1C2D',
-    border: '#E5E7EA',
-    notification: '#C9A96E',
+    primary: Colors.light.tint,
+    background: Colors.light.background,
+    card: Colors.light.surface,
+    text: Colors.light.text,
+    border: Colors.light.border,
+    notification: Colors.light.textSecondary,
   },
   fonts: {
-    regular: { fontFamily: 'System', fontWeight: '400' },
-    medium: { fontFamily: 'System', fontWeight: '500' },
-    bold: { fontFamily: 'System', fontWeight: '700' },
-    heavy: { fontFamily: 'System', fontWeight: '900' },
+    regular: { fontFamily: 'Manrope_400Regular', fontWeight: '400' },
+    medium: { fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
+    bold: { fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+    heavy: { fontFamily: 'Manrope_700Bold', fontWeight: '900' },
   },
 };
 
 const DarkNavTheme: Theme = {
   dark: true,
   colors: {
-    primary: '#C9A96E',
-    background: '#0E1C2D',
-    card: '#1A2F4E',
-    text: '#F0EDE8',
-    border: '#2A3F58',
-    notification: '#C9A96E',
+    primary: Colors.dark.tint,
+    background: Colors.dark.background,
+    card: Colors.dark.surface,
+    text: Colors.dark.text,
+    border: Colors.dark.border,
+    notification: Colors.dark.textSecondary,
   },
   fonts: LightNavTheme.fonts,
 };
 
 export default function RootLayout() {
+  const [i18nReady, setI18nReady] = useState(false);
+  const [fontsLoaded] = useFonts({
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Inter_500Medium,
+    Inter_700Bold,
+  });
+
   const colorScheme = useColorScheme();
+  const { bootstrapSession, clearUser } = useAuthStore();
+  const currentUserId = useAuthStore((s) => s.currentUser?.id);
+  const notificationsEnabled = useAuthStore((s) => s.notificationsEnabled);
 
   useEffect(() => {
-    if (__DEV__) {
-      seedStores();
+    if (!currentUserId) return;
+    if (notificationsEnabled) {
+      void registerPushToken(currentUserId);
+    } else {
+      void clearPushToken(currentUserId);
     }
+  }, [currentUserId, notificationsEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        await initI18n();
+        await hydrateStoredLanguage();
+      } catch {
+        /* still show app */
+      } finally {
+        if (!cancelled) setI18nReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded && i18nReady) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, i18nReady]);
+
+  useEffect(() => {
+    let cancelled = false;
+    WebBrowser.maybeCompleteAuthSession();
+
+    async function afterSession() {
+      if (cancelled) return;
+      const user = useAuthStore.getState().currentUser;
+      if (user) await loadAllStores();
+    }
+
+    void bootstrapSession().then(afterSession);
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        clearUser();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkNavTheme : LightNavTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(onboarding)" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(owner)" />
-        <Stack.Screen name="(guest)" />
-      </Stack>
-      <StatusBar style="auto" />
+      <SubscriptionProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="auth" />
+          <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(app)" />
+        </Stack>
+        <StatusBar style="auto" />
+      </SubscriptionProvider>
     </ThemeProvider>
   );
 }

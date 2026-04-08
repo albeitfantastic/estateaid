@@ -1,7 +1,7 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { SymbolViewProps, SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
@@ -14,6 +14,7 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
+  'house': 'home',
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
@@ -24,7 +25,12 @@ const MAPPING = {
   'person.badge.plus': 'person-add',
   'person.2.fill': 'group',
   'calendar': 'calendar-today',
+  'calendar.badge.plus': 'event-available',
+  'calendar.badge.clock': 'event',
+  'calendar.badge.exclamationmark': 'event-busy',
+  'info.circle.fill': 'info',
   'tray.fill': 'inbox',
+  'envelope': 'mail',
   'envelope.fill': 'mail',
   'doc.fill': 'description',
   'phone.fill': 'phone',
@@ -34,6 +40,8 @@ const MAPPING = {
   'questionmark.circle.fill': 'help',
   'lock.doc.fill': 'lock',
   'bubble.left.fill': 'chat-bubble',
+  'bubble.left.and.right.fill': 'forum',
+  'message.fill': 'message',
   'arrow.triangle.2.circlepath': 'sync',
   'star.fill': 'star',
   'slider.horizontal.3': 'tune',
@@ -54,6 +62,21 @@ const MAPPING = {
   'tag.fill': 'label',
   'clock.fill': 'schedule',
   'map.fill': 'map',
+  'globe': 'language',
+  'suitcase': 'luggage',
+  'suitcase.fill': 'luggage',
+  'line.3.horizontal': 'menu',
+  'chevron.up': 'keyboard-arrow-up',
+  'chevron.down': 'keyboard-arrow-down',
+  'arrow.down.circle.fill': 'arrow-circle-down',
+  'arrow.up.circle.fill': 'arrow-circle-up',
+  'sun.max.fill': 'wb-sunny',
+  'moon.fill': 'dark-mode',
+  'doc.text.fill': 'article',
+  'rectangle.portrait.and.arrow.right': 'logout',
+  'creditcard.fill': 'credit-card',
+  'key.fill': 'vpn-key',
+  'square.and.arrow.up': 'share',
 } as IconMapping;
 
 /**
@@ -66,6 +89,7 @@ export function IconSymbol({
   size = 24,
   color,
   style,
+  weight: _weight,
 }: {
   name: IconSymbolName;
   size?: number;

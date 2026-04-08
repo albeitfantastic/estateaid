@@ -1,11 +1,24 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors, Fonts } from '@/constants/theme';
+import { Typography } from '@/constants/typography';
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+  type?:
+    | 'default'
+    | 'title'
+    | 'defaultSemiBold'
+    | 'subtitle'
+    | 'link'
+    | 'overline'
+    | 'caption'
+    | 'statValue'
+    | 'statLabel'
+    | 'label';
 };
 
 export function ThemedText({
@@ -16,6 +29,8 @@ export function ThemedText({
   ...rest
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const scheme = useColorScheme();
+  const linkColor = Colors[scheme ?? 'light'].brownMid;
 
   return (
     <Text
@@ -26,6 +41,12 @@ export function ThemedText({
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
         type === 'subtitle' ? styles.subtitle : undefined,
         type === 'link' ? styles.link : undefined,
+        type === 'link' ? { color: linkColor } : undefined,
+        type === 'overline' ? styles.overline : undefined,
+        type === 'caption' ? styles.caption : undefined,
+        type === 'statValue' ? styles.statValue : undefined,
+        type === 'statLabel' ? styles.statLabel : undefined,
+        type === 'label' ? styles.label : undefined,
         style,
       ]}
       {...rest}
@@ -35,26 +56,35 @@ export function ThemedText({
 
 const styles = StyleSheet.create({
   default: {
-    fontSize: 16,
-    lineHeight: 24,
+    ...Typography.body,
   },
   defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
+    ...Typography.bodySemiBold,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    lineHeight: 32,
+    ...Typography.hero,
   },
   subtitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...Typography.subtitle,
   },
   link: {
-    lineHeight: 30,
     fontSize: 16,
-    color: '#0a7ea4',
+    lineHeight: 24,
+    fontFamily: Fonts.body,
+  },
+  overline: {
+    ...Typography.overline,
+  },
+  caption: {
+    ...Typography.caption,
+  },
+  statValue: {
+    ...Typography.statValue,
+  },
+  statLabel: {
+    ...Typography.statLabel,
+  },
+  label: {
+    ...Typography.label,
   },
 });

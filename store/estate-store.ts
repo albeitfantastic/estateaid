@@ -2,13 +2,48 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Estate } from '@/types';
+import { supabase } from '@/lib/supabase';
+import { dedupeById } from '@/lib/dedup-by-id';
+
+function fromDb(row: Record<string, unknown>): Estate {
+  return {
+    id: row.id as string,
+    ownerId: row.owner_id as string,
+    name: row.name as string,
+    location: (row.location ?? '') as string,
+    coverImageUrl: row.cover_image_url as string | undefined,
+    description: row.description as string | undefined,
+    timeZone: (row.time_zone ?? 'UTC') as string,
+    createdAt: row.created_at as string,
+  };
+}
+
+function remoteImageUrlOnly(url: string | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('https://') || url.startsWith('http://')) return url;
+  return null;
+}
+
+function toDb(estate: Estate) {
+  return {
+    id: estate.id,
+    owner_id: estate.ownerId,
+    name: estate.name,
+    location: estate.location,
+    cover_image_url: remoteImageUrlOnly(estate.coverImageUrl),
+    description: estate.description ?? null,
+    time_zone: estate.timeZone,
+    created_at: estate.createdAt,
+  };
+}
 
 interface EstateState {
   estates: Estate[];
   setEstates: (estates: Estate[]) => void;
-  addEstate: (estate: Estate) => void;
-  updateEstate: (id: string, patch: Partial<Estate>) => void;
-  deleteEstate: (id: string) => void;
+  fetchFromSupabase: () => Promise<void>;
+  addEstate: (estate: Estate) => Promise<{ error: string | null }>;
+  updateEstate: (id: string, patch: Partial<Estate>) => Promise<void>;
+  deleteEstate: (id: string) => Promise<{ error: string | null }>;
   getEstateById: (id: string) => Estate | undefined;
   getEstatesByOwner: (ownerId: string) => Estate[];
 }
@@ -18,13 +53,42 @@ export const useEstateStore = create<EstateState>()(
     (set, get) => ({
       estates: [],
       setEstates: (estates) => set({ estates }),
-      addEstate: (estate) => set((s) => ({ estates: [...s.estates, estate] })),
-      updateEstate: (id, patch) =>
+      fetchFromSupabase: async () => {
+        const { data } = await supabase.from('estates').select('*');
+        if (data) set({ estates: dedupeById(data).map(fromDb) });
+      },
+      addEstate: async (estate) => {
+        set((s) => ({ estates: [...s.estates, estate] }));
+        const { error } = await supabase.from('estates').insert(toDb(estate));
+        if (error) {
+          set((s) => ({ estates: s.estates.filter((e) => e.id !== estate.id) }));
+          return { error: error.message };
+        }
+        return { error: null };
+      },
+      updateEstate: async (id, patch) => {
         set((s) => ({
           estates: s.estates.map((e) => (e.id === id ? { ...e, ...patch } : e)),
-        })),
-      deleteEstate: (id) =>
-        set((s) => ({ estates: s.estates.filter((e) => e.id !== id) })),
+        }));
+        const dbPatch: Record<string, unknown> = {};
+        if (patch.name !== undefined) dbPatch.name = patch.name;
+        if (patch.location !== undefined) dbPatch.location = patch.location;
+        if (patch.coverImageUrl !== undefined) dbPatch.cover_image_url = patch.coverImageUrl;
+        if (patch.description !== undefined) dbPatch.description = patch.description;
+        if (patch.timeZone !== undefined) dbPatch.time_zone = patch.timeZone;
+        await supabase.from('estates').update(dbPatch).eq('id', id);
+      },
+      deleteEstate: async (id) => {
+        const prev = get().estates;
+        if (!prev.some((e) => e.id === id)) return { error: 'not_found' };
+        set((s) => ({ estates: s.estates.filter((e) => e.id !== id) }));
+        const { error } = await supabase.from('estates').delete().eq('id', id);
+        if (error) {
+          set({ estates: prev });
+          return { error: error.message };
+        }
+        return { error: null };
+      },
       getEstateById: (id) => get().estates.find((e) => e.id === id),
       getEstatesByOwner: (ownerId) =>
         get().estates.filter((e) => e.ownerId === ownerId),

@@ -6,7 +6,8 @@ import { useFaqStore } from './faq-store';
 import { useDocumentStore } from './document-store';
 import { useContactStore } from './contact-store';
 import { useTicketStore } from './ticket-store';
-import { User, Estate, Invitation, StayRequest, Stay, FaqItem, EstateDocument, EstateContact, Ticket } from '@/types';
+import { useEventStore } from './event-store';
+import { User, Estate, Invitation, StayRequest, Stay, FaqItem, EstateDocument, EstateContact, Ticket, EstateEvent } from '@/types';
 
 // ── Users ────────────────────────────────────────────────────────────────────
 export const SEED_USERS: User[] = [
@@ -14,43 +15,49 @@ export const SEED_USERS: User[] = [
     id: 'owner-1',
     name: 'Alexander von Berg',
     email: 'alexander@estateaid.app',
-    role: 'owner',
     createdAt: '2024-01-01T00:00:00Z',
+    trialEndsAt: null,
+    trialStartedAt: null,
   },
   {
     id: 'owner-2',
     name: 'Sophie Hartmann',
     email: 'sophie@estateaid.app',
-    role: 'owner',
     createdAt: '2024-01-02T00:00:00Z',
+    trialEndsAt: null,
+    trialStartedAt: null,
   },
   {
     id: 'guest-1',
     name: 'Marco Rossi',
     email: 'marco@example.com',
-    role: 'guest',
     createdAt: '2024-02-01T00:00:00Z',
+    trialEndsAt: null,
+    trialStartedAt: null,
   },
   {
     id: 'guest-2',
     name: 'Claire Dubois',
     email: 'claire@example.com',
-    role: 'guest',
     createdAt: '2024-02-05T00:00:00Z',
+    trialEndsAt: null,
+    trialStartedAt: null,
   },
   {
     id: 'guest-3',
     name: 'Tomás García',
     email: 'tomas@example.com',
-    role: 'guest',
     createdAt: '2024-02-10T00:00:00Z',
+    trialEndsAt: null,
+    trialStartedAt: null,
   },
   {
     id: 'guest-4',
     name: 'Lena Müller',
     email: 'lena@example.com',
-    role: 'guest',
     createdAt: '2024-02-15T00:00:00Z',
+    trialEndsAt: null,
+    trialStartedAt: null,
   },
 ];
 
@@ -451,15 +458,72 @@ const TICKETS: Ticket[] = [
   },
 ];
 
+// ── Events ────────────────────────────────────────────────────────────────────
+const EVENTS: EstateEvent[] = [
+  {
+    id: 'event-1',
+    estateId: 'estate-1',
+    title: 'Glass & Recycling Pickup',
+    description: 'Leave bins at the gate before 8 AM.',
+    type: 'recurring',
+    recurrence: { frequency: 'weekly', dayOfWeek: 1, startDate: '2024-01-01' },
+    color: '#22c55e',
+    createdAt: '2024-01-10T00:00:00Z',
+  },
+  {
+    id: 'event-2',
+    estateId: 'estate-1',
+    title: 'Garden Maintenance',
+    description: 'Gardener visits every two weeks on Wednesday.',
+    type: 'recurring',
+    recurrence: { frequency: 'biweekly', dayOfWeek: 3, startDate: '2024-03-01' },
+    color: '#8B5CF6',
+    createdAt: '2024-01-10T00:00:00Z',
+  },
+  {
+    id: 'event-3',
+    estateId: 'estate-1',
+    title: 'Pool Winterization',
+    description: 'Drain and cover the pool for winter season.',
+    type: 'task',
+    date: '2026-10-15',
+    color: '#0a7ea4',
+    createdAt: '2026-03-01T00:00:00Z',
+  },
+  {
+    id: 'event-4',
+    estateId: 'estate-2',
+    title: 'Chimney Sweep',
+    description: 'Annual chimney inspection and cleaning.',
+    type: 'task',
+    date: '2026-09-01',
+    color: '#f59e0b',
+    createdAt: '2026-01-15T00:00:00Z',
+  },
+  {
+    id: 'event-5',
+    estateId: 'estate-2',
+    title: 'Trash Collection',
+    description: 'Municipal pickup every Thursday morning.',
+    type: 'recurring',
+    recurrence: { frequency: 'weekly', dayOfWeek: 4, startDate: '2024-01-01' },
+    color: '#64748B',
+    createdAt: '2024-02-01T00:00:00Z',
+  },
+  {
+    id: 'event-6',
+    estateId: 'estate-1',
+    title: 'Olive Harvest Prep',
+    description: 'Order nets and coordinate harvest crew.',
+    type: 'task',
+    date: '2026-09-20',
+    color: '#B5703A',
+    createdAt: '2026-02-01T00:00:00Z',
+  },
+];
+
 // ── seedStores ────────────────────────────────────────────────────────────────
-export function seedStores(): void {
-  useEstateStore.getState().setEstates(ESTATES);
-  useInvitationStore.getState().setInvitations(INVITATIONS);
-  useStayStore.getState().setStayRequests(STAY_REQUESTS);
-  useStayStore.getState().setStays(STAYS);
-  useFaqStore.getState().setFaqs(FAQS);
-  useDocumentStore.getState().setDocuments(DOCUMENTS);
-  useContactStore.getState().setContacts(CONTACTS);
-  useTicketStore.getState().setTickets(TICKETS);
-}
+// Seed data is no longer used — data is loaded from Supabase.
+// SEED_USERS is kept for backward-compatible name lookups until a profile cache is added.
+export function seedStores(): void {}
 

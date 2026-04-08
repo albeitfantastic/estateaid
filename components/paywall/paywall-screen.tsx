@@ -1,0 +1,205 @@
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Colors, Layout, Radius } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { isRevenueCatConfigured } from '@/lib/revenuecat-client';
+import { MAISON_PRO_DISPLAY_NAME, PRIMARY_ENTITLEMENT_ID, RC_PRODUCT_IDS } from '@/lib/subscription-config';
+import { fetchSubscriptionEntitlements, rowGrantsAccess } from '@/lib/subscription-access';
+import { isEmbeddedRevenueCatPaywallAvailable, RevenueCatUI } from '@/lib/revenuecat-ui';
+import { useSubscription } from '@/providers/subscription-provider';
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+interface PaywallScreenProps {
+  /**
+   * Override the default dismiss behaviour (back or home navigation).
+   * Used by the paywall flow to intercept dismiss → show the exit offer screen.
+   */
+  onDismiss?: () => void;
+}
+
+/**
+ * RevenueCat Paywall (dashboard-designed UI via react-native-purchases-ui).
+ * Products `monthly` / `yearly` should be on the current offering in RevenueCat.
+ * Trusted unlock still follows Supabase mirror after webhook; we poll after purchase/restore.
+ */
+export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const { refetch, isPro, loading: subLoading } = useSubscription();
+  const plan = MAISON_PRO_DISPLAY_NAME;
+
+  const [confirming, setConfirming] = useState(false);
+
+  /** After `replace` from onboarding there is no stack to pop — go to the correct home tab. */
+  const leavePaywall = useCallback(() => {
+    if (onDismiss) {
+      onDismiss();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/(app)/home' as never);
+  }, [onDismiss, router]);
+
+  const pollMirrorUntilActive = useCallback(async (maxAttempts = 8) => {
+    setConfirming(true);
+    try {
+      for (let i = 0; i < maxAttempts; i++) {
+        await refetch();
+        await sleep(1500);
+        const { data } = await fetchSubscriptionEntitlements();
+        const row = data?.find((r) => r.entitlement_id === PRIMARY_ENTITLEMENT_ID);
+        if (row && rowGrantsAccess(row)) return true;
+      }
+    } finally {
+      setConfirming(false);
+    }
+    return false;
+  }, [refetch]);
+
+  const onCompletedFlow = useCallback(async () => {
+    const ok = await pollMirrorUntilActive();
+    if (ok) {
+      Alert.alert(t('paywall.welcomeTitle', { plan }), t('paywall.welcomeBody'), [
+        { text: t('common.ok'), onPress: () => leavePaywall() },
+      ]);
+    } else {
+      Alert.alert(t('paywall.processingTitle'), t('paywall.processingBody'));
+    }
+  }, [leavePaywall, pollMirrorUntilActive, t, plan]);
+
+  const disabled = confirming || subLoading;
+
+  const rcConfigured = isRevenueCatConfigured();
+  const embeddedPaywall = isEmbeddedRevenueCatPaywallAvailable();
+
+  if (!rcConfigured) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity onPress={() => leavePaywall()} style={styles.back}>
+            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+          </TouchableOpacity>
+          <ThemedText type="title" style={styles.title}>
+            {MAISON_PRO_DISPLAY_NAME}
+          </ThemedText>
+          <View style={{ width: Layout.touchMin }} />
+        </View>
+        <View style={styles.fallback}>
+          <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>
+            {t('paywall.envHint', {
+              monthly: RC_PRODUCT_IDS.monthly,
+              yearly: RC_PRODUCT_IDS.yearly,
+              entitlement: PRIMARY_ENTITLEMENT_ID,
+            })}
+          </ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  if (!embeddedPaywall) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity onPress={() => leavePaywall()} style={styles.back}>
+            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+          </TouchableOpacity>
+          <ThemedText type="title" style={styles.title}>
+            {MAISON_PRO_DISPLAY_NAME}
+          </ThemedText>
+          <View style={{ width: Layout.touchMin }} />
+        </View>
+        <View style={styles.fallback}>
+          <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>{t('paywall.nativeOnlyHint')}</ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity onPress={() => leavePaywall()} style={styles.back} disabled={disabled}>
+          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+        </TouchableOpacity>
+        <ThemedText type="title" style={styles.title}>
+          {MAISON_PRO_DISPLAY_NAME}
+        </ThemedText>
+        <View style={{ width: Layout.touchMin }} />
+      </View>
+
+      {isPro && (
+        <View style={[styles.banner, { backgroundColor: colors.tint + '18', borderColor: colors.tint + '44' }]}>
+          <ThemedText type="defaultSemiBold" style={{ color: colors.tint }}>
+            {t('paywall.alreadyHave', { plan })}
+          </ThemedText>
+        </View>
+      )}
+
+      {confirming && (
+        <View style={[styles.confirmRow, { backgroundColor: colors.surface }]}>
+          <ActivityIndicator color={colors.tint} />
+          <ThemedText style={{ color: colors.icon, marginLeft: 10 }}>{t('paywall.syncing')}</ThemedText>
+        </View>
+      )}
+
+      <RevenueCatUI.Paywall
+        style={styles.paywall}
+        options={{}}
+        onPurchaseCompleted={() => void onCompletedFlow()}
+        onRestoreCompleted={() => void onCompletedFlow()}
+        onPurchaseError={({ error }) => {
+          Alert.alert(t('paywall.purchaseErrorTitle'), error.message ?? t('paywall.purchaseErrorFallback'));
+        }}
+        onRestoreError={({ error }) => {
+          Alert.alert(t('paywall.restoreErrorTitle'), error.message ?? t('paywall.restoreErrorBody'));
+        }}
+        onDismiss={() => leavePaywall()}
+      />
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: Layout.sectionGap - 12,
+    gap: 8,
+  },
+  back: { minWidth: Layout.touchMin, minHeight: Layout.touchMin, alignItems: 'center', justifyContent: 'center' },
+  title: { flex: 1, fontSize: 20, fontWeight: '700' },
+  banner: {
+    marginHorizontal: Layout.screenPaddingX,
+    marginBottom: Layout.sectionGap - 12,
+    padding: Layout.sectionGap - 8,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  confirmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: Layout.screenPaddingX,
+  },
+  paywall: { flex: 1 },
+  fallback: { flex: 1, paddingHorizontal: Layout.screenPaddingX, paddingVertical: Layout.sectionGap },
+});
