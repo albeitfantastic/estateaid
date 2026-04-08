@@ -168,4 +168,13 @@ export const catalogPartB: Record<string, unknown> = {
     uploadDocument: 'Upload Document',
     availability: 'Availability',
   },
+  editEstateScreen: {
+    deleteProperty: 'Delete property',
+    deleteSummary: 'Permanently remove this property from your account. This cannot be undone.',
+    deleteConfirmTitle: 'Delete this property?',
+    deleteConfirmBody:
+      '“{{name}}” will be removed from Maison. Stays, invites, and other data tied to this property may be deleted or become unavailable. This cannot be undone.',
+    deleteConfirmCta: 'Delete',
+    deleteFailed: 'Could not delete this property. Try again.',
+  },
 };

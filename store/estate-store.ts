@@ -43,7 +43,7 @@ interface EstateState {
   fetchFromSupabase: () => Promise<void>;
   addEstate: (estate: Estate) => Promise<{ error: string | null }>;
   updateEstate: (id: string, patch: Partial<Estate>) => Promise<void>;
-  deleteEstate: (id: string) => Promise<void>;
+  deleteEstate: (id: string) => Promise<{ error: string | null }>;
   getEstateById: (id: string) => Estate | undefined;
   getEstatesByOwner: (ownerId: string) => Estate[];
 }
@@ -79,8 +79,15 @@ export const useEstateStore = create<EstateState>()(
         await supabase.from('estates').update(dbPatch).eq('id', id);
       },
       deleteEstate: async (id) => {
+        const prev = get().estates;
+        if (!prev.some((e) => e.id === id)) return { error: 'not_found' };
         set((s) => ({ estates: s.estates.filter((e) => e.id !== id) }));
-        await supabase.from('estates').delete().eq('id', id);
+        const { error } = await supabase.from('estates').delete().eq('id', id);
+        if (error) {
+          set({ estates: prev });
+          return { error: error.message };
+        }
+        return { error: null };
       },
       getEstateById: (id) => get().estates.find((e) => e.id === id),
       getEstatesByOwner: (ownerId) =>

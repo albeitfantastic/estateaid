@@ -1,8 +1,8 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -24,7 +24,7 @@ export default function EditEstate() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
-  const { getEstateById, updateEstate } = useEstateStore();
+  const { getEstateById, updateEstate, deleteEstate } = useEstateStore();
   const estate = getEstateById(estateId);
 
   const [name, setName] = useState(estate?.name ?? '');
@@ -32,6 +32,21 @@ export default function EditEstate() {
   const [description, setDescription] = useState(estate?.description ?? '');
   const [timeZone, setTimeZone] = useState(estate?.timeZone ?? '');
   const [coverImageUrl, setCoverImageUrl] = useState(estate?.coverImageUrl ?? '');
+  const [deleting, setDeleting] = useState(false);
+
+  const runDelete = useCallback(async () => {
+    setDeleting(true);
+    try {
+      const { error } = await deleteEstate(estateId);
+      if (error) {
+        Alert.alert(t('common.error'), t('editEstateScreen.deleteFailed'));
+        return;
+      }
+      router.replace('/(app)/estates' as never);
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteEstate, estateId, router, t]);
 
   if (estate && estate.ownerId !== currentUser?.id) {
     return <Redirect href={`/(app)/estates/${estateId}` as never} />;
@@ -68,6 +83,13 @@ export default function EditEstate() {
       coverImageUrl: coverImageUrl || undefined,
     });
     router.back();
+  }
+
+  function confirmDelete() {
+    Alert.alert(t('editEstateScreen.deleteConfirmTitle'), t('editEstateScreen.deleteConfirmBody', { name: estate.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('editEstateScreen.deleteConfirmCta'), style: 'destructive', onPress: () => void runDelete() },
+    ]);
   }
 
   return (
@@ -111,6 +133,25 @@ export default function EditEstate() {
         <FocusInput label="Location *" placeholder="e.g. Tuscany, Italy" value={location} onChangeText={setLocation} />
         <FocusInput label="Time Zone" placeholder="e.g. Europe/Rome" value={timeZone} onChangeText={setTimeZone} />
         <FocusInput label="Description" placeholder="Optional description…" value={description} onChangeText={setDescription} multiline numberOfLines={4} textAlignVertical="top" style={styles.multiline} />
+
+        <View style={[styles.dangerZone, { borderColor: colors.error + '55' }]}>
+          <ThemedText style={[styles.dangerTitle, { color: colors.error }]}>{t('editEstateScreen.deleteProperty')}</ThemedText>
+          <ThemedText style={[styles.dangerSub, { color: colors.icon }]}>{t('editEstateScreen.deleteSummary')}</ThemedText>
+          <TouchableOpacity
+            style={[styles.deleteBtn, { borderColor: colors.error, opacity: deleting ? 0.6 : 1 }]}
+            onPress={confirmDelete}
+            disabled={deleting}
+            activeOpacity={0.85}
+          >
+            {deleting ? (
+              <ActivityIndicator color={colors.error} />
+            ) : (
+              <ThemedText style={[styles.deleteBtnText, { color: colors.error }]}>
+                {t('editEstateScreen.deleteConfirmCta')}
+              </ThemedText>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </ThemedView>
   );
@@ -133,4 +174,24 @@ const styles = StyleSheet.create({
   photo: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   multiline: { height: 110, paddingTop: 14 },
+  dangerZone: {
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  dangerTitle: { fontSize: 16, fontWeight: '700' },
+  dangerSub: { fontSize: 13, lineHeight: 18 },
+  deleteBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  deleteBtnText: { fontSize: 15, fontWeight: '700' },
 });
