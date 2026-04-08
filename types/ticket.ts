@@ -8,6 +8,8 @@ export interface TicketMessage {
   body: string;
   attachmentUris?: string[];
   createdAt: string;
+  /** Linked row from this property’s contacts list */
+  taggedContactId?: string;
 }
 
 export interface Ticket {

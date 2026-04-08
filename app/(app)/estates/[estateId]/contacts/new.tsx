@@ -11,16 +11,23 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, Fonts, Layout, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useContactStore } from '@/store/contact-store';
-import { generateId } from '@/lib/id';
+import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
 import { ContactCategory } from '@/types';
 
 const CATEGORIES: ContactCategory[] = ['emergency', 'staff', 'service', 'utility', 'neighbor', 'other'];
 const CATEGORY_LABELS: Record<ContactCategory, string> = { emergency: 'Emergency', staff: 'Staff', service: 'Service', utility: 'Utility', neighbor: 'Neighbor', other: 'Other' };
 
+function paramString(v: string | string[] | undefined): string | undefined {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v)) return v[0];
+  return undefined;
+}
+
 export default function NewContact() {
   const { t } = useTranslation();
-  const { estateId } = useLocalSearchParams<{ estateId: string }>();
+  const params = useLocalSearchParams<{ estateId: string }>();
+  const estateId = paramString(params.estateId);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -33,13 +40,45 @@ export default function NewContact() {
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
   const [category, setCategory] = useState<ContactCategory>('service');
+  const [saving, setSaving] = useState(false);
 
-  function submit() {
-    if (!isRequired(name)) { Alert.alert('Required', 'Please enter a name.'); return; }
-    if (!isRequired(role)) { Alert.alert('Required', 'Please enter a role/title.'); return; }
+  async function submit() {
+    if (saving) return;
+    if (!estateId) {
+      Alert.alert(t('common.error'), 'Missing property for this contact.');
+      return;
+    }
+    if (!isRequired(name)) {
+      Alert.alert('Required', 'Please enter a name.');
+      return;
+    }
+    if (!isRequired(role)) {
+      Alert.alert('Required', 'Please enter a role/title.');
+      return;
+    }
     const existing = getContactsByEstate(estateId);
-    addContact({ id: generateId(), estateId, name: name.trim(), role: role.trim(), phone: phone.trim() || undefined, email: email.trim() || undefined, notes: notes.trim() || undefined, category, order: existing.length, createdAt: new Date().toISOString() });
-    router.back();
+    setSaving(true);
+    try {
+      const { error } = await addContact({
+        id: generateUuidV4(),
+        estateId,
+        name: name.trim(),
+        role: role.trim(),
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+        notes: notes.trim() || undefined,
+        category,
+        order: existing.length,
+        createdAt: new Date().toISOString(),
+      });
+      if (error) {
+        Alert.alert(t('common.error'), error);
+        return;
+      }
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -49,8 +88,17 @@ export default function NewContact() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>{t('titles.newContact')}</ThemedText>
-        <TouchableOpacity onPress={submit}>
-          <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+        <TouchableOpacity onPress={submit} disabled={saving} accessibilityState={{ disabled: saving }}>
+          <ThemedText
+            style={{
+              color: saving ? colors.icon : colors.tint,
+              fontWeight: '600',
+              fontSize: 16,
+              opacity: saving ? 0.5 : 1,
+            }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </ThemedText>
         </TouchableOpacity>
       </View>
       <ScrollView

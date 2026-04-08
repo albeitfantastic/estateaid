@@ -10,8 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useContext, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -24,11 +25,13 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
+import { useContactStore } from '@/store/contact-store';
 import { useEstateStore } from '@/store/estate-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useTicketStore } from '@/store/ticket-store';
 import { generateId } from '@/lib/id';
 import { formatDate } from '@/lib/date-utils';
+import type { EstateContact } from '@/types';
 import { TicketPriority, TicketStatus } from '@/types';
 
 const STATUS_OPTIONS: TicketStatus[] = ['open', 'in_progress', 'resolved'];
@@ -40,43 +43,128 @@ const EDIT_PRIORITIES: { value: TicketPriority; label: string; color: string }[]
   { value: 'urgent', label: 'Urgent', color: '#ef4444' },
 ];
 
+function contactLabel(c: EstateContact) {
+  const role = c.role?.trim();
+  return role ? `${c.name} · ${role}` : c.name;
+}
+
 export default function OwnerTicketThread() {
   const { t } = useTranslation();
   const { ticketId, estateId } = useLocalSearchParams<{ ticketId: string; estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarHeightFromContext = useContext(BottomTabBarHeightContext);
+  const tabBarHeight =
+    typeof tabBarHeightFromContext === 'number' && tabBarHeightFromContext > 0
+      ? tabBarHeightFromContext
+      : 52;
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
   const getEstateById = useEstateStore((s) => s.getEstateById);
-  const { tickets, addMessage, updateTicketStatus, updateTicket, deleteTicket } = useTicketStore();
+  const allContacts = useContactStore((s) => s.contacts);
+  const {
+    tickets,
+    addMessage,
+    updateTicketMessage,
+    updateTicketStatus,
+    updateTicket,
+    deleteTicket,
+  } = useTicketStore();
   const profileById = useProfileStore((s) => s.byId);
   const ticket = tickets.find((tk) => tk.id === ticketId);
   const [reply, setReply] = useState('');
+  const [replyTaggedContactId, setReplyTaggedContactId] = useState<string | null>(null);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [dueModalOpen, setDueModalOpen] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editPriority, setEditPriority] = useState<TicketPriority>('normal');
+  const [contactPickerVisible, setContactPickerVisible] = useState(false);
+  const [contactPickerContext, setContactPickerContext] = useState<'reply' | 'edit'>('reply');
+  const [editMessageDraft, setEditMessageDraft] = useState<{
+    messageId: string;
+    body: string;
+    taggedContactId: string | null;
+  } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const estate = estateId ? getEstateById(estateId) : undefined;
-  const isOwner = !!(estate && currentUser && estate.ownerId === currentUser.id);
+  const isEstateOwner = !!(estate && currentUser && estate.ownerId === currentUser.id);
 
-  if (!ticket) return <ThemedView style={styles.center}><ThemedText>Ticket not found.</ThemedText></ThemedView>;
+  const estateContacts = useMemo(() => {
+    if (!estateId) return [];
+    return allContacts
+      .filter((c) => c.estateId === estateId)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+  }, [allContacts, estateId]);
+
+  const contactByIdMap = useMemo(() => {
+    const map: Record<string, EstateContact> = {};
+    estateContacts.forEach((c) => {
+      map[c.id] = c;
+    });
+    return map;
+  }, [estateContacts]);
+
+  if (!ticket) {
+    return (
+      <ThemedView style={styles.center}>
+        <ThemedText>Ticket not found.</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  const activeTicket = ticket;
+
+  function openContactPicker(ctx: 'reply' | 'edit') {
+    setContactPickerContext(ctx);
+    setContactPickerVisible(true);
+  }
+
+  function applyPickedContact(contactId: string | null) {
+    if (contactPickerContext === 'reply') {
+      setReplyTaggedContactId(contactId);
+    } else if (editMessageDraft) {
+      setEditMessageDraft({ ...editMessageDraft, taggedContactId: contactId });
+    }
+    setContactPickerVisible(false);
+  }
 
   function sendReply() {
     if (!reply.trim()) return;
-    addMessage(ticketId, { id: generateId(), ticketId, authorId: currentUser!.id, body: reply.trim(), createdAt: new Date().toISOString() });
+    addMessage(ticketId, {
+      id: generateId(),
+      ticketId,
+      authorId: currentUser!.id,
+      body: reply.trim(),
+      createdAt: new Date().toISOString(),
+      ...(replyTaggedContactId ? { taggedContactId: replyTaggedContactId } : {}),
+    });
     setReply('');
+    setReplyTaggedContactId(null);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
 
-  const guestName = resolveUserDisplayName(ticket.guestId, profileById);
+  function saveEditedMessage() {
+    if (!editMessageDraft) return;
+    const trimmed = editMessageDraft.body.trim();
+    if (!trimmed) {
+      Alert.alert(t('common.error'), t('ticketsHub.threadMessageEmpty'));
+      return;
+    }
+    void updateTicketMessage(ticketId, editMessageDraft.messageId, {
+      body: trimmed,
+      taggedContactId: editMessageDraft.taggedContactId,
+    });
+    setEditMessageDraft(null);
+  }
+
+  const guestName = resolveUserDisplayName(activeTicket.guestId, profileById);
 
   function openEditModal() {
-    setEditTitle(ticket.title);
-    setEditPriority(ticket.priority);
+    setEditTitle(activeTicket.title);
+    setEditPriority(activeTicket.priority);
     setShowEditModal(true);
     setShowStatusPicker(false);
   }
@@ -106,7 +194,10 @@ export default function OwnerTicketThread() {
     ]);
   }
 
-  const canReply = ticket.status !== 'resolved';
+  const canReply = activeTicket.status !== 'resolved';
+  const taggedReplyContact = replyTaggedContactId ? contactByIdMap[replyTaggedContactId] : undefined;
+  /** Tab bar is `position: 'absolute'` in (app) — without this, the composer sits under the bar. */
+  const bottomComposerPad = tabBarHeight + insets.bottom + 10;
 
   return (
     <ThemedView style={styles.container}>
@@ -115,32 +206,39 @@ export default function OwnerTicketThread() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <View style={styles.headerText}>
-          <ThemedText type="defaultSemiBold" style={styles.ticketTitle} numberOfLines={1}>{ticket.title}</ThemedText>
+          <ThemedText type="defaultSemiBold" style={styles.ticketTitle} numberOfLines={1}>
+            {activeTicket.title}
+          </ThemedText>
           <ThemedText style={[styles.guestName, { color: colors.icon }]}>{guestName}</ThemedText>
         </View>
-        {isOwner ? (
+        {isEstateOwner ? (
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={openEditModal} style={styles.headerIconBtn} accessibilityRole="button" accessibilityLabel={t('ticketsHub.threadEditTicket')}>
+            <TouchableOpacity
+              onPress={openEditModal}
+              style={styles.headerIconBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t('ticketsHub.threadEditTicket')}
+            >
               <IconSymbol name="pencil" size={20} color={colors.tint} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowStatusPicker((v) => !v)} accessibilityRole="button">
-              <StatusBadge status={ticket.status} />
+              <StatusBadge status={activeTicket.status} />
             </TouchableOpacity>
           </View>
         ) : (
-          <StatusBadge status={ticket.status} />
+          <StatusBadge status={activeTicket.status} />
         )}
       </View>
 
-      {(isOwner || ticket.dueDate) && (
+      {(isEstateOwner || activeTicket.dueDate) && (
         <View style={[styles.dueRow, { borderBottomColor: colors.icon + '22' }]}>
           <View style={styles.dueRowText}>
             <ThemedText style={[styles.dueLabel, { color: colors.icon }]}>{t('ticketsHub.threadDueLabel')}</ThemedText>
             <ThemedText type="defaultSemiBold">
-              {ticket.dueDate ? formatDate(ticket.dueDate) : t('ticketsHub.dueNone')}
+              {activeTicket.dueDate ? formatDate(activeTicket.dueDate) : t('ticketsHub.dueNone')}
             </ThemedText>
           </View>
-          {isOwner ? (
+          {isEstateOwner ? (
             <TouchableOpacity onPress={() => setDueModalOpen(true)} style={styles.dueEditBtn}>
               <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 14 }}>
                 {t('ticketsHub.threadSetDue')}
@@ -150,7 +248,7 @@ export default function OwnerTicketThread() {
         </View>
       )}
 
-      {isOwner && showStatusPicker ? (
+      {isEstateOwner && showStatusPicker ? (
         <View style={[styles.statusPicker, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}>
           <ThemedText style={[styles.statusPickerLabel, { color: colors.icon }]}>
             {t('ticketsHub.threadChangeStatus')}
@@ -159,13 +257,13 @@ export default function OwnerTicketThread() {
             {STATUS_OPTIONS.map((s) => (
               <TouchableOpacity
                 key={s}
-                style={[styles.statusOpt, ticket.status === s && { backgroundColor: colors.tint }]}
+                style={[styles.statusOpt, activeTicket.status === s && { backgroundColor: colors.tint }]}
                 onPress={() => {
                   void updateTicketStatus(ticketId, s);
                   setShowStatusPicker(false);
                 }}
               >
-                <ThemedText style={[styles.statusOptText, ticket.status === s && { color: '#fff' }]}>
+                <ThemedText style={[styles.statusOptText, activeTicket.status === s && { color: '#fff' }]}>
                   {s.replace('_', ' ')}
                 </ThemedText>
               </TouchableOpacity>
@@ -175,21 +273,68 @@ export default function OwnerTicketThread() {
       ) : null}
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView ref={scrollRef} contentContainerStyle={[styles.messages, { paddingBottom: 16 }]} onContentSizeChange={() => scrollRef.current?.scrollToEnd()}>
-          {ticket.messages.map((msg) => {
-            const isOwner = msg.authorId === currentUser?.id;
-            const authorName = isOwner
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[styles.messages, { paddingBottom: 12 + bottomComposerPad }]}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd()}
+        >
+          {(activeTicket.messages ?? []).map((msg) => {
+            const isOwnMessage = msg.authorId === currentUser?.id;
+            const authorName = isOwnMessage
               ? (currentUser?.name ?? 'You')
               : resolveUserDisplayName(msg.authorId, profileById);
+            const tagged = msg.taggedContactId ? contactByIdMap[msg.taggedContactId] : undefined;
             return (
-              <View key={msg.id} style={[styles.msgRow, isOwner && styles.msgRowRight]}>
-                {!isOwner && <Avatar name={authorName} size={32} />}
-                <View style={[styles.bubble, { backgroundColor: isOwner ? colors.tint : colors.tint + '18' }, isOwner && styles.bubbleRight]}>
-                  {!isOwner && <ThemedText style={styles.authorName}>{authorName}</ThemedText>}
-                  <ThemedText style={[styles.msgText, isOwner && { color: '#fff' }]}>{msg.body}</ThemedText>
-                  <ThemedText style={[styles.msgTime, isOwner ? { color: '#fff8' } : { color: colors.icon }]}>
-                    {formatDate(msg.createdAt.slice(0, 10))}
-                  </ThemedText>
+              <View key={msg.id} style={[styles.msgRow, isOwnMessage && styles.msgRowRight]}>
+                {!isOwnMessage && <Avatar name={authorName} size={32} />}
+                <View style={styles.msgCol}>
+                  {canReply && isOwnMessage && (
+                    <TouchableOpacity
+                      style={[styles.msgEditIcon, isOwnMessage && styles.msgEditIconRight]}
+                      onPress={() =>
+                        setEditMessageDraft({
+                          messageId: msg.id,
+                          body: msg.body,
+                          taggedContactId: msg.taggedContactId ?? null,
+                        })
+                      }
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('ticketsHub.threadEditMessage')}
+                    >
+                      <IconSymbol name="pencil" size={14} color={colors.tint} />
+                    </TouchableOpacity>
+                  )}
+                  <View
+                    style={[
+                      styles.bubble,
+                      { backgroundColor: isOwnMessage ? colors.tint : colors.tint + '18' },
+                      isOwnMessage && styles.bubbleRight,
+                    ]}
+                  >
+                    {!isOwnMessage && <ThemedText style={styles.authorName}>{authorName}</ThemedText>}
+                    {msg.taggedContactId ? (
+                      <View
+                        style={[
+                          styles.contactTag,
+                          { backgroundColor: isOwnMessage ? '#fff2' : colors.tint + '14' },
+                        ]}
+                      >
+                        <IconSymbol name="person.fill" size={12} color={isOwnMessage ? '#fff' : colors.tint} />
+                        <ThemedText
+                          style={[styles.contactTagText, { color: isOwnMessage ? '#fff' : colors.tint }]}
+                          numberOfLines={2}
+                        >
+                          {t('ticketsHub.threadTaggedPrefix')}:{' '}
+                          {tagged ? contactLabel(tagged) : t('ticketsHub.threadContactRemoved')}
+                        </ThemedText>
+                      </View>
+                    ) : null}
+                    <ThemedText style={[styles.msgText, isOwnMessage && { color: '#fff' }]}>{msg.body}</ThemedText>
+                    <ThemedText style={[styles.msgTime, isOwnMessage ? { color: '#fff8' } : { color: colors.icon }]}>
+                      {formatDate(msg.createdAt.slice(0, 10))}
+                    </ThemedText>
+                  </View>
                 </View>
               </View>
             );
@@ -197,18 +342,55 @@ export default function OwnerTicketThread() {
         </ScrollView>
 
         {canReply ? (
-          <View style={[styles.inputBar, { borderTopColor: colors.icon + '22', paddingBottom: insets.bottom + 8, backgroundColor: colors.background }]}>
-            <TextInput
-              style={[styles.replyInput, { color: colors.text, backgroundColor: colors.tint + '11', borderColor: colors.icon + '33' }]}
-              placeholder="Reply to guest…"
-              placeholderTextColor={colors.icon}
-              value={reply}
-              onChangeText={setReply}
-              multiline
-            />
-            <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.tint }, !reply.trim() && styles.disabled]} onPress={sendReply} disabled={!reply.trim()}>
-              <IconSymbol name="paperplane.fill" size={18} color="#fff" />
-            </TouchableOpacity>
+          <View
+            style={[
+              styles.inputBar,
+              {
+                borderTopColor: colors.icon + '22',
+                paddingBottom: bottomComposerPad,
+                backgroundColor: colors.background,
+              },
+            ]}
+          >
+            {replyTaggedContactId ? (
+              <View style={[styles.replyTagRow, { borderColor: colors.icon + '33' }]}>
+                <IconSymbol name="person.fill" size={14} color={colors.tint} />
+                <ThemedText style={[styles.replyTagText, { color: colors.text }]} numberOfLines={1}>
+                  {taggedReplyContact ? contactLabel(taggedReplyContact) : replyTaggedContactId}
+                </ThemedText>
+                <TouchableOpacity onPress={() => setReplyTaggedContactId(null)} hitSlop={8}>
+                  <IconSymbol name="xmark" size={16} color={colors.icon} />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[
+                  styles.replyInput,
+                  { color: colors.text, backgroundColor: colors.tint + '11', borderColor: colors.icon + '33' },
+                ]}
+                placeholder={t('ticketsHub.threadReplyPlaceholder')}
+                placeholderTextColor={colors.icon}
+                value={reply}
+                onChangeText={setReply}
+                multiline
+              />
+              <TouchableOpacity
+                style={[styles.tagReplyBtn, { borderColor: colors.icon + '44' }]}
+                onPress={() => openContactPicker('reply')}
+                accessibilityRole="button"
+                accessibilityLabel={t('ticketsHub.threadTagContact')}
+              >
+                <IconSymbol name="person.badge.plus" size={20} color={colors.tint} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: colors.tint }, !reply.trim() && styles.disabled]}
+                onPress={sendReply}
+                disabled={!reply.trim()}
+              >
+                <IconSymbol name="paperplane.fill" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -230,7 +412,9 @@ export default function OwnerTicketThread() {
               placeholderTextColor={colors.icon}
               placeholder={t('ticketsHub.threadEditTitleLabel')}
             />
-            <ThemedText style={[styles.modalLabel, { color: colors.icon, marginTop: 12 }]}>{t('ticketsHub.threadEditPriority')}</ThemedText>
+            <ThemedText style={[styles.modalLabel, { color: colors.icon, marginTop: 12 }]}>
+              {t('ticketsHub.threadEditPriority')}
+            </ThemedText>
             <View style={styles.modalPriorityRow}>
               {EDIT_PRIORITIES.map((p) => {
                 const selected = p.value === editPriority;
@@ -267,7 +451,125 @@ export default function OwnerTicketThread() {
         </Pressable>
       </Modal>
 
-      {isOwner ? (
+      <Modal
+        visible={!!editMessageDraft}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setEditMessageDraft(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setEditMessageDraft(null)}>
+          <View
+            style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <ThemedText type="defaultSemiBold" style={styles.modalTitle}>
+              {t('ticketsHub.threadEditMessage')}
+            </ThemedText>
+            <ThemedText style={[styles.modalLabel, { color: colors.icon }]}>{t('ticketsHub.threadMessageBodyLabel')}</ThemedText>
+            <TextInput
+              style={[styles.modalInput, styles.editMsgMultiline, { color: colors.text, borderColor: colors.icon + '44' }]}
+              value={editMessageDraft?.body ?? ''}
+              onChangeText={(text) =>
+                editMessageDraft && setEditMessageDraft({ ...editMessageDraft, body: text })
+              }
+              placeholderTextColor={colors.icon}
+              multiline
+              textAlignVertical="top"
+            />
+            <View style={styles.editMsgTagRow}>
+              <ThemedText style={[styles.modalLabel, { color: colors.icon, marginBottom: 0, flex: 1 }]}>
+                {t('ticketsHub.threadTagContact')}
+              </ThemedText>
+              <TouchableOpacity
+                style={[styles.smallBtn, { borderColor: colors.tint }]}
+                onPress={() => openContactPicker('edit')}
+              >
+                <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 13 }}>
+                  {t('ticketsHub.threadPickContactTitle')}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+            {editMessageDraft?.taggedContactId ? (
+              <View style={[styles.replyTagRow, { borderColor: colors.icon + '33', marginBottom: 8 }]}>
+                <IconSymbol name="person.fill" size={14} color={colors.tint} />
+                <ThemedText style={[styles.replyTagText, { color: colors.text }]} numberOfLines={1}>
+                  {contactByIdMap[editMessageDraft.taggedContactId]
+                    ? contactLabel(contactByIdMap[editMessageDraft.taggedContactId])
+                    : editMessageDraft.taggedContactId}
+                </ThemedText>
+                <TouchableOpacity
+                  onPress={() =>
+                    editMessageDraft &&
+                    setEditMessageDraft({ ...editMessageDraft, taggedContactId: null })
+                  }
+                  hitSlop={8}
+                >
+                  <ThemedText style={{ color: colors.tint, fontSize: 13 }}>{t('ticketsHub.threadClearContactTag')}</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+            <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: colors.tint }]} onPress={saveEditedMessage}>
+              <ThemedText style={styles.modalSaveText}>{t('ticketsHub.threadSaveMessage')}</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditMessageDraft(null)}>
+              <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{t('common.cancel')}</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={contactPickerVisible} animationType="slide" transparent>
+        <Pressable style={styles.pickerOverlay} onPress={() => setContactPickerVisible(false)}>
+          <View
+            style={[styles.pickerSheet, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={[styles.pickerHeader, { borderBottomColor: colors.icon + '22' }]}>
+              <ThemedText type="defaultSemiBold" style={{ fontSize: 17 }}>
+                {t('ticketsHub.threadPickContactTitle')}
+              </ThemedText>
+              <TouchableOpacity onPress={() => setContactPickerVisible(false)} hitSlop={12}>
+                <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{t('common.close')}</ThemedText>
+              </TouchableOpacity>
+            </View>
+            {((contactPickerContext === 'reply' && replyTaggedContactId) ||
+              (contactPickerContext === 'edit' && editMessageDraft?.taggedContactId)) ? (
+              <TouchableOpacity
+                style={[styles.pickerClearRow, { borderBottomColor: colors.icon + '11' }]}
+                onPress={() => applyPickedContact(null)}
+              >
+                <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{t('ticketsHub.threadClearContactTag')}</ThemedText>
+              </TouchableOpacity>
+            ) : null}
+            <ScrollView style={styles.pickerScroll} keyboardShouldPersistTaps="handled">
+              {estateContacts.length === 0 ? (
+                <ThemedText style={[styles.pickerEmpty, { color: colors.icon }]}>
+                  {t('ticketsHub.threadNoContacts')}
+                </ThemedText>
+              ) : (
+                estateContacts.map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[styles.pickerRow, { borderBottomColor: colors.icon + '11' }]}
+                    onPress={() => applyPickedContact(c.id)}
+                  >
+                    <ThemedText type="defaultSemiBold" numberOfLines={1}>
+                      {c.name}
+                    </ThemedText>
+                    {c.role ? (
+                      <ThemedText style={{ color: colors.icon, fontSize: 13 }} numberOfLines={1}>
+                        {c.role}
+                      </ThemedText>
+                    ) : null}
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {isEstateOwner ? (
         <DueDatePickerModal
           visible={dueModalOpen}
           onClose={() => setDueModalOpen(false)}
@@ -312,13 +614,37 @@ const styles = StyleSheet.create({
   messages: { paddingHorizontal: 16, gap: 12, paddingTop: 8 },
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   msgRowRight: { flexDirection: 'row-reverse' },
-  bubble: { maxWidth: '75%', padding: 12, borderRadius: 16, gap: 4 },
+  msgCol: { maxWidth: '75%', position: 'relative' },
+  msgEditIcon: { position: 'absolute', top: -4, zIndex: 2, padding: 4 },
+  msgEditIconRight: { right: 4 },
+  bubble: { padding: 12, borderRadius: 16, gap: 4 },
   bubbleRight: { borderBottomRightRadius: 4 },
+  contactTag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8 },
+  contactTagText: { flex: 1, fontSize: 12, fontWeight: '600' },
   authorName: { fontSize: 11, fontWeight: '700', opacity: 0.6 },
   msgText: { fontSize: 14, lineHeight: 20 },
   msgTime: { fontSize: 10 },
-  inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, paddingTop: 10, gap: 10, borderTopWidth: 1 },
+  inputBar: { paddingHorizontal: 16, paddingTop: 10, gap: 8, borderTopWidth: 1 },
+  replyTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  replyTagText: { flex: 1, fontSize: 13 },
+  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   replyInput: { flex: 1, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, maxHeight: 100 },
+  tagReplyBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.4 },
   modalOverlay: {
@@ -342,6 +668,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
   },
+  editMsgMultiline: { minHeight: 100, paddingTop: 12 },
+  editMsgTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  smallBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.md, borderWidth: 1 },
   modalPriorityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   modalPriPill: {
     paddingHorizontal: 12,
@@ -367,4 +696,28 @@ const styles = StyleSheet.create({
   },
   modalDeleteText: { color: '#dc2626', fontWeight: '600', fontSize: 15 },
   modalCancelBtn: { marginTop: 4, paddingVertical: 10, alignItems: 'center' },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  pickerSheet: {
+    maxHeight: '72%',
+    borderTopLeftRadius: Radius.lg,
+    borderTopRightRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingBottom: 24,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  pickerClearRow: { paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth },
+  pickerScroll: { maxHeight: 400 },
+  pickerRow: { paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth, gap: 2 },
+  pickerEmpty: { padding: 24, fontSize: 14, lineHeight: 20 },
 });

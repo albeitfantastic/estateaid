@@ -56,6 +56,11 @@ interface TicketState {
   fetchFromSupabase: () => Promise<void>;
   createTicket: (ticket: Ticket) => Promise<{ error: string | null }>;
   addMessage: (ticketId: string, message: TicketMessage) => Promise<void>;
+  updateTicketMessage: (
+    ticketId: string,
+    messageId: string,
+    patch: { body?: string; taggedContactId?: string | null }
+  ) => Promise<void>;
   updateTicketStatus: (ticketId: string, status: TicketStatus) => Promise<void>;
   /** Pass `dueDate: null` to clear. */
   updateTicket: (
@@ -104,6 +109,41 @@ export const useTicketStore = create<TicketState>()(
           ),
         }));
         const ticket = get().tickets.find((t) => t.id === ticketId);
+        if (ticket) {
+          await supabase
+            .from('tickets')
+            .update({
+              messages: ticket.messages,
+              updated_at: ticket.updatedAt,
+              due_date: ticket.dueDate ?? null,
+            })
+            .eq('id', ticketId);
+        }
+      },
+      updateTicketMessage: async (ticketId, messageId, patch) => {
+        const updatedAt = new Date().toISOString();
+        set((s) => ({
+          tickets: s.tickets.map((t) => {
+            if (t.id !== ticketId) return t;
+            return {
+              ...t,
+              updatedAt,
+              messages: t.messages.map((m) => {
+                if (m.id !== messageId) return m;
+                const next = { ...m };
+                if (patch.body !== undefined) next.body = patch.body.trim();
+                if (patch.taggedContactId !== undefined) {
+                  next.taggedContactId =
+                    patch.taggedContactId === null || patch.taggedContactId === ''
+                      ? undefined
+                      : patch.taggedContactId;
+                }
+                return next;
+              }),
+            };
+          }),
+        }));
+        const ticket = get().tickets.find((x) => x.id === ticketId);
         if (ticket) {
           await supabase
             .from('tickets')
