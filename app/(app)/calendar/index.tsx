@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { MonthGrid, DayInfo } from '@/components/calendar/month-grid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -16,12 +17,21 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useEventStore } from '@/store/event-store';
 import { useStayStore } from '@/store/stay-store';
+import { useTicketStore } from '@/store/ticket-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
+import type { Ticket } from '@/types';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+const TICKET_DUE_DOT = '#f59e0b';
+
+function isTicketOpenForCalendar(t: Ticket) {
+  return t.status === 'open' || t.status === 'in_progress';
+}
+
 export default function OwnerCalendar() {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -31,6 +41,7 @@ export default function OwnerCalendar() {
   const allEstates = useEstateStore((s) => s.estates);
   const allStays = useStayStore((s) => s.stays);
   const allEvents = useEventStore((s) => s.events);
+  const allTickets = useTicketStore((s) => s.tickets);
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
 
   const myEstates = useMemo(
@@ -92,6 +103,17 @@ export default function OwnerCalendar() {
     [allEvents, selectedEstateId]
   );
 
+  const estateOpenTicketsWithDue = useMemo(
+    () =>
+      allTickets.filter(
+        (tk) =>
+          tk.estateId === selectedEstateId &&
+          !!tk.dueDate &&
+          isTicketOpenForCalendar(tk)
+      ),
+    [allTickets, selectedEstateId]
+  );
+
   const dayInfoMap = useMemo(() => {
     const map: Record<string, DayInfo> = {};
     estateStays.forEach(({ from, to }) => {
@@ -127,9 +149,28 @@ export default function OwnerCalendar() {
         };
       });
     });
+    estateOpenTicketsWithDue.forEach((ticket) => {
+      const d = ticket.dueDate!;
+      if (d < firstDay || d > lastDay) return;
+      const existing = map[d] ?? { dateStr: d };
+      map[d] = {
+        ...existing,
+        dots: [...(existing.dots ?? []), { color: TICKET_DUE_DOT, key: `ticket-${ticket.id}` }],
+      };
+    });
     finalizeCalendarAvailability(map, viewYear, viewMonth);
     return map;
-  }, [estateStays, myStays, estateEvents, availabilityRules, selectedEstateId, viewYear, viewMonth, colors.tint]);
+  }, [
+    estateStays,
+    myStays,
+    estateEvents,
+    estateOpenTicketsWithDue,
+    availabilityRules,
+    selectedEstateId,
+    viewYear,
+    viewMonth,
+    colors.tint,
+  ]);
 
   const selectedDayData = useMemo(() => {
     if (!selectedDay) return null;
@@ -149,6 +190,11 @@ export default function OwnerCalendar() {
       (event) => getEventOccurrences(event, selectedDay, selectedDay).length > 0
     );
   }, [selectedDay, estateEvents]);
+
+  const selectedDayTicketDues = useMemo(() => {
+    if (!selectedDay) return [];
+    return estateOpenTicketsWithDue.filter((tk) => tk.dueDate === selectedDay);
+  }, [selectedDay, estateOpenTicketsWithDue]);
 
   const selectedEstate = myEstates.find((e) => e.id === selectedEstateId);
   const canGoBack = navigation.canGoBack();
@@ -291,6 +337,29 @@ export default function OwnerCalendar() {
                       ))}
                     </View>
                   )}
+                  {selectedDayTicketDues.length > 0 && (
+                    <View style={styles.eventList}>
+                      {selectedDayTicketDues.map((tk) => (
+                        <TouchableOpacity
+                          key={tk.id}
+                          style={styles.eventRow}
+                          onPress={() =>
+                            router.push(`/(app)/estates/${tk.estateId}/tickets/${tk.id}` as never)
+                          }
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.eventDot, { backgroundColor: TICKET_DUE_DOT }]} />
+                          <ThemedText
+                            style={[styles.eventTitle, { color: colors.text, flex: 1 }]}
+                            numberOfLines={1}
+                          >
+                            {tk.title}
+                          </ThemedText>
+                          <IconSymbol name="chevron.right" size={12} color={colors.icon} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </View>
               </View>
               <TouchableOpacity onPress={() => setSelectedDay(null)} style={styles.infoDismiss}>
@@ -319,7 +388,9 @@ export default function OwnerCalendar() {
             onPress={() => setLegendOpen((o) => !o)}
             activeOpacity={0.7}
           >
-            <ThemedText style={[styles.legendToggleLabel, { color: colors.icon }]}>Legend</ThemedText>
+            <ThemedText style={[styles.legendToggleLabel, { color: colors.icon }]}>
+              {t('guestCalendar.legend')}
+            </ThemedText>
             <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
           </TouchableOpacity>
 
@@ -333,7 +404,7 @@ export default function OwnerCalendar() {
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatch, { backgroundColor: '#22c55e' }]} />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Your approved stay
+                  {t('guestCalendar.legendYourStay')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
@@ -348,7 +419,7 @@ export default function OwnerCalendar() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Available — open from today onward
+                  {t('guestCalendar.legendAvailableFuture')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
@@ -363,7 +434,7 @@ export default function OwnerCalendar() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Unavailable — past dates
+                  {t('guestCalendar.legendUnavailablePast')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
@@ -378,20 +449,32 @@ export default function OwnerCalendar() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Unavailable — booked by others
+                  {t('guestCalendar.legendUnavailableBooked')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatchRing, { borderColor: '#0a7ea4', borderWidth: 1.5 }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Today</ThemedText>
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendToday')}
+                </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 2.5 }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Selected day</ThemedText>
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendSelectedDay')}
+                </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={[styles.legendDot, { backgroundColor: colors.tint }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Property event</ThemedText>
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendPropertyEvent')}
+                </ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendDot, { backgroundColor: TICKET_DUE_DOT }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('ticketsHub.legendTicketDue')}
+                </ThemedText>
               </View>
             </View>
           )}

@@ -1,32 +1,54 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { DayInfo, MonthGrid } from '@/components/calendar/month-grid';
 import { SettingsSheet, type SettingsDestination } from '@/components/settings/settings-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { EmptyState } from '@/components/ui/empty-state';
 import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { StatusBadge } from '@/components/ui/badge';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SurfaceCard } from '@/components/ui/surface-card';
-import { Colors, EstateColors, Layout, Radius, elevationStyle, type ThemeColors } from '@/constants/theme';
+import { Colors, EstateColors, Layout, Radius, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAccessTier, useHasFullHostAccess } from '@/lib/access-tier';
-import { formatDate, formatDateRange, getDaysInRange, today } from '@/lib/date-utils';
-import { showMaisonProUpgradePrompt } from '@/lib/maison-pro-upgrade';
+import { formatDate, formatDateRange, today } from '@/lib/date-utils';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
-import { getEventOccurrences, describeRecurrence } from '@/lib/event-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
-import { useEventStore } from '@/store/event-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useTicketStore } from '@/store/ticket-store';
+import type { Ticket, TicketPriority } from '@/types';
+
+const PRIORITY_BAR: Record<TicketPriority, string> = {
+  low: '#94a3b8',
+  normal: '#0a7ea4',
+  high: '#f59e0b',
+  urgent: '#ef4444',
+};
+
+function isTicketOpenStatus(t: Ticket) {
+  return t.status === 'open' || t.status === 'in_progress';
+}
+
+function sortOpenTicketsForHome(a: Ticket, b: Ticket) {
+  if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
+  if (a.dueDate && !b.dueDate) return -1;
+  if (!a.dueDate && b.dueDate) return 1;
+  return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
+}
+
+function priorityShortLabel(p: TicketPriority, tr: (k: string) => string) {
+  if (p === 'urgent' || p === 'high') return tr('ticketsHub.priorityHigh');
+  if (p === 'normal') return tr('ticketsHub.priorityMedium');
+  return tr('ticketsHub.priorityLow');
+}
 
 export default function OwnerDashboard() {
   const { t } = useTranslation();
@@ -35,8 +57,6 @@ export default function OwnerDashboard() {
   const colorScheme = useColorScheme();
   const scheme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
-
-  const monthNames = t('calendar.months', { returnObjects: true }) as string[];
 
   function getStayRelativeLabel(from: string, to: string, todayStr: string): string {
     if (from === todayStr) return t('stayRelative.arrivingToday');
@@ -63,7 +83,6 @@ export default function OwnerDashboard() {
   const allStays = useStayStore((s) => s.stays);
   const allTickets = useTicketStore((s) => s.tickets);
   const allInvitations = useInvitationStore((s) => s.invitations);
-  const allEvents = useEventStore((s) => s.events);
   const todayStr = today();
   const profileById = useProfileStore((s) => s.byId);
   const accessTier = useAccessTier();
@@ -80,14 +99,13 @@ export default function OwnerDashboard() {
     [allStayRequests, estateIds]
   );
   const openTicketsCount = useMemo(
-    () => allTickets.filter((t) => estateIds.includes(t.estateId) && t.status !== 'resolved' && t.status !== 'closed').length,
+    () =>
+      allTickets.filter(
+        (tk) =>
+          estateIds.includes(tk.estateId) && (tk.status === 'open' || tk.status === 'in_progress')
+      ).length,
     [allTickets, estateIds]
   );
-  const activeStays = useMemo(
-    () => allStays.filter((st) => estateIds.includes(st.estateId) && st.from <= todayStr && st.to >= todayStr),
-    [allStays, estateIds, todayStr]
-  );
-
   const guestsCount = useMemo(() => {
     const ids = new Set(
       allInvitations
@@ -121,58 +139,17 @@ export default function OwnerDashboard() {
     return map;
   }, [estates]);
 
-  // Interactive calendar state
-  const now = new Date();
-  const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth());
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [legendOpen, setLegendOpen] = useState(false);
-
-  function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
-    setSelectedDay(null);
-  }
-  function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
-    setSelectedDay(null);
-  }
-
-  const estateEvents = useMemo(
-    () => allEvents.filter((ev) => estateIds.includes(ev.estateId)),
-    [allEvents, estateIds]
+  const estateById = useMemo(
+    () => Object.fromEntries(estates.map((e) => [e.id, e] as const)),
+    [estates]
   );
 
-  const monthStart = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
-  const monthEnd = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${new Date(viewYear, viewMonth + 1, 0).getDate()}`;
-
-  const dayInfoMap = useMemo(() => {
-    const map: Record<string, DayInfo> = {};
-    allStays.forEach((stay) => {
-      if (!stay.from || !stay.to) return;
-      const color = estateColorMap[stay.estateId] ?? colors.tint;
-      getDaysInRange(stay.from, stay.to).forEach((dateStr) => {
-        if (!map[dateStr]) map[dateStr] = { dateStr, dots: [] };
-        map[dateStr].dots = [...(map[dateStr].dots ?? []), { color, key: stay.id }];
-      });
-    });
-    estateEvents.forEach((ev) => {
-      const dotColor = ev.color ?? '#64748B';
-      getEventOccurrences(ev, monthStart, monthEnd).forEach((dateStr) => {
-        if (!map[dateStr]) map[dateStr] = { dateStr, dots: [] };
-        map[dateStr].dots = [...(map[dateStr].dots ?? []), { color: dotColor, key: ev.id + dateStr }];
-      });
-    });
-    return map;
-  }, [allStays, estateColorMap, estateEvents, monthStart, monthEnd, colors.tint]);
-
-  const staysOnSelectedDay = selectedDay
-    ? allStays.filter((s) => selectedDay >= s.from && selectedDay <= s.to && estateIds.includes(s.estateId))
-    : [];
-  const eventsOnSelectedDay = selectedDay
-    ? estateEvents.filter((ev) => getEventOccurrences(ev, selectedDay, selectedDay).length > 0)
-    : [];
+  const openTicketsForHome = useMemo(() => {
+    return allTickets
+      .filter((tk) => estateIds.includes(tk.estateId) && isTicketOpenStatus(tk))
+      .sort(sortOpenTicketsForHome)
+      .slice(0, 8);
+  }, [allTickets, estateIds]);
 
   return (
     <ThemedView style={styles.container}>
@@ -253,17 +230,10 @@ export default function OwnerDashboard() {
             hostLocked={!hasHost}
             onPress={() => router.push('/(app)/stays' as never)}
           />
-          {/*}
-          <StatCard
-            icon="exclamationmark.triangle.fill"
-            value={openTicketsCount}
-            label="Tickets"
-            color="#ef4444"
-            colors={colors}
-            onPress={() => router.push('/(app)/tickets' as never)}
-          />*/}
+          
+          
         </View>
-    
+        
         {/* Today's Priorities */}
         {(todayArrivals.length > 0 || todayDepartures.length > 0 || pendingCount > 0) && (
           <View style={styles.priorityRow}>
@@ -359,6 +329,28 @@ export default function OwnerDashboard() {
           </HostProLockTouchable>
         </View>
 
+        <View style={styles.statsRow}
+        >
+        <StatCard
+            icon="exclamationmark.triangle.fill"
+            value={openTicketsCount}
+            label="Tickets"
+            color={colors.tint}
+            colors={colors}
+            onPress={() => router.push('/(app)/tickets' as never)}
+          />
+        </View>
+
+
+
+
+
+
+
+
+
+
+
         {/* Upcoming Stays */}
         <SectionHeader
           title={t('ownerHome.upcomingStays')}
@@ -393,7 +385,7 @@ export default function OwnerDashboard() {
                 >
                   <SurfaceCard
                     variant="elevated"
-                    padded={false}
+                    padded={true}
                     accentColor={dotColor}
                     accentWidth={4}
                     contentStyle={styles.stayRowInner}
@@ -416,143 +408,54 @@ export default function OwnerDashboard() {
           </View>
         )}
 
-        {/* Interactive Calendar (host-gated for Standard) */}
-        <View style={styles.calendarSectionWrap}>
-          <View pointerEvents={hasHost ? 'auto' : 'none'}>
-            <SectionHeader title={t('ownerHome.thisMonth')} />
-            <View
-              style={[
-                styles.calendarCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-                elevationStyle('card', scheme),
-              ]}
-            >
-              <View style={[styles.calendarNav, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={prevMonth} style={[styles.navBtn, { backgroundColor: colors.surfaceMuted }]}>
-                  <IconSymbol name="arrow.left" size={20} color={colors.tint} />
-                </TouchableOpacity>
-                <ThemedText type="defaultSemiBold" style={[styles.monthLabel, { color: colors.text }]}>
-                  {monthNames[viewMonth]} {viewYear}
-                </ThemedText>
-                <TouchableOpacity onPress={nextMonth} style={[styles.navBtn, { backgroundColor: colors.surfaceMuted }]}>
-                  <IconSymbol name="arrow.right" size={20} color={colors.tint} />
-                </TouchableOpacity>
-              </View>
-              <View style={[styles.calendarGridPad, { backgroundColor: colors.surfaceMuted }]}>
-                <MonthGrid
-                  year={viewYear}
-                  month={viewMonth}
-                  dayInfoMap={dayInfoMap}
-                  selectedDay={selectedDay ?? undefined}
-                  onDayPress={(d) => setSelectedDay(selectedDay === d ? null : d)}
-                />
-              </View>
-            </View>
-
-            {(estates.length > 0 || estateEvents.length > 0) && (
-              <>
+        <SectionHeader
+          title={t('ownerHome.openTickets')}
+          actionLabel={t('ownerHome.seeAll')}
+          onAction={() => router.push('/(app)/tickets' as never)}
+        />
+        {openTicketsForHome.length === 0 ? (
+          <EmptyState
+            icon="exclamationmark.triangle.fill"
+            title={t('ownerHome.noOpenTicketsTitle')}
+            subtitle={t('ownerHome.noOpenTicketsSub')}
+          />
+        ) : (
+          <View style={styles.openTicketsList}>
+            {openTicketsForHome.map((ticket) => {
+              const estateName = estateById[ticket.estateId]?.name ?? '—';
+              const barColor = PRIORITY_BAR[ticket.priority];
+              return (
                 <TouchableOpacity
-                  style={styles.legendToggle}
-                  onPress={() => setLegendOpen((o) => !o)}
-                  activeOpacity={0.7}
+                  key={ticket.id}
+                  style={[styles.ticketRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  onPress={() =>
+                    router.push(`/(app)/estates/${ticket.estateId}/tickets/${ticket.id}` as never)
+                  }
+                  activeOpacity={0.8}
                 >
-                  <ThemedText style={[styles.legendToggleText, { color: colors.textSecondary }]}>
-                    {t('ownerHome.legend')}
-                  </ThemedText>
-                  <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={14} color={colors.textSecondary} />
-                </TouchableOpacity>
-                {legendOpen && (
-                  <View style={styles.legend}>
-                    {estates.map((e, i) => (
-                      <View
-                        key={e.id}
-                        style={[styles.legendItem, { backgroundColor: colors.surfaceMuted, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
-                      >
-                        <View style={[styles.legendDot, { backgroundColor: EstateColors[i % EstateColors.length] }]} />
-                        <ThemedText style={[styles.legendText, { color: colors.text }]} numberOfLines={1}>
-                          {e.name}
-                        </ThemedText>
-                      </View>
-                    ))}
-                    {estateEvents.map((ev) => (
-                      <View
-                        key={ev.id}
-                        style={[styles.legendItem, { backgroundColor: colors.surfaceMuted, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
-                      >
-                        <View style={[styles.legendDot, { backgroundColor: ev.color ?? '#64748B' }]} />
-                        <ThemedText style={[styles.legendText, { color: colors.text }]} numberOfLines={1}>
-                          {ev.title}
-                        </ThemedText>
-                      </View>
-                    ))}
+                  <View style={[styles.ticketPriorityBar, { backgroundColor: barColor }]} />
+                  <View style={styles.ticketRowBody}>
+                    <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.ticketRowTitle}>
+                      {ticket.title}
+                    </ThemedText>
+                    <ThemedText style={[styles.ticketRowMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {estateName} · {priorityShortLabel(ticket.priority, t)}
+                    </ThemedText>
+                    {ticket.dueDate ? (
+                      <ThemedText style={[styles.ticketRowDue, { color: colors.textSecondary }]}>
+                        {t('ticketsHub.dueShort', { date: formatDate(ticket.dueDate) })}
+                      </ThemedText>
+                    ) : null}
                   </View>
-                )}
-              </>
-            )}
-
-            {selectedDay && (
-              <View
-                style={[
-                  styles.dayDetail,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                  elevationStyle('row', scheme),
-                ]}
-              >
-                <View style={styles.dayDetailHeader}>
-                  <ThemedText type="defaultSemiBold" style={[styles.dayDetailTitle, { color: colors.text }]}>
-                    {formatDate(selectedDay)}
-                  </ThemedText>
-                  <TouchableOpacity
-                    onPress={() => setSelectedDay(null)}
-                    style={[styles.dayDetailClose, { backgroundColor: colors.surfaceMuted }]}
-                    hitSlop={8}
-                  >
-                    <IconSymbol name="xmark" size={18} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-                {staysOnSelectedDay.length === 0 && eventsOnSelectedDay.length === 0 && (
-                  <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
-                    {t('ownerHome.nothingScheduled')}
-                  </ThemedText>
-                )}
-                {staysOnSelectedDay.map((stay) => {
-                  const estate = estates.find((e) => e.id === stay.estateId);
-                  const dotColor = estateColorMap[stay.estateId] ?? colors.tint;
-                  const guestLabel =
-                    stay.guestId === currentUser?.id
-                      ? (currentUser?.name ?? t('common.you'))
-                      : resolveUserDisplayName(stay.guestId, profileById);
-                  return (
-                    <View key={stay.id} style={[styles.dayStayRow, { borderLeftColor: dotColor }]}>
-                      <ThemedText type="defaultSemiBold">{guestLabel}</ThemedText>
-                      <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
-                        {estate?.name} · {formatDateRange(stay.from, stay.to)}
-                      </ThemedText>
-                    </View>
-                  );
-                })}
-                {eventsOnSelectedDay.map((ev) => {
-                  const estate = estates.find((e) => e.id === ev.estateId);
-                  return (
-                    <View key={ev.id} style={[styles.dayStayRow, { borderLeftColor: ev.color ?? '#64748B' }]}>
-                      <ThemedText type="defaultSemiBold">{ev.title}</ThemedText>
-                      <ThemedText style={[styles.stayMeta, { color: colors.textSecondary }]}>
-                        {estate?.name} · {describeRecurrence(ev)}
-                      </ThemedText>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
+                  <View style={styles.ticketRowRight}>
+                    <StatusBadge status={ticket.status} />
+                    <IconSymbol name="chevron.right" size={16} color={colors.icon} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          {!hasHost && (
-            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => showMaisonProUpgradePrompt(t)}>
-              <View style={styles.calendarLockBadge} pointerEvents="none">
-                <IconSymbol name="lock.fill" size={11} color="#fff" />
-              </View>
-            </Pressable>
-          )}
-        </View>
+        )}
       </ScrollView>
     </ThemedView>
   );
@@ -674,90 +577,19 @@ const styles = StyleSheet.create({
   relBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.sm, marginRight: 4 },
   relBadgeText: { fontSize: 11, fontWeight: '700' },
 
-  calendarSectionWrap: { position: 'relative', marginBottom: Layout.sectionGap - 8 },
-  calendarLockBadge: {
-    position: 'absolute',
-    top: 40,
-    right: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Calendar
-  calendarCard: {
-    borderRadius: Radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: Layout.sectionGap - 6,
-    overflow: 'hidden',
-  },
-  calendarNav: {
+  openTicketsList: { gap: 8, marginBottom: Layout.sectionGap },
+  ticketRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  navBtn: {
-    minWidth: Layout.touchMin,
-    minHeight: Layout.touchMin,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  monthLabel: { fontSize: 18, letterSpacing: -0.3 },
-  calendarGridPad: { paddingHorizontal: 8, paddingTop: 10, paddingBottom: 12 },
-  legendToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    marginBottom: 8,
-  },
-  legendToggleText: { fontSize: 13, fontWeight: '600' },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: Layout.sectionGap - 8,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: Radius.full,
-    maxWidth: '100%',
-  },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 13, flexShrink: 1 },
-  dayDetail: {
     borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: Layout.sectionGap - 4,
-    gap: 12,
-    marginBottom: 8,
+    overflow: 'hidden',
+    gap: 10,
   },
-  dayDetailHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  dayDetailTitle: { fontSize: 17, flex: 1 },
-  dayDetailClose: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stayMeta: { fontSize: 13, lineHeight: 18 },
-  dayStayRow: {
-    paddingLeft: 12,
-    paddingVertical: 4,
-    borderLeftWidth: 3,
-    gap: 4,
-  },
+  ticketPriorityBar: { width: 4, alignSelf: 'stretch' },
+  ticketRowBody: { flex: 1, paddingVertical: 12, gap: 2 },
+  ticketRowTitle: { fontSize: 15 },
+  ticketRowMeta: { fontSize: 12 },
+  ticketRowDue: { fontSize: 12, fontWeight: '600' },
+  ticketRowRight: { alignItems: 'flex-end', gap: 6, paddingRight: 12 },
 });

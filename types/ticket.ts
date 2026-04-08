@@ -1,4 +1,4 @@
-export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+export type TicketStatus = 'open' | 'in_progress' | 'resolved';
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 export interface TicketMessage {
@@ -17,6 +17,8 @@ export interface Ticket {
   title: string;
   status: TicketStatus;
   priority: TicketPriority;
+  /** ISO date `YYYY-MM-DD` — shown on calendar when set */
+  dueDate?: string;
   assigneeId?: string;
   messages: TicketMessage[];
   createdAt: string;

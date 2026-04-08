@@ -422,6 +422,7 @@ const TICKETS: Ticket[] = [
     ],
     createdAt: '2026-06-12T10:00:00Z',
     updatedAt: '2026-06-12T14:00:00Z',
+    dueDate: '2026-06-15',
   },
   {
     id: 'ticket-2',

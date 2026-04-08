@@ -171,7 +171,6 @@ export const StatusColors = {
   open: '#D97706',
   in_progress: '#1C3D5A',
   resolved: '#2D7D52',
-  closed: '#94A3B8',
 } as const;
 
 export const Fonts = {

@@ -23,9 +23,12 @@ export function Badge({ label, variant }: BadgeProps) {
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const label = status.replace(/_/g, ' ');
+  const normalized = status === 'closed' ? 'resolved' : status;
+  const label = normalized.replace(/_/g, ' ');
   const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
-  return <Badge label={capitalized} variant={status as BadgeVariant} />;
+  const variant: BadgeVariant =
+    normalized in StatusColors ? (normalized as BadgeVariant) : 'neutral';
+  return <Badge label={capitalized} variant={variant} />;
 }
 
 const styles = StyleSheet.create({

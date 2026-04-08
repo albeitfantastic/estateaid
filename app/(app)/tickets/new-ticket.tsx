@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,7 +14,8 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useTicketStore } from '@/store/ticket-store';
 import { TicketPriority } from '@/types';
-import { generateId } from '@/lib/id';
+import { formatDate } from '@/lib/date-utils';
+import { generateId, generateUuidV4 } from '@/lib/id';
 
 const PRIORITIES: { value: TicketPriority; label: string; color: string }[] = [
   { value: 'low', label: 'Low', color: '#22c55e' },
@@ -43,22 +45,25 @@ export default function NewTicket() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TicketPriority>('normal');
+  const [dueDate, setDueDate] = useState<string | null>(null);
+  const [dueModalOpen, setDueModalOpen] = useState(false);
 
   const canSubmit = !!selectedEstateId && title.trim().length > 0;
 
-  function submit() {
+  async function submit() {
     if (!selectedEstateId) { Alert.alert('Required', 'Please select a property.'); return; }
     if (!title.trim()) { Alert.alert('Required', 'Please enter a title.'); return; }
 
     const now = new Date().toISOString();
-    const ticketId = generateId();
-    createTicket({
+    const ticketId = generateUuidV4();
+    const { error } = await createTicket({
       id: ticketId,
       estateId: selectedEstateId,
       guestId: currentUser!.id,
       title: title.trim(),
       status: 'open',
       priority,
+      ...(dueDate ? { dueDate } : {}),
       messages: description.trim()
         ? [
             {
@@ -73,14 +78,21 @@ export default function NewTicket() {
       createdAt: now,
       updatedAt: now,
     });
-    Alert.alert('Ticket Created', 'The ticket has been opened.');
+    if (error) {
+      Alert.alert(
+        'Ticket saved on this device',
+        `Could not sync to the server yet (${error}). The ticket still appears in your list.`,
+      );
+    } else {
+      Alert.alert('Ticket Created', 'The ticket has been opened.');
+    }
     router.back();
   }
 
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+        <TouchableOpacity onPress={() => router.push('/(app)/tickets') as never} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>{t('titles.newTicket')}</ThemedText>
@@ -176,6 +188,20 @@ export default function NewTicket() {
           </View>
         </View>
 
+        <View style={styles.section}>
+          <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ticketsHub.newTicketDueOptional')}</ThemedText>
+          <TouchableOpacity
+            style={[styles.dueBtn, { borderColor: colors.icon + '44', backgroundColor: colors.background }]}
+            onPress={() => setDueModalOpen(true)}
+            activeOpacity={0.75}
+          >
+            <ThemedText style={{ color: dueDate ? colors.text : colors.icon }}>
+              {dueDate ? formatDate(dueDate) : t('ticketsHub.newTicketPickDue')}
+            </ThemedText>
+            <IconSymbol name="calendar" size={18} color={colors.tint} />
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
           style={[styles.submitBtn, { backgroundColor: colors.tint }, !canSubmit && styles.disabled]}
           onPress={submit}
@@ -186,6 +212,15 @@ export default function NewTicket() {
           <ThemedText style={styles.submitText}>Open Ticket</ThemedText>
         </TouchableOpacity>
       </ScrollView>
+
+      <DueDatePickerModal
+        visible={dueModalOpen}
+        onClose={() => setDueModalOpen(false)}
+        onSelectDate={(d) => setDueDate(d)}
+        onClear={() => setDueDate(null)}
+        title={t('ticketsHub.newTicketPickDue')}
+        clearLabel={t('ticketsHub.newTicketClearDue')}
+      />
     </ThemedView>
   );
 }
@@ -207,6 +242,15 @@ const styles = StyleSheet.create({
   priorityRow: { flexDirection: 'row', gap: 8 },
   priorityPill: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 20, borderWidth: 1.5 },
   priorityText: { fontSize: 13 },
+  dueBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 18, borderRadius: 14, marginTop: 8 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   disabled: { opacity: 0.45 },
