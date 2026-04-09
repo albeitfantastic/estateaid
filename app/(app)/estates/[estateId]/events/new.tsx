@@ -48,11 +48,11 @@ export default function NewEvent() {
 
   async function save() {
     if (!title.trim()) {
-      Alert.alert('Missing title', 'Please enter an event title.');
+      Alert.alert(t('maintenanceSchedule.missingTitle'), t('maintenanceSchedule.missingTitleBody'));
       return;
     }
     if (!estateId) {
-      Alert.alert('Error', 'Missing property. Go back and open this screen from the estate again.');
+      Alert.alert(t('common.error'), t('maintenanceSchedule.propertyMissingBody'));
       return;
     }
 
@@ -86,7 +86,7 @@ export default function NewEvent() {
           });
 
     if (result.error) {
-      Alert.alert('Could not save event', result.error);
+      Alert.alert(t('maintenanceSchedule.saveFailedTitle'), result.error);
       return;
     }
     router.back();
@@ -105,24 +105,24 @@ export default function NewEvent() {
         {/* Type picker */}
         <ThemedText style={[styles.label, { color: colors.icon }]}>Type</ThemedText>
         <View style={styles.typePicker}>
-          {(['recurring', 'task'] as EventType[]).map((t) => (
+          {(['recurring', 'task'] as EventType[]).map((kind) => (
             <TouchableOpacity
-              key={t}
+              key={kind}
               style={[
                 styles.typeBtn,
                 { borderColor: colors.tint + '44' },
-                type === t && { backgroundColor: colors.tint, borderColor: colors.tint },
+                type === kind && { backgroundColor: colors.tint, borderColor: colors.tint },
               ]}
-              onPress={() => setType(t)}
+              onPress={() => setType(kind)}
               activeOpacity={0.8}
             >
               <IconSymbol
-                name={t === 'recurring' ? 'arrow.triangle.2.circlepath' : 'checkmark.circle.fill'}
+                name={kind === 'recurring' ? 'arrow.triangle.2.circlepath' : 'checkmark.circle.fill'}
                 size={18}
-                color={type === t ? '#fff' : colors.tint}
+                color={type === kind ? '#fff' : colors.tint}
               />
-              <ThemedText style={[styles.typeBtnText, { color: type === t ? '#fff' : colors.text }]}>
-                {t === 'recurring' ? 'Recurring' : 'One-time Task'}
+              <ThemedText style={[styles.typeBtnText, { color: type === kind ? '#fff' : colors.text }]}>
+                {kind === 'recurring' ? t('maintenanceSchedule.typeRecurring') : t('maintenanceSchedule.oneTimeTask')}
               </ThemedText>
             </TouchableOpacity>
           ))}
@@ -135,8 +135,8 @@ export default function NewEvent() {
         <FocusInput label="Description (optional)" placeholder="Additional notes..." value={description} onChangeText={setDescription} multiline numberOfLines={3} textAlignVertical="top" style={styles.textArea} />
 
         {/* Color */}
-        <ThemedText style={[styles.label, { color: colors.icon }]}>Color</ThemedText>
-        <View style={styles.colorRow}>
+        <ThemedText style={[styles.label, { paddingTop: 24 },  { color: colors.icon }]}>Color</ThemedText>
+        <View style={[styles.colorRow, ]}>
           {EVENT_COLORS.map((c) => (
             <TouchableOpacity
               key={c}
@@ -231,7 +231,7 @@ export default function NewEvent() {
           disabled={!title.trim()}
           activeOpacity={0.8}
         >
-          <ThemedText style={styles.saveBtnText}>Save Event</ThemedText>
+          <ThemedText style={styles.saveBtnText}>{t('maintenanceSchedule.saveButton')}</ThemedText>
         </TouchableOpacity>
       </ScrollView>
     </ThemedView>

@@ -1,6 +1,7 @@
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -19,9 +20,15 @@ export default function OwnerFaq() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { getFaqsByEstate, deleteFaq } = useFaqStore();
+  const { getFaqsByEstate, deleteFaq, fetchFromSupabase } = useFaqStore();
   const faqs = getFaqsByEstate(estateId);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchFromSupabase();
+    }, [fetchFromSupabase])
+  );
 
   function confirmDelete(id: string) {
     Alert.alert('Delete FAQ', 'Remove this FAQ entry?', [

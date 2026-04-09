@@ -122,7 +122,11 @@
     "youSuffix": "(tú)",
     "thisMonth": "Este mes",
     "legend": "Leyenda",
-    "nothingScheduled": "Nada programado"
+    "nothingScheduled": "Nada programado",
+    "upcomingMaintenance": "Mantenimiento próximo",
+    "noUpcomingMaintenanceTitle": "Sin mantenimiento próximo",
+    "noUpcomingMaintenanceSub": "Añade tareas recurrentes o puntuales en Mantenimiento de cada propiedad.",
+    "maintenanceDueToday": "Vence hoy"
   },
   "guestStays": {
     "title": "Estancias",
@@ -181,7 +185,7 @@
     "legendUnavailableBooked": "No disponible — reservado por otros",
     "legendToday": "Hoy",
     "legendSelectedDay": "Día seleccionado",
-    "legendPropertyEvent": "Evento en la propiedad"
+    "legendPropertyEvent": "Mantenimiento en la propiedad"
   },
   "actions": {
     "accept": "Aceptar",
@@ -208,8 +212,8 @@
     "guest": "Invitado",
     "editEstate": "Editar propiedad",
     "newEstate": "Nueva propiedad",
-    "events": "Eventos",
-    "newEvent": "Nuevo evento",
+    "events": "Mantenimiento",
+    "newEvent": "Nuevo mantenimiento",
     "inbox": "Bandeja",
     "newContact": "Nuevo contacto",
     "newFaq": "Nueva FAQ",
@@ -223,12 +227,35 @@
     "editStay": "Editar estancia",
     "guests": "Invitados",
     "myStayStatus": "Estado de mi estancia",
-    "editEvent": "Editar evento",
+    "editEvent": "Editar mantenimiento",
     "newTicket": "Nuevo ticket",
     "myTickets": "Mis tickets",
     "raiseIssue": "Reportar incidencia",
     "editContact": "Editar contacto",
     "uploadDocument": "Subir documento",
     "availability": "Disponibilidad"
+  },
+  "maintenanceSchedule": {
+    "emptyTitle": "Aún no hay mantenimiento",
+    "emptySub": "Añade tareas recurrentes o puntuales para esta propiedad.",
+    "addCta": "Añadir mantenimiento",
+    "deleteTitle": "Eliminar mantenimiento",
+    "deleteMessage": "¿Eliminar «{{title}}»?",
+    "notFound": "Elemento de mantenimiento no encontrado.",
+    "missingTitle": "Falta el título",
+    "missingTitleBody": "Introduce un título para este mantenimiento.",
+    "saveFailedTitle": "No se pudo guardar",
+    "saveButton": "Guardar mantenimiento",
+    "recurringSection": "Recurrente · {{count}}",
+    "tasksSection": "Tareas · {{count}}",
+    "recurringBadge": "Plan recurrente",
+    "oneTimeTask": "Tarea puntual",
+    "typeRecurring": "Recurrente",
+    "deleteItemCta": "Eliminar mantenimiento",
+    "propertyMissingBody": "Falta la propiedad. Vuelve atrás y abre esta pantalla desde la propiedad.",
+    "noDate": "Sin fecha"
+  },
+  "availabilityScreen": {
+    "infoCalendar": "El calendario sigue mostrando las reservas reales y los planes de mantenimiento. Aquí añades fechas bloqueadas adicionales (cierres y temporadas) y límites de reserva (noches mínimas, con cuánta antelación pueden reservar los huéspedes)."
   }
 }

@@ -38,9 +38,9 @@ export default function EventsIndex() {
   const tasks = estateEvents.filter((e) => e.type === 'task');
 
   function confirmDelete(id: string, title: string) {
-    Alert.alert('Delete Event', `Delete "${title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteEvent(id) },
+    Alert.alert(t('maintenanceSchedule.deleteTitle'), t('maintenanceSchedule.deleteMessage', { title }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('editEstateScreen.deleteConfirmCta'), style: 'destructive', onPress: () => deleteEvent(id) },
     ]);
   }
 
@@ -63,16 +63,16 @@ export default function EventsIndex() {
       {estateEvents.length === 0 ? (
         <EmptyState
           icon="calendar.badge.plus"
-          title="No events yet"
-          subtitle="Add recurring events or one-time tasks for this estate."
-          actionLabel="Add Event"
+          title={t('maintenanceSchedule.emptyTitle')}
+          subtitle={t('maintenanceSchedule.emptySub')}
+          actionLabel={t('maintenanceSchedule.addCta')}
           onAction={() => router.push(`/(app)/estates/${estateId}/events/new` as never)}
         />
       ) : (
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
           {recurring.length > 0 && (
             <>
-              <SectionHeader title={`Recurring · ${recurring.length}`} />
+              <SectionHeader title={t('maintenanceSchedule.recurringSection', { count: recurring.length })} />
               {recurring.map((ev) => (
                 <TouchableOpacity
                   key={ev.id}
@@ -105,7 +105,7 @@ export default function EventsIndex() {
 
           {tasks.length > 0 && (
             <>
-              <SectionHeader title={`Tasks · ${tasks.length}`} />
+              <SectionHeader title={t('maintenanceSchedule.tasksSection', { count: tasks.length })} />
               {tasks.map((ev) => (
                 <TouchableOpacity
                   key={ev.id}
@@ -117,7 +117,7 @@ export default function EventsIndex() {
                   <View style={styles.rowInfo}>
                     <ThemedText type="defaultSemiBold" style={styles.rowTitle}>{ev.title}</ThemedText>
                     <ThemedText style={[styles.rowSub, { color: colors.icon }]}>
-                      {ev.date ?? 'No date'}
+                      {ev.date ?? t('maintenanceSchedule.noDate')}
                     </ThemedText>
                     {ev.description ? (
                       <ThemedText style={[styles.rowDesc, { color: colors.icon }]} numberOfLines={1}>

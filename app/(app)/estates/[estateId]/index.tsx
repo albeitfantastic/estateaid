@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -37,6 +38,7 @@ const GUEST_ITEMS = [
 ] as const;
 
 export default function EstateHub() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -114,7 +116,9 @@ export default function EstateHub() {
                 ]}
               >
                 <IconSymbol name={item.icon} size={28} color={colors.tint} />
-                <ThemedText type="defaultSemiBold" style={styles.tileLabel}>{item.label}</ThemedText>
+                <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
+                  {item.route === 'events' ? t('titles.events') : item.label}
+                </ThemedText>
               </HostProLockTouchable>
             ))}
           </View>

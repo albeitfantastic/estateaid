@@ -122,7 +122,11 @@
     "youSuffix": "(toi)",
     "thisMonth": "Ce mois-ci",
     "legend": "Légende",
-    "nothingScheduled": "Rien de prévu"
+    "nothingScheduled": "Rien de prévu",
+    "upcomingMaintenance": "Entretien à venir",
+    "noUpcomingMaintenanceTitle": "Pas d’entretien à venir",
+    "noUpcomingMaintenanceSub": "Ajoute des plannings ou tâches dans Entretien pour chaque propriété.",
+    "maintenanceDueToday": "Prévu aujourd’hui"
   },
   "guestStays": {
     "title": "Séjours",
@@ -181,7 +185,7 @@
     "legendUnavailableBooked": "Indisponible — réservé par d’autres",
     "legendToday": "Aujourd’hui",
     "legendSelectedDay": "Jour sélectionné",
-    "legendPropertyEvent": "Événement sur la propriété"
+    "legendPropertyEvent": "Entretien sur la propriété"
   },
   "actions": {
     "accept": "Accepter",
@@ -208,8 +212,8 @@
     "guest": "Invité",
     "editEstate": "Modifier la propriété",
     "newEstate": "Nouvelle propriété",
-    "events": "Événements",
-    "newEvent": "Nouvel événement",
+    "events": "Entretien",
+    "newEvent": "Nouvel entretien",
     "inbox": "Boîte de réception",
     "newContact": "Nouveau contact",
     "newFaq": "Nouvelle FAQ",
@@ -223,12 +227,35 @@
     "editStay": "Modifier le séjour",
     "guests": "Invités",
     "myStayStatus": "Statut de mon séjour",
-    "editEvent": "Modifier l’événement",
+    "editEvent": "Modifier l’entretien",
     "newTicket": "Nouveau ticket",
     "myTickets": "Mes tickets",
     "raiseIssue": "Signaler un problème",
     "editContact": "Modifier le contact",
     "uploadDocument": "Téléverser un document",
     "availability": "Disponibilité"
+  },
+  "maintenanceSchedule": {
+    "emptyTitle": "Pas encore d’entretien",
+    "emptySub": "Ajoute des plannings récurrents ou des tâches ponctuelles pour cette propriété.",
+    "addCta": "Ajouter un entretien",
+    "deleteTitle": "Supprimer l’entretien",
+    "deleteMessage": "Supprimer « {{title}} » ?",
+    "notFound": "Élément d’entretien introuvable.",
+    "missingTitle": "Titre manquant",
+    "missingTitleBody": "Saisis un titre pour cet entretien.",
+    "saveFailedTitle": "Enregistrement impossible",
+    "saveButton": "Enregistrer l’entretien",
+    "recurringSection": "Récurrent · {{count}}",
+    "tasksSection": "Tâches · {{count}}",
+    "recurringBadge": "Planning récurrent",
+    "oneTimeTask": "Tâche ponctuelle",
+    "typeRecurring": "Récurrent",
+    "deleteItemCta": "Supprimer l’entretien",
+    "propertyMissingBody": "Propriété manquante. Reviens en arrière et ouvre cet écran depuis la propriété.",
+    "noDate": "Pas de date"
+  },
+  "availabilityScreen": {
+    "infoCalendar": "Le calendrier reflète toujours les réservations réelles et les plannings d’entretien. Ici tu ajoutes des dates bloquées supplémentaires (fermetures et saisons) et des règles de réservation (nuits minimum, délai de réservation à l’avance)."
   }
 }

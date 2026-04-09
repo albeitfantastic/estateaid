@@ -16,15 +16,20 @@ import { SurfaceCard } from '@/components/ui/surface-card';
 import { Colors, EstateColors, Layout, Radius, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAccessTier, useHasFullHostAccess } from '@/lib/access-tier';
-import { formatDate, formatDateRange, today } from '@/lib/date-utils';
+import { addDays, formatDate, formatDateRange, today } from '@/lib/date-utils';
+import { getEventOccurrences } from '@/lib/event-utils';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
+import { useEventStore } from '@/store/event-store';
 import { useStayStore } from '@/store/stay-store';
 import { useTicketStore } from '@/store/ticket-store';
-import type { Ticket, TicketPriority } from '@/types';
+import type { EstateEvent, Ticket, TicketPriority } from '@/types';
+
+const MAINTENANCE_HOME_HORIZON_DAYS = 120;
+const HOME_SECTION_PREVIEW_LIMIT = 3;
 
 const PRIORITY_BAR: Record<TicketPriority, string> = {
   low: '#94a3b8',
@@ -48,6 +53,19 @@ function priorityShortLabel(p: TicketPriority, tr: (k: string) => string) {
   if (p === 'urgent' || p === 'high') return tr('ticketsHub.priorityHigh');
   if (p === 'normal') return tr('ticketsHub.priorityMedium');
   return tr('ticketsHub.priorityLow');
+}
+
+function getMaintenanceRelativeLabel(
+  nextDate: string,
+  todayStr: string,
+  tr: (key: string, options?: Record<string, unknown>) => string
+): string {
+  if (nextDate === todayStr) return tr('ownerHome.maintenanceDueToday');
+  if (nextDate === addDays(todayStr, 1)) return tr('stayRelative.tomorrow');
+  const diffMs = new Date(nextDate + 'T12:00:00').getTime() - new Date(todayStr + 'T12:00:00').getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays > 1) return tr('stayRelative.inDays', { count: diffDays });
+  return formatDate(nextDate);
 }
 
 export default function OwnerDashboard() {
@@ -82,6 +100,7 @@ export default function OwnerDashboard() {
   const allStayRequests = useStayStore((s) => s.stayRequests);
   const allStays = useStayStore((s) => s.stays);
   const allTickets = useTicketStore((s) => s.tickets);
+  const allMaintenanceEvents = useEventStore((s) => s.events);
   const allInvitations = useInvitationStore((s) => s.invitations);
   const todayStr = today();
   const profileById = useProfileStore((s) => s.byId);
@@ -120,9 +139,27 @@ export default function OwnerDashboard() {
       allStays
         .filter((s) => estateIds.includes(s.estateId) && s.to >= todayStr)
         .sort((a, b) => a.from.localeCompare(b.from))
-        .slice(0, 5),
+        .slice(0, HOME_SECTION_PREVIEW_LIMIT),
     [allStays, estateIds, todayStr]
   );
+
+  const upcomingMaintenanceRows = useMemo(() => {
+    const horizon = addDays(todayStr, MAINTENANCE_HOME_HORIZON_DAYS);
+    const owned = allMaintenanceEvents.filter((e) => estateIds.includes(e.estateId));
+    const rows: { event: EstateEvent; nextDate: string }[] = [];
+    for (const ev of owned) {
+      const occ = getEventOccurrences(ev, todayStr, horizon);
+      if (occ.length === 0) continue;
+      const sorted = [...occ].sort((a, b) => a.localeCompare(b));
+      const first = sorted[0];
+      if (first) rows.push({ event: ev, nextDate: first });
+    }
+    rows.sort(
+      (a, b) =>
+        a.nextDate.localeCompare(b.nextDate) || a.event.title.localeCompare(b.event.title)
+    );
+    return rows.slice(0, HOME_SECTION_PREVIEW_LIMIT);
+  }, [allMaintenanceEvents, estateIds, todayStr]);
 
   const todayArrivals = useMemo(
     () => allStays.filter((s) => estateIds.includes(s.estateId) && s.from === todayStr),
@@ -148,7 +185,7 @@ export default function OwnerDashboard() {
     return allTickets
       .filter((tk) => estateIds.includes(tk.estateId) && isTicketOpenStatus(tk))
       .sort(sortOpenTicketsForHome)
-      .slice(0, 8);
+      .slice(0, HOME_SECTION_PREVIEW_LIMIT);
   }, [allTickets, estateIds]);
 
   return (
@@ -347,9 +384,64 @@ export default function OwnerDashboard() {
 
 
 
-
-
-
+        {/* Upcoming maintenance */}
+        <SectionHeader
+          title={t('ownerHome.upcomingMaintenance')}
+          actionLabel={t('ownerHome.seeAll')}
+          onAction={() => router.push('/(app)/calendar' as never)}
+          actionHostLocked={!hasHost}
+        />
+        {upcomingMaintenanceRows.length === 0 ? (
+          <EmptyState
+            icon="calendar.badge.clock"
+            title={t('ownerHome.noUpcomingMaintenanceTitle')}
+            subtitle={t('ownerHome.noUpcomingMaintenanceSub')}
+          />
+        ) : (
+          <View style={styles.upcomingList}>
+            {upcomingMaintenanceRows.map(({ event: ev, nextDate }) => {
+              const estate = estateById[ev.estateId];
+              const dotColor = ev.color ?? estateColorMap[ev.estateId] ?? colors.tint;
+              const relLabel = getMaintenanceRelativeLabel(nextDate, todayStr, t);
+              const typeLabel =
+                ev.type === 'recurring'
+                  ? t('maintenanceSchedule.typeRecurring')
+                  : t('maintenanceSchedule.oneTimeTask');
+              return (
+                <HostProLockTouchable
+                  key={`${ev.id}-${nextDate}`}
+                  locked={!hasHost}
+                  onPress={() =>
+                    router.push(`/(app)/estates/${ev.estateId}/events/${ev.id}` as never)
+                  }
+                  style={styles.stayRowOuter}
+                >
+                  <SurfaceCard
+                    variant="elevated"
+                    padded
+                    accentColor={dotColor}
+                    accentWidth={4}
+                    contentStyle={styles.stayRowInner}
+                  >
+                    <View style={styles.stayInfo}>
+                      <ThemedText type="defaultSemiBold" style={styles.stayGuest} numberOfLines={1}>
+                        {ev.title}
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ color: colors.textSecondary }} numberOfLines={1}>
+                        {estate?.name ?? '—'} · {formatDate(nextDate)} · {typeLabel}
+                      </ThemedText>
+                    </View>
+                    <View style={[styles.relBadge, { backgroundColor: colors.tint + '18' }]}>
+                      <ThemedText style={[styles.relBadgeText, { color: colors.tint }]}>
+                        {relLabel}
+                      </ThemedText>
+                    </View>
+                  </SurfaceCard>
+                </HostProLockTouchable>
+              );
+            })}
+          </View>
+        )}
 
         {/* Upcoming Stays */}
         <SectionHeader

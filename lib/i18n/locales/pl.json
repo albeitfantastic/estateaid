@@ -122,7 +122,11 @@
     "youSuffix": "(ty)",
     "thisMonth": "Ten miesiąc",
     "legend": "Legenda",
-    "nothingScheduled": "Brak zaplanowanych"
+    "nothingScheduled": "Brak zaplanowanych",
+    "upcomingMaintenance": "Nadchodzące konserwacje",
+    "noUpcomingMaintenanceTitle": "Brak nadchodzących konserwacji",
+    "noUpcomingMaintenanceSub": "Dodaj harmonogramy lub jednorazowe zadania w Konserwacji przy każdej nieruchomości.",
+    "maintenanceDueToday": "Termin dziś"
   },
   "guestStays": {
     "title": "Pobyty",
@@ -181,7 +185,7 @@
     "legendUnavailableBooked": "Niedostępne — zajęte przez innych",
     "legendToday": "Dziś",
     "legendSelectedDay": "Wybrany dzień",
-    "legendPropertyEvent": "Wydarzenie w obiekcie"
+    "legendPropertyEvent": "Konserwacja w obiekcie"
   },
   "actions": {
     "accept": "Akceptuj",
@@ -208,8 +212,8 @@
     "guest": "Gość",
     "editEstate": "Edytuj obiekt",
     "newEstate": "Nowy obiekt",
-    "events": "Wydarzenia",
-    "newEvent": "Nowe wydarzenie",
+    "events": "Konserwacja",
+    "newEvent": "Nowa konserwacja",
     "inbox": "Skrzynka",
     "newContact": "Nowy kontakt",
     "newFaq": "Nowe FAQ",
@@ -223,12 +227,35 @@
     "editStay": "Edytuj pobyt",
     "guests": "Goście",
     "myStayStatus": "Status mojego pobytu",
-    "editEvent": "Edytuj wydarzenie",
+    "editEvent": "Edytuj konserwację",
     "newTicket": "Nowe zgłoszenie",
     "myTickets": "Moje zgłoszenia",
     "raiseIssue": "Zgłoś problem",
     "editContact": "Edytuj kontakt",
     "uploadDocument": "Prześlij dokument",
     "availability": "Dostępność"
+  },
+  "maintenanceSchedule": {
+    "emptyTitle": "Brak pozycji konserwacji",
+    "emptySub": "Dodaj harmonogramy cykliczne lub jednorazowe zadania dla tego obiektu.",
+    "addCta": "Dodaj konserwację",
+    "deleteTitle": "Usuń konserwację",
+    "deleteMessage": "Usunąć „{{title}}”?",
+    "notFound": "Nie znaleziono pozycji konserwacji.",
+    "missingTitle": "Brak tytułu",
+    "missingTitleBody": "Wpisz tytuł tej konserwacji.",
+    "saveFailedTitle": "Nie można zapisać",
+    "saveButton": "Zapisz konserwację",
+    "recurringSection": "Cykliczne · {{count}}",
+    "tasksSection": "Zadania · {{count}}",
+    "recurringBadge": "Harmonogram cykliczny",
+    "oneTimeTask": "Zadanie jednorazowe",
+    "typeRecurring": "Cykliczne",
+    "deleteItemCta": "Usuń konserwację",
+    "propertyMissingBody": "Brak obiektu. Wróć i otwórz ten ekran z poziomu obiektu.",
+    "noDate": "Brak daty"
+  },
+  "availabilityScreen": {
+    "infoCalendar": "Kalendarz nadal pokazuje rzeczywiste rezerwacje i harmonogramy konserwacji. Tutaj dodajesz dodatkowe zablokowane dni (blackouty i sezonowe zamknięcia) oraz limity rezerwacji (minimalna liczba nocy, jak daleko w przód goście mogą rezerwować)."
   }
 }

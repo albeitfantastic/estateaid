@@ -43,7 +43,7 @@ export default function EditEvent() {
   if (!event) {
     return (
       <ThemedView style={styles.center}>
-        <ThemedText>Event not found.</ThemedText>
+        <ThemedText>{t('maintenanceSchedule.notFound')}</ThemedText>
       </ThemedView>
     );
   }
@@ -70,9 +70,9 @@ export default function EditEvent() {
   }
 
   function confirmDelete() {
-    Alert.alert('Delete Event', `Delete "${event!.title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { deleteEvent(eventId); router.back(); } },
+    Alert.alert(t('maintenanceSchedule.deleteTitle'), t('maintenanceSchedule.deleteMessage', { title: event!.title }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('editEstateScreen.deleteConfirmCta'), style: 'destructive', onPress: () => { deleteEvent(eventId); router.back(); } },
     ]);
   }
 
@@ -95,7 +95,7 @@ export default function EditEvent() {
             color={colors.tint}
           />
           <ThemedText style={[styles.typeBadgeText, { color: colors.tint }]}>
-            {isRecurring ? 'Recurring Event' : 'One-time Task'}
+            {isRecurring ? t('maintenanceSchedule.recurringBadge') : t('maintenanceSchedule.oneTimeTask')}
           </ThemedText>
         </View>
 
@@ -224,7 +224,7 @@ export default function EditEvent() {
 
         <TouchableOpacity style={[styles.deleteBtn, { borderColor: colors.error }]} onPress={confirmDelete} activeOpacity={0.7}>
           <IconSymbol name="trash" size={16} color={colors.error} />
-          <ThemedText style={{ color: colors.error, fontWeight: '600' }}>Delete Event</ThemedText>
+          <ThemedText style={{ color: colors.error, fontWeight: '600' }}>{t('maintenanceSchedule.deleteItemCta')}</ThemedText>
         </TouchableOpacity>
       </ScrollView>
     </ThemedView>
