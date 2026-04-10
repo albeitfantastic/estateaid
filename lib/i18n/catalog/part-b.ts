@@ -43,6 +43,9 @@ export const catalogPartB: Record<string, unknown> = {
     thisMonth: 'This Month',
     legend: 'Legend',
     nothingScheduled: 'Nothing scheduled',
+    needsAttention: 'Needs Attention',
+    upcoming: 'Upcoming',
+    browseCalendar: 'Browse Calendar',
   },
   guestStays: {
     title: 'Stays',

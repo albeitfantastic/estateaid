@@ -1,5 +1,4 @@
 import { router, Tabs } from 'expo-router';
-import { useMemo } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -7,42 +6,12 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Fonts, Glass } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuthStore } from '@/store/auth-store';
-import { useEstateStore } from '@/store/estate-store';
-import { useTicketStore } from '@/store/ticket-store';
-
-const PAYWALL_ROUTES = new Set([
-  'paywall-trust',
-  'paywall-main',
-  'paywall-trial',
-  'paywall-outcome',
-  'paywall-exit',
-  'paywall',
-]);
-
-function isOpenTicketStatus(status: string) {
-  return status === 'open' || status === 'in_progress';
-}
 
 export default function OwnerTabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const glass = Glass[colorScheme ?? 'light'];
   const { t, i18n } = useTranslation();
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const allEstates = useEstateStore((s) => s.estates);
-  const allTickets = useTicketStore((s) => s.tickets);
-
-  const openTicketsTabBadge = useMemo(() => {
-    const estateIds = new Set(
-      allEstates.filter((e) => e.ownerId === currentUser?.id).map((e) => e.id)
-    );
-    const n = allTickets.filter(
-      (tk) => estateIds.has(tk.estateId) && isOpenTicketStatus(tk.status)
-    ).length;
-    if (n <= 0) return undefined;
-    return n > 99 ? '99+' : n;
-  }, [allEstates, allTickets, currentUser?.id]);
 
   return (
     <Tabs
@@ -86,7 +55,6 @@ export default function OwnerTabLayout() {
         options={{
           title: t('tabs.home'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'house.fill' : 'house'} color={color} />,
-          tabBarBadge: openTicketsTabBadge,
         }}
       />
       <Tabs.Screen
