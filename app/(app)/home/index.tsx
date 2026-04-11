@@ -258,6 +258,20 @@ export default function OwnerDashboard() {
 
   const firstName = currentUser?.name?.split(' ')[0] ?? '';
 
+  const dynamicSubtitle = useMemo(() => {
+    if (heroTickets.length > 0) {
+      const urgentCount = heroTickets.filter((tk) => tk.priority === 'urgent').length;
+      if (urgentCount > 0)
+        return `${urgentCount} urgent issue${urgentCount > 1 ? 's' : ''} need attention`;
+      return `${heroTickets.length} thing${heroTickets.length > 1 ? 's' : ''} need${heroTickets.length === 1 ? 's' : ''} your attention`;
+    }
+    const arrivingToday = upcomingItems.find(
+      (i) => i.kind === 'stay' && i.stay.from === todayStr
+    );
+    if (arrivingToday) return 'Guest arriving today';
+    return 'Everything looks good today';
+  }, [heroTickets, upcomingItems, todayStr]);
+
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
@@ -266,8 +280,8 @@ export default function OwnerDashboard() {
           <ThemedText type="title" style={styles.greeting}>
             Hello, {firstName}
           </ThemedText>
-          <ThemedText type="caption" style={[styles.sub, { color: colors.textSecondary }]}>
-            {t('ownerHome.sub')}
+          <ThemedText type="caption" style={[styles.sub, { color: heroTickets.length > 0 ? colors.warning : colors.success }]}>
+            {dynamicSubtitle}
           </ThemedText>
         </View>
         <TouchableOpacity
@@ -316,7 +330,9 @@ export default function OwnerDashboard() {
       >
         {/* ── Needs Attention (hero) ─────────────────────────────── */}
         {hasAttentionItems && (
-          <SectionHeader title={t('ownerHome.needsAttention')} />
+          <View style={styles.attentionHeader}>
+            <SectionHeader title={t('ownerHome.needsAttention')} />
+          </View>
         )}
 
         {heroTickets.length > 0 && (
@@ -369,7 +385,7 @@ export default function OwnerDashboard() {
               style={styles.overviewStatWrap}
             >
               <View style={styles.overviewStatContent}>
-                <IconSymbol name="building.2.fill" size={18} color={colors.tint} />
+                <IconSymbol name="building.2.fill" size={15} color={colors.tint} />
                 <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
                   {estates.length}
                 </ThemedText>
@@ -387,7 +403,7 @@ export default function OwnerDashboard() {
               style={styles.overviewStatWrap}
             >
               <View style={styles.overviewStatContent}>
-                <IconSymbol name="person.2.fill" size={18} color={colors.tint} />
+                <IconSymbol name="person.2.fill" size={15} color={colors.tint} />
                 <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
                   {guestsCount}
                 </ThemedText>
@@ -405,7 +421,7 @@ export default function OwnerDashboard() {
               style={styles.overviewStatWrap}
             >
               <View style={styles.overviewStatContent}>
-                <IconSymbol name="tray.fill" size={18} color={colors.tint} />
+                <IconSymbol name="tray.fill" size={15} color={colors.tint} />
                 <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
                   {pendingCount}
                 </ThemedText>
@@ -422,7 +438,7 @@ export default function OwnerDashboard() {
               style={[styles.overviewStatWrap, styles.overviewStatContent]}
               activeOpacity={0.75}
             >
-              <IconSymbol name="exclamationmark.triangle.fill" size={18} color={colors.tint} />
+              <IconSymbol name="exclamationmark.triangle.fill" size={15} color={colors.tint} />
               <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
                 {openTicketsCount}
               </ThemedText>
@@ -442,7 +458,7 @@ export default function OwnerDashboard() {
           >
             <View style={[styles.quickActionCard, { backgroundColor: colors.tint }]}>
               <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                <IconSymbol name="calendar.badge.plus" size={20} color="#fff" />
+                <IconSymbol name="calendar.badge.plus" size={18} color="#fff" />
               </View>
               <ThemedText style={styles.quickActionTitle}>{t('ownerHome.planStay')}</ThemedText>
               <ThemedText style={styles.quickActionSub}>{t('ownerHome.planStaySub')}</ThemedText>
@@ -456,7 +472,7 @@ export default function OwnerDashboard() {
           >
             <View style={[styles.quickActionCard, { backgroundColor: colors.tint }]}>
               <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                <IconSymbol name="envelope.fill" size={20} color="#fff" />
+                <IconSymbol name="envelope.fill" size={18} color="#fff" />
               </View>
               <ThemedText style={styles.quickActionTitle}>{t('ownerHome.inviteUser')}</ThemedText>
               <ThemedText style={styles.quickActionSub}>{t('ownerHome.inviteUserSub')}</ThemedText>
@@ -501,7 +517,7 @@ export default function OwnerDashboard() {
                     >
                       <IconSymbol
                         name="person.fill"
-                        size={15}
+                        size={14}
                         color={colors.icon}
                         style={styles.upcomingTypeIcon}
                       />
@@ -554,7 +570,7 @@ export default function OwnerDashboard() {
                   >
                     <IconSymbol
                       name="wrench.fill"
-                      size={15}
+                      size={14}
                       color={colors.icon}
                       style={styles.upcomingTypeIcon}
                     />
@@ -612,33 +628,40 @@ function NextActionCard({
   onPress,
 }: NextActionCardProps) {
   const bgTint = isUrgent
-    ? colors.error + '10'
+    ? colors.error + '16'
     : isHigh
-    ? colors.warning + '10'
-    : undefined;
+    ? colors.warning + '12'
+    : colors.surface;
   const borderTint = isUrgent
-    ? colors.error + '28'
+    ? colors.error + '40'
     : isHigh
-    ? colors.warning + '28'
+    ? colors.warning + '38'
     : colors.border;
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.75}
+      activeOpacity={0.72}
       style={[
         styles.nextActionCard,
         {
-          backgroundColor: bgTint ?? colors.surface,
+          backgroundColor: bgTint,
           borderColor: borderTint,
         },
       ]}
     >
       <View style={[styles.nextActionBar, { backgroundColor: barColor }]} />
       <View style={styles.nextActionBody}>
-        <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.nextActionTitle}>
-          {ticket.title}
-        </ThemedText>
+        <View style={styles.nextActionTitleRow}>
+          <ThemedText type="defaultSemiBold" numberOfLines={1} style={[styles.nextActionTitle, { flex: 1 }]}>
+            {ticket.title}
+          </ThemedText>
+          {isUrgent && (
+            <View style={[styles.urgentChip, { backgroundColor: colors.error + '20', borderColor: colors.error + '50' }]}>
+              <ThemedText style={[styles.urgentChipText, { color: colors.error }]}>URGENT</ThemedText>
+            </View>
+          )}
+        </View>
         <ThemedText style={[styles.nextActionMeta, { color: colors.textSecondary }]} numberOfLines={1}>
           {estateName}
           {ticket.dueDate ? ` · Due ${formatDate(ticket.dueDate)}` : ''}
@@ -646,7 +669,10 @@ function NextActionCard({
       </View>
       <View style={styles.nextActionRight}>
         <StatusBadge status={ticket.status} />
-        <IconSymbol name="chevron.right" size={15} color={colors.icon} />
+        <View style={[styles.openBtn, { borderColor: colors.border }]}>
+          <ThemedText style={[styles.openBtnText, { color: colors.tint }]}>Open</ThemedText>
+          <IconSymbol name="chevron.right" size={11} color={colors.tint} />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -676,8 +702,9 @@ const styles = StyleSheet.create({
 
   scroll: { paddingHorizontal: Layout.screenPaddingX },
 
-  // Hero
-  heroList: { gap: 8, marginBottom: 10 },
+  // Hero / Needs Attention
+  attentionHeader: { marginTop: 6 },
+  heroList: { gap: 10, marginBottom: 14 },
 
   nextActionCard: {
     flexDirection: 'row',
@@ -685,13 +712,31 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-    minHeight: 64,
+    minHeight: 70,
   },
-  nextActionBar: { width: 5, alignSelf: 'stretch' },
-  nextActionBody: { flex: 1, paddingVertical: 14, paddingHorizontal: 12, gap: 3 },
+  nextActionBar: { width: 7, alignSelf: 'stretch' },
+  nextActionBody: { flex: 1, paddingVertical: 14, paddingHorizontal: 13, gap: 4 },
+  nextActionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   nextActionTitle: { fontSize: 15 },
   nextActionMeta: { fontSize: 12 },
-  nextActionRight: { alignItems: 'flex-end', gap: 6, paddingRight: 14, paddingLeft: 4 },
+  nextActionRight: { alignItems: 'flex-end', gap: 7, paddingRight: 14, paddingLeft: 4 },
+  urgentChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  urgentChipText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6 },
+  openBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  openBtnText: { fontSize: 12, fontWeight: '600' },
 
   // All clear
   allClear: {
@@ -699,19 +744,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     marginBottom: Layout.sectionGap,
   },
-  allClearText: { fontSize: 14, fontWeight: '500' },
+  allClearText: { fontSize: 13, fontWeight: '500' },
 
   // Overview strip
   overviewCard: { marginBottom: Layout.sectionGap },
   overviewRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 10,
     paddingHorizontal: 8,
   },
   /** Outer cell in overview row (HostProLockTouchable applies style to wrapper View). */
@@ -719,70 +764,70 @@ const styles = StyleSheet.create({
   /** Shared column layout for icon + value + label (inside pressable). */
   overviewStatContent: {
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     paddingVertical: 2,
     width: '100%',
   },
   overviewDivider: {
     width: StyleSheet.hairlineWidth,
-    height: 36,
+    height: 28,
     marginHorizontal: 2,
   },
-  overviewVal: { fontSize: 22, fontWeight: '700', lineHeight: 26 },
+  overviewVal: { fontSize: 19, fontWeight: '700', lineHeight: 23 },
   overviewLabel: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '500',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
     textAlign: 'center',
   },
 
   // Quick actions
-  quickActionRow: { flexDirection: 'row', gap: 12, marginBottom: Layout.sectionGap },
+  quickActionRow: { flexDirection: 'row', gap: 10, marginBottom: Layout.sectionGap },
   quickActionTouchable: { flex: 1 },
   quickActionCard: {
     borderRadius: Radius.lg,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    gap: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 12,
+    gap: 6,
   },
   quickActionIconWrap: {
-    width: Layout.touchMin,
-    height: Layout.touchMin,
-    borderRadius: Radius.lg,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickActionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },
   quickActionSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.72)',
-    lineHeight: 17,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.68)',
+    lineHeight: 16,
   },
 
   // Upcoming
-  upcomingList: { gap: 10, marginBottom: 8 },
-  upcomingRowOuter: { marginBottom: 2 },
+  upcomingList: { gap: 8, marginBottom: 8 },
+  upcomingRowOuter: { marginBottom: 0 },
   upcomingRowInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 13,
-    paddingRight: 12,
+    paddingVertical: 11,
+    paddingRight: 10,
     gap: 10,
   },
-  upcomingTypeIcon: { marginLeft: 2 },
-  upcomingInfo: { flex: 1, gap: 3 },
-  upcomingTitle: { fontSize: 15 },
+  upcomingTypeIcon: { marginLeft: 2, opacity: 0.65 },
+  upcomingInfo: { flex: 1, gap: 2 },
+  upcomingTitle: { fontSize: 14 },
 
   relBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: Radius.sm,
-    marginRight: 4,
+    marginRight: 2,
   },
-  relBadgeText: { fontSize: 11, fontWeight: '700' },
+  relBadgeText: { fontSize: 11, fontWeight: '600' },
 });
