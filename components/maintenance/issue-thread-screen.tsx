@@ -74,7 +74,6 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   const ticket = events.find((tk) => tk.id === eventId) ?? initialEvent;
   const [reply, setReply] = useState('');
   const [replyTaggedContactId, setReplyTaggedContactId] = useState<string | null>(null);
-  const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [dueModalOpen, setDueModalOpen] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -157,7 +156,6 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
     setEditTitle(activeTicket.title);
     setEditPriority(activeTicket.priority ?? 'normal');
     setShowEditModal(true);
-    setShowStatusPicker(false);
   }
 
   function saveEdits() {
@@ -212,9 +210,9 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
             >
               <IconSymbol name="pencil" size={20} color={colors.tint} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowStatusPicker((v) => !v)} accessibilityRole="button">
+            <View accessibilityRole="text" accessibilityLabel={t('ticketsHub.threadChangeStatus')}>
               <StatusBadge status={activeTicket.status ?? 'open'} />
-            </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <StatusBadge status={activeTicket.status ?? 'open'} />
@@ -239,7 +237,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
         </View>
       )}
 
-      {isEstateOwner && showStatusPicker ? (
+      {isEstateOwner ? (
         <View style={[styles.statusPicker, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}>
           <ThemedText style={[styles.statusPickerLabel, { color: colors.icon }]}>
             {t('ticketsHub.threadChangeStatus')}
@@ -254,7 +252,6 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                 ]}
                 onPress={() => {
                   void updateIssueStatus(eventId, s);
-                  setShowStatusPicker(false);
                 }}
               >
                 <ThemedText

@@ -9,10 +9,14 @@ export const catalogPartA: Record<string, unknown> = {
     updated: 'Language saved.',
     screenTitle: 'Language',
   },
+  splash: {
+    tagline: 'Your property, managed',
+  },
   tabs: {
     home: 'Home',
     properties: 'Properties',
     calendar: 'Calendar',
+    maintenance: 'Maintenance',
     stays: 'Stays',
     invites: 'Invites',
   },

@@ -77,6 +77,7 @@ const MAPPING = {
   'creditcard.fill': 'credit-card',
   'key.fill': 'vpn-key',
   'square.and.arrow.up': 'share',
+  wrench: 'build',
   'wrench.fill': 'build',
 } as IconMapping;
 

@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -18,10 +18,15 @@ import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
+import { GuestInvitationsReceivePanel } from '@/components/invitations/guest-invitations-receive-panel';
+import { OwnerInviteContent } from '@/components/owner-invite-content';
+
+type StaysTab = 'upcoming' | 'requests' | 'invite' | 'redeem';
 
 export default function StaysIndex() {
   const { t } = useTranslation();
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -31,9 +36,23 @@ export default function StaysIndex() {
   const stayRequests = useStayStore((s) => s.stayRequests);
   const profileById = useProfileStore((s) => s.byId);
   const invitations = useInvitationStore((s) => s.invitations);
+  const getPendingInvitationsForGuest = useInvitationStore((s) => s.getPendingInvitationsForGuest);
   const todayStr = today();
 
-  const [tab, setTab] = useState<'upcoming' | 'requests'>('upcoming');
+  const [tab, setTab] = useState<StaysTab>('upcoming');
+
+  const pendingRedeemInvitations = useMemo(
+    () => getPendingInvitationsForGuest(currentUser?.id ?? '', currentUser?.email),
+    [getPendingInvitationsForGuest, currentUser?.id, currentUser?.email, invitations]
+  );
+
+  useEffect(() => {
+    const raw = params.tab;
+    const v = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : '';
+    const lower = v?.toLowerCase() ?? '';
+    if (lower === 'invite') setTab('invite');
+    else if (lower === 'redeem') setTab('redeem');
+  }, [params.tab]);
 
   const estates = useMemo(
     () => allEstates.filter((e) => e.ownerId === currentUser?.id),
@@ -117,7 +136,7 @@ export default function StaysIndex() {
           activeOpacity={0.8}
         >
           <ThemedText style={[styles.tabLabel, tab === 'upcoming' && styles.tabLabelActive]}>
-            Upcoming
+            {t('ownerStaysTabs.upcomingTab')}
           </ThemedText>
         </TouchableOpacity>
         <TouchableOpacity
@@ -126,12 +145,37 @@ export default function StaysIndex() {
           activeOpacity={0.8}
         >
           <ThemedText style={[styles.tabLabel, tab === 'requests' && styles.tabLabelActive]}>
-            Requests
+            {t('ownerStaysTabs.requestsTab')}
           </ThemedText>
           {pendingRequests.length > 0 && (
             <View style={[styles.tabBadge, { backgroundColor: tab === 'requests' ? '#fff' : colors.tint }]}>
               <ThemedText style={[styles.tabBadgeText, { color: tab === 'requests' ? colors.tint : '#fff' }]}>
                 {pendingRequests.length}
+              </ThemedText>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === 'invite' && { backgroundColor: colors.tint }]}
+          onPress={() => setTab('invite')}
+          activeOpacity={0.8}
+        >
+          <ThemedText style={[styles.tabLabel, tab === 'invite' && styles.tabLabelActive]}>
+            {t('ownerStaysTabs.inviteTab')}
+          </ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === 'redeem' && { backgroundColor: colors.tint }]}
+          onPress={() => setTab('redeem')}
+          activeOpacity={0.8}
+        >
+          <ThemedText style={[styles.tabLabel, tab === 'redeem' && styles.tabLabelActive]}>
+            {t('ownerStaysTabs.redeemTab')}
+          </ThemedText>
+          {pendingRedeemInvitations.length > 0 && (
+            <View style={[styles.tabBadge, { backgroundColor: tab === 'redeem' ? '#fff' : colors.tint }]}>
+              <ThemedText style={[styles.tabBadgeText, { color: tab === 'redeem' ? colors.tint : '#fff' }]}>
+                {pendingRedeemInvitations.length}
               </ThemedText>
             </View>
           )}
@@ -204,6 +248,24 @@ export default function StaysIndex() {
           </ScrollView>
         )
       )}
+
+      {tab === 'invite' && (
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <OwnerInviteContent layout="embedded" />
+        </ScrollView>
+      )}
+
+      {tab === 'redeem' && (
+        <ScrollView
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <GuestInvitationsReceivePanel />
+        </ScrollView>
+      )}
     </ThemedView>
   );
 }
@@ -214,8 +276,17 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontSize: 28, fontWeight: '700' },
   // tabs
   tabRow: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 12, gap: 8 },
-  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20 },
-  tabLabel: { fontSize: 14, fontWeight: '600' },
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 20,
+  },
+  tabLabel: { fontSize: 11, fontWeight: '600' },
   tabLabelActive: { color: '#fff' },
   tabBadge: { minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   tabBadgeText: { fontSize: 11, fontWeight: '700' },

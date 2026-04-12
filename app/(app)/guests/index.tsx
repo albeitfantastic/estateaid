@@ -95,7 +95,7 @@ export default function GuestsIndex() {
         <ThemedText type="title" style={styles.title}>{t('titles.guests')}</ThemedText>
         <TouchableOpacity
           style={[styles.inviteBtn, { backgroundColor: colors.tint }]}
-          onPress={() => router.push('/(app)/invite' as never)}
+          onPress={() => router.push('/(app)/stays?tab=invite' as never)}
           activeOpacity={0.8}
         >
           <IconSymbol name="plus" size={18} color="#fff" />
@@ -109,7 +109,7 @@ export default function GuestsIndex() {
           title="No guests yet"
           subtitle="Invite people to give them access to your properties."
           actionLabel="Invite User"
-          onAction={() => router.push('/(app)/invite' as never)}
+          onAction={() => router.push('/(app)/stays?tab=invite' as never)}
         />
       ) : (
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>

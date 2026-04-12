@@ -27,6 +27,7 @@ export const catalogPartB: Record<string, unknown> = {
     planStaySub: 'Schedule guests',
     inviteUser: 'Invite User',
     inviteUserSub: 'Send access codes',
+    maintenanceQuickSub: 'Across your properties',
     upcomingStays: 'Upcoming Stays',
     upcomingMaintenance: 'Upcoming maintenance',
     seeAll: 'See All',
@@ -46,6 +47,13 @@ export const catalogPartB: Record<string, unknown> = {
     needsAttention: 'Needs Attention',
     upcoming: 'Upcoming',
     browseCalendar: 'Browse Calendar',
+  },
+  /** Segmented control labels on the owner Stays screen (Upcoming / Requests / Invite). */
+  ownerStaysTabs: {
+    inviteTab: 'Invite',
+    upcomingTab: 'Upcoming',
+    requestsTab: 'Requests',
+    redeemTab: 'Redeem',
   },
   guestStays: {
     title: 'Stays',
@@ -221,6 +229,16 @@ export const catalogPartB: Record<string, unknown> = {
     editContact: 'Edit Contact',
     uploadDocument: 'Upload Document',
     availability: 'Availability',
+  },
+  maintenanceOverview: {
+    screenTitle: 'Maintenance',
+    pickPropertyTitle: 'Choose property',
+    addMaintenance: 'Add maintenance',
+    addIssue: 'Report issue',
+    emptyNoEstatesTitle: 'No properties yet',
+    emptyNoEstatesSub: 'Add a property first, then you can schedule maintenance and report issues for it.',
+    emptyEventsTitle: 'No maintenance across your properties',
+    emptyEventsSub: 'Add recurring schedules, one-time tasks, or report an issue for any property.',
   },
   maintenanceSchedule: {
     emptyTitle: 'No maintenance items yet',

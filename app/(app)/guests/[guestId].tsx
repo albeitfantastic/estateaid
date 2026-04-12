@@ -174,7 +174,7 @@ export default function GuestDetail() {
         {/* Add to another property */}
         <TouchableOpacity
           style={[styles.addPropertyBtn, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}
-          onPress={() => router.push('/(app)/invite' as never)}
+          onPress={() => router.push('/(app)/stays?tab=invite' as never)}
           activeOpacity={0.75}
         >
           <IconSymbol name="plus.circle.fill" size={18} color={colors.tint} />

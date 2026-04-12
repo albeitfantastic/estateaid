@@ -1,5 +1,5 @@
-import { OwnerInviteContent } from '@/components/owner-invite-content';
+import { Redirect } from 'expo-router';
 
 export default function InviteUser() {
-  return <OwnerInviteContent layout="stack" />;
+  return <Redirect href="/(app)/stays?tab=invite" />;
 }

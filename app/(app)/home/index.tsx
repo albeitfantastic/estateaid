@@ -470,15 +470,15 @@ export default function OwnerDashboard() {
 
           <HostProLockTouchable
             locked={!hasHost}
-            onPress={() => router.push('/(app)/invite' as never)}
+            onPress={() => router.push('/(app)/maintenance' as never)}
             style={styles.quickActionTouchable}
           >
             <View style={[styles.quickActionCard, { backgroundColor: colors.tint }]}>
               <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                <IconSymbol name="envelope.fill" size={18} color="#fff" />
+                <IconSymbol name="wrench.fill" size={18} color="#fff" />
               </View>
-              <ThemedText style={styles.quickActionTitle}>{t('ownerHome.inviteUser')}</ThemedText>
-              <ThemedText style={styles.quickActionSub}>{t('ownerHome.inviteUserSub')}</ThemedText>
+              <ThemedText style={styles.quickActionTitle}>{t('maintenanceOverview.screenTitle')}</ThemedText>
+              <ThemedText style={styles.quickActionSub}>{t('ownerHome.maintenanceQuickSub')}</ThemedText>
             </View>
           </HostProLockTouchable>
         </View>

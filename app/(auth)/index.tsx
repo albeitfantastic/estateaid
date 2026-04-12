@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,7 +19,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GoogleLogo } from '@/components/auth/google-logo';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   authRedirectUri,
   ensureProfileRowForAuthUser,
@@ -31,8 +35,6 @@ import { supabase } from '@/lib/supabase';
 import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { User } from '@/types';
-import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from 'react-i18next';
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
@@ -278,8 +280,13 @@ export default function AuthScreen() {
             {/* ── Header ── */}
             <View style={s.header}>
               <View style={s.titleRow}>
-                <View style={s.logoMark}>
-                  <IconSymbol name="house.fill" size={16} color="#fff" />
+                <View style={[s.logoMark, { backgroundColor: cardBg }]}>
+                  <Image
+                    source={require('../../assets/images/logo_green.png')}
+                    style={s.logoMarkImage}
+                    resizeMode="contain"
+                    accessibilityIgnoresInvertColors
+                  />
                 </View>
                 <Text style={[s.title, { color: textCol }]}>{t('common.estateAid')}</Text>
               </View>
@@ -317,17 +324,26 @@ export default function AuthScreen() {
             {/* ── OAuth buttons ── */}
             <View style={s.oauthGroup}>
               <TouchableOpacity
-                style={[s.oauthBtn, { backgroundColor: inputBg, borderColor: borderCol }]}
+                style={[s.oauthBtn, { backgroundColor: dark ? '#FDFAF7' : A.text, borderColor: 'transparent' }]}
                 onPress={() => void handleOAuth('google')}
                 disabled={anyLoading}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
                 {loadingOAuth === 'google' ? (
-                  <ActivityIndicator color={textCol} />
+                  <View style={s.oauthLoading}>
+                    <ActivityIndicator color={textCol} />
+                  </View>
                 ) : (
                   <>
-                    <Ionicons name="logo-google" size={18} color="#4285F4" />
-                    <Text style={[s.oauthText, { color: textCol }]}>{t('auth.continueGoogle')}</Text>
+                    <View style={s.oauthIconSlot}>
+                      <View style={s.oauthGlyphBox}>
+                        <GoogleLogo size={18} />
+                      </View>
+                    </View>
+                    <Text style={[s.oauthText, s.oauthLabel, { color: dark ? A.text : '#fff' }]}>
+                      {t('auth.continueGoogle')}
+                    </Text>
+                    <View style={s.oauthIconSlot} />
                   </>
                 )}
               </TouchableOpacity>
@@ -340,11 +356,18 @@ export default function AuthScreen() {
                   activeOpacity={0.85}
                 >
                   {loadingOAuth === 'apple' ? (
-                    <ActivityIndicator color={dark ? A.text : '#fff'} />
+                    <View style={s.oauthLoading}>
+                      <ActivityIndicator color={dark ? A.text : '#fff'} />
+                    </View>
                   ) : (
                     <>
-                      <Ionicons name="logo-apple" size={18} color={dark ? A.text : '#fff'} />
-                      <Text style={[s.oauthText, { color: dark ? A.text : '#fff' }]}>{t('auth.continueApple')}</Text>
+                      <View style={s.oauthIconSlot}>
+                        <Ionicons name="logo-apple" size={18} color={dark ? A.text : '#fff'} />
+                      </View>
+                      <Text style={[s.oauthText, s.oauthLabel, { color: dark ? A.text : '#fff' }]}>
+                        {t('auth.continueApple')}
+                      </Text>
+                      <View style={s.oauthIconSlot} />
                     </>
                   )}
                 </TouchableOpacity>
@@ -471,9 +494,11 @@ const s = StyleSheet.create({
   // header
   header:    { marginBottom: 28 },
   titleRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  logoMark:  { width: 32, height: 32, borderRadius: 8, backgroundColor: A.brown, alignItems: 'center', justifyContent: 'center' },
+  logoMark:  { width: 64, height: 64, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  /** Same raster as splash (`logo_green.svg` → `assets/images/logo_green.png`), viewBox 4960×3840 */
+  logoMarkImage: { width: 44, height: (44 * 3840) / 4960 },
   title:     { fontSize: 26, fontWeight: '700', letterSpacing: -0.5, fontFamily: 'Manrope_700Bold' },
-  subtitle:  { fontSize: 14, marginLeft: 40, fontFamily: 'Manrope_400Regular' },
+  subtitle:  { fontSize: 14, marginLeft: 72, fontFamily: 'Manrope_400Regular' },
   // tabs
   tabs:      { flexDirection: 'row', borderRadius: 10, padding: 4, marginBottom: 24 },
   tab:       { flex: 1, paddingVertical: 11, borderRadius: 8, alignItems: 'center' },
@@ -486,10 +511,25 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
     paddingVertical: 4,
+    paddingHorizontal: 14,
   },
+  /** Same width on Google + Apple so logos share one vertical axis; right slot balances label centering. */
+  oauthIconSlot: {
+    width: 28,
+    minHeight: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  /** Locks Google PNG + Apple glyph to the same box so their centers line up in the rail. */
+  oauthGlyphBox: {
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  oauthLabel: { flex: 1, textAlign: 'center' },
+  oauthLoading: { flex: 1, minHeight: Layout.touchMin - 8, alignItems: 'center', justifyContent: 'center' },
   oauthText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // divider
   divRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
