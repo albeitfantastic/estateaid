@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useContext, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -28,15 +28,14 @@ import { useAuthStore } from '@/store/auth-store';
 import { useContactStore } from '@/store/contact-store';
 import { useEstateStore } from '@/store/estate-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
-import { useTicketStore } from '@/store/ticket-store';
+import { useEventStore } from '@/store/event-store';
 import { generateId } from '@/lib/id';
 import { formatDate } from '@/lib/date-utils';
-import type { EstateContact } from '@/types';
-import { TicketPriority, TicketStatus } from '@/types';
+import type { EstateContact, EstateEvent, IssuePriority, IssueStatus } from '@/types';
 
-const STATUS_OPTIONS: TicketStatus[] = ['open', 'in_progress', 'resolved'];
+const STATUS_OPTIONS: IssueStatus[] = ['open', 'in_progress', 'resolved'];
 
-const EDIT_PRIORITIES: { value: TicketPriority; label: string; color: string }[] = [
+const EDIT_PRIORITIES: { value: IssuePriority; label: string; color: string }[] = [
   { value: 'low', label: 'Low', color: '#22c55e' },
   { value: 'normal', label: 'Normal', color: '#3b82f6' },
   { value: 'high', label: 'High', color: '#f59e0b' },
@@ -48,9 +47,10 @@ function contactLabel(c: EstateContact) {
   return role ? `${c.name} · ${role}` : c.name;
 }
 
-export default function OwnerTicketThread() {
+type Props = { event: EstateEvent; estateId: string };
+
+export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   const { t } = useTranslation();
-  const { ticketId, estateId } = useLocalSearchParams<{ ticketId: string; estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeightFromContext = useContext(BottomTabBarHeightContext);
@@ -63,23 +63,22 @@ export default function OwnerTicketThread() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const getEstateById = useEstateStore((s) => s.getEstateById);
   const allContacts = useContactStore((s) => s.contacts);
-  const {
-    tickets,
-    addMessage,
-    updateTicketMessage,
-    updateTicketStatus,
-    updateTicket,
-    deleteTicket,
-  } = useTicketStore();
+  const events = useEventStore((s) => s.events);
+  const addIssueMessage = useEventStore((s) => s.addIssueMessage);
+  const updateIssueMessage = useEventStore((s) => s.updateIssueMessage);
+  const updateIssueStatus = useEventStore((s) => s.updateIssueStatus);
+  const updateIssueFields = useEventStore((s) => s.updateIssueFields);
+  const deleteEvent = useEventStore((s) => s.deleteEvent);
   const profileById = useProfileStore((s) => s.byId);
-  const ticket = tickets.find((tk) => tk.id === ticketId);
+  const eventId = initialEvent.id;
+  const ticket = events.find((tk) => tk.id === eventId) ?? initialEvent;
   const [reply, setReply] = useState('');
   const [replyTaggedContactId, setReplyTaggedContactId] = useState<string | null>(null);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [dueModalOpen, setDueModalOpen] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTitle, setEditTitle] = useState('');
-  const [editPriority, setEditPriority] = useState<TicketPriority>('normal');
+  const [editPriority, setEditPriority] = useState<IssuePriority>('normal');
   const [contactPickerVisible, setContactPickerVisible] = useState(false);
   const [contactPickerContext, setContactPickerContext] = useState<'reply' | 'edit'>('reply');
   const [editMessageDraft, setEditMessageDraft] = useState<{
@@ -107,14 +106,6 @@ export default function OwnerTicketThread() {
     return map;
   }, [estateContacts]);
 
-  if (!ticket) {
-    return (
-      <ThemedView style={styles.center}>
-        <ThemedText>Ticket not found.</ThemedText>
-      </ThemedView>
-    );
-  }
-
   const activeTicket = ticket;
 
   function openContactPicker(ctx: 'reply' | 'edit') {
@@ -133,9 +124,9 @@ export default function OwnerTicketThread() {
 
   function sendReply() {
     if (!reply.trim()) return;
-    addMessage(ticketId, {
+    void addIssueMessage(eventId, {
       id: generateId(),
-      ticketId,
+      eventId,
       authorId: currentUser!.id,
       body: reply.trim(),
       createdAt: new Date().toISOString(),
@@ -153,18 +144,18 @@ export default function OwnerTicketThread() {
       Alert.alert(t('common.error'), t('ticketsHub.threadMessageEmpty'));
       return;
     }
-    void updateTicketMessage(ticketId, editMessageDraft.messageId, {
+    void updateIssueMessage(eventId, editMessageDraft.messageId, {
       body: trimmed,
       taggedContactId: editMessageDraft.taggedContactId,
     });
     setEditMessageDraft(null);
   }
 
-  const guestName = resolveUserDisplayName(activeTicket.guestId, profileById);
+  const guestName = resolveUserDisplayName(activeTicket.guestId!, profileById);
 
   function openEditModal() {
     setEditTitle(activeTicket.title);
-    setEditPriority(activeTicket.priority);
+    setEditPriority(activeTicket.priority ?? 'normal');
     setShowEditModal(true);
     setShowStatusPicker(false);
   }
@@ -175,7 +166,7 @@ export default function OwnerTicketThread() {
       Alert.alert(t('common.error'), t('ticketsHub.threadTitleRequired'));
       return;
     }
-    void updateTicket(ticketId, { title: trimmed, priority: editPriority });
+    void updateIssueFields(eventId, { title: trimmed, priority: editPriority });
     setShowEditModal(false);
   }
 
@@ -187,14 +178,14 @@ export default function OwnerTicketThread() {
         style: 'destructive',
         onPress: () => {
           setShowEditModal(false);
-          void deleteTicket(ticketId);
+          void deleteEvent(eventId);
           router.back();
         },
       },
     ]);
   }
 
-  const canReply = activeTicket.status !== 'resolved';
+  const canReply = (activeTicket.status ?? 'open') !== 'resolved';
   const taggedReplyContact = replyTaggedContactId ? contactByIdMap[replyTaggedContactId] : undefined;
   /** Tab bar is `position: 'absolute'` in (app) — without this, the composer sits under the bar. */
   const bottomComposerPad = tabBarHeight + insets.bottom + 10;
@@ -222,20 +213,20 @@ export default function OwnerTicketThread() {
               <IconSymbol name="pencil" size={20} color={colors.tint} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowStatusPicker((v) => !v)} accessibilityRole="button">
-              <StatusBadge status={activeTicket.status} />
+              <StatusBadge status={activeTicket.status ?? 'open'} />
             </TouchableOpacity>
           </View>
         ) : (
-          <StatusBadge status={activeTicket.status} />
+          <StatusBadge status={activeTicket.status ?? 'open'} />
         )}
       </View>
 
-      {(isEstateOwner || activeTicket.dueDate) && (
+      {(isEstateOwner || activeTicket.date) && (
         <View style={[styles.dueRow, { borderBottomColor: colors.icon + '22' }]}>
           <View style={styles.dueRowText}>
             <ThemedText style={[styles.dueLabel, { color: colors.icon }]}>{t('ticketsHub.threadDueLabel')}</ThemedText>
             <ThemedText type="defaultSemiBold">
-              {activeTicket.dueDate ? formatDate(activeTicket.dueDate) : t('ticketsHub.dueNone')}
+              {activeTicket.date ? formatDate(activeTicket.date) : t('ticketsHub.dueNone')}
             </ThemedText>
           </View>
           {isEstateOwner ? (
@@ -257,13 +248,21 @@ export default function OwnerTicketThread() {
             {STATUS_OPTIONS.map((s) => (
               <TouchableOpacity
                 key={s}
-                style={[styles.statusOpt, activeTicket.status === s && { backgroundColor: colors.tint }]}
+                style={[
+                  styles.statusOpt,
+                  (activeTicket.status ?? 'open') === s && { backgroundColor: colors.tint },
+                ]}
                 onPress={() => {
-                  void updateTicketStatus(ticketId, s);
+                  void updateIssueStatus(eventId, s);
                   setShowStatusPicker(false);
                 }}
               >
-                <ThemedText style={[styles.statusOptText, activeTicket.status === s && { color: '#fff' }]}>
+                <ThemedText
+                  style={[
+                    styles.statusOptText,
+                    (activeTicket.status ?? 'open') === s && { color: '#fff' },
+                  ]}
+                >
                   {s.replace('_', ' ')}
                 </ThemedText>
               </TouchableOpacity>
@@ -573,8 +572,8 @@ export default function OwnerTicketThread() {
         <DueDatePickerModal
           visible={dueModalOpen}
           onClose={() => setDueModalOpen(false)}
-          onSelectDate={(d) => void updateTicket(ticketId, { dueDate: d })}
-          onClear={() => void updateTicket(ticketId, { dueDate: null })}
+          onSelectDate={(d) => void updateIssueFields(eventId, { date: d })}
+          onClear={() => void updateIssueFields(eventId, { date: null })}
           title={t('ticketsHub.threadSetDue')}
           clearLabel={t('ticketsHub.threadClearDue')}
         />

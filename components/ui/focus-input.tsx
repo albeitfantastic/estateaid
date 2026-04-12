@@ -12,17 +12,18 @@ interface FocusInputProps extends TextInputProps {
 export function FocusInput({ label, accentColor, style, ...props }: FocusInputProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const dark = colorScheme === 'dark';
   const accent = accentColor ?? colors.tint;
 
   const [focused, setFocused] = useState(false);
+  const isMultiline = !!props.multiline;
+  const baseInput = isMultiline ? s.inputMultiline : s.input;
 
   return (
     <View style={s.wrap}>
       <Text style={[s.label, { color: colors.icon }]}>{label}</Text>
       <TextInput
         style={[
-          s.input,
+          baseInput,
           {
             borderColor: focused ? accent : colors.border,
             backgroundColor: colors.surface,
@@ -78,5 +79,17 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 15,
     fontFamily: Fonts.body,
+  },
+  /** Multiline must not use a fixed height or content overflows and overlaps fields below. */
+  inputMultiline: {
+    minHeight: 100,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
+    fontSize: 15,
+    fontFamily: Fonts.body,
+    textAlignVertical: 'top',
   },
 });

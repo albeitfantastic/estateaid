@@ -5,9 +5,8 @@ import { useStayStore } from './stay-store';
 import { useFaqStore } from './faq-store';
 import { useDocumentStore } from './document-store';
 import { useContactStore } from './contact-store';
-import { useTicketStore } from './ticket-store';
 import { useEventStore } from './event-store';
-import { User, Estate, Invitation, StayRequest, Stay, FaqItem, EstateDocument, EstateContact, Ticket, EstateEvent } from '@/types';
+import { User, Estate, Invitation, StayRequest, Stay, FaqItem, EstateDocument, EstateContact, EstateEvent } from '@/types';
 
 // ── Users ────────────────────────────────────────────────────────────────────
 export const SEED_USERS: User[] = [
@@ -395,70 +394,6 @@ const CONTACTS: EstateContact[] = [
   },
 ];
 
-// ── Tickets ───────────────────────────────────────────────────────────────────
-const TICKETS: Ticket[] = [
-  {
-    id: 'ticket-1',
-    estateId: 'estate-1',
-    guestId: 'guest-1',
-    title: 'Pool heater not working',
-    status: 'in_progress',
-    priority: 'high',
-    messages: [
-      {
-        id: 'msg-1',
-        ticketId: 'ticket-1',
-        authorId: 'guest-1',
-        body: 'Hi, the pool heater does not seem to be responding. The water is very cold and the panel shows an error E3.',
-        createdAt: '2026-06-12T10:00:00Z',
-      },
-      {
-        id: 'msg-2',
-        ticketId: 'ticket-1',
-        authorId: 'owner-1',
-        body: 'Hi Marco, sorry to hear that! Error E3 usually means the thermostat sensor needs resetting. I have called Giovanni — he will come by tomorrow morning. In the meantime you can manually heat the pool by running the pump on boost mode (hold the POMPA button for 5 seconds).',
-        createdAt: '2026-06-12T14:00:00Z',
-      },
-    ],
-    createdAt: '2026-06-12T10:00:00Z',
-    updatedAt: '2026-06-12T14:00:00Z',
-    dueDate: '2026-06-15',
-  },
-  {
-    id: 'ticket-2',
-    estateId: 'estate-1',
-    guestId: 'guest-1',
-    title: 'WiFi drops in the east wing',
-    status: 'resolved',
-    priority: 'normal',
-    messages: [
-      {
-        id: 'msg-3',
-        ticketId: 'ticket-2',
-        authorId: 'guest-1',
-        body: 'The WiFi signal is very weak in the east wing bedrooms.',
-        createdAt: '2026-06-11T09:00:00Z',
-      },
-      {
-        id: 'msg-4',
-        ticketId: 'ticket-2',
-        authorId: 'owner-1',
-        body: 'There is an extender in the linen cupboard on the east corridor — please plug it in to the wall socket nearest the hallway. That should fix the coverage.',
-        createdAt: '2026-06-11T11:00:00Z',
-      },
-      {
-        id: 'msg-5',
-        ticketId: 'ticket-2',
-        authorId: 'guest-1',
-        body: 'That worked perfectly, thank you!',
-        createdAt: '2026-06-11T12:00:00Z',
-      },
-    ],
-    createdAt: '2026-06-11T09:00:00Z',
-    updatedAt: '2026-06-11T12:00:00Z',
-  },
-];
-
 // ── Events ────────────────────────────────────────────────────────────────────
 const EVENTS: EstateEvent[] = [
   {
@@ -487,6 +422,7 @@ const EVENTS: EstateEvent[] = [
     title: 'Pool Winterization',
     description: 'Drain and cover the pool for winter season.',
     type: 'task',
+    taskKind: 'calendar',
     date: '2026-10-15',
     color: '#0a7ea4',
     createdAt: '2026-03-01T00:00:00Z',
@@ -497,6 +433,7 @@ const EVENTS: EstateEvent[] = [
     title: 'Chimney Sweep',
     description: 'Annual chimney inspection and cleaning.',
     type: 'task',
+    taskKind: 'calendar',
     date: '2026-09-01',
     color: '#f59e0b',
     createdAt: '2026-01-15T00:00:00Z',
@@ -517,9 +454,77 @@ const EVENTS: EstateEvent[] = [
     title: 'Olive Harvest Prep',
     description: 'Order nets and coordinate harvest crew.',
     type: 'task',
+    taskKind: 'calendar',
     date: '2026-09-20',
     color: '#B5703A',
     createdAt: '2026-02-01T00:00:00Z',
+  },
+  {
+    id: 'ticket-1',
+    estateId: 'estate-1',
+    title: 'Pool heater not working',
+    description: undefined,
+    type: 'task',
+    taskKind: 'issue',
+    date: '2026-06-15',
+    color: '#0a7ea4',
+    createdAt: '2026-06-12T10:00:00Z',
+    updatedAt: '2026-06-12T14:00:00Z',
+    guestId: 'guest-1',
+    status: 'in_progress',
+    priority: 'high',
+    messages: [
+      {
+        id: 'msg-1',
+        eventId: 'ticket-1',
+        authorId: 'guest-1',
+        body: 'Hi, the pool heater does not seem to be responding. The water is very cold and the panel shows an error E3.',
+        createdAt: '2026-06-12T10:00:00Z',
+      },
+      {
+        id: 'msg-2',
+        eventId: 'ticket-1',
+        authorId: 'owner-1',
+        body: 'Hi Marco, sorry to hear that! Error E3 usually means the thermostat sensor needs resetting. I have called Giovanni — he will come by tomorrow morning. In the meantime you can manually heat the pool by running the pump on boost mode (hold the POMPA button for 5 seconds).',
+        createdAt: '2026-06-12T14:00:00Z',
+      },
+    ],
+  },
+  {
+    id: 'ticket-2',
+    estateId: 'estate-1',
+    title: 'WiFi drops in the east wing',
+    type: 'task',
+    taskKind: 'issue',
+    color: '#0a7ea4',
+    createdAt: '2026-06-11T09:00:00Z',
+    updatedAt: '2026-06-11T12:00:00Z',
+    guestId: 'guest-1',
+    status: 'resolved',
+    priority: 'normal',
+    messages: [
+      {
+        id: 'msg-3',
+        eventId: 'ticket-2',
+        authorId: 'guest-1',
+        body: 'The WiFi signal is very weak in the east wing bedrooms.',
+        createdAt: '2026-06-11T09:00:00Z',
+      },
+      {
+        id: 'msg-4',
+        eventId: 'ticket-2',
+        authorId: 'owner-1',
+        body: 'There is an extender in the linen cupboard on the east corridor — please plug it in to the wall socket nearest the hallway. That should fix the coverage.',
+        createdAt: '2026-06-11T11:00:00Z',
+      },
+      {
+        id: 'msg-5',
+        eventId: 'ticket-2',
+        authorId: 'guest-1',
+        body: 'That worked perfectly, thank you!',
+        createdAt: '2026-06-11T12:00:00Z',
+      },
+    ],
   },
 ];
 

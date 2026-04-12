@@ -25,7 +25,6 @@ const OWNER_ITEMS = [
   { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq' },
   { label: 'Documents', icon: 'doc.fill', route: 'documents' },
   { label: 'Contacts', icon: 'phone.fill', route: 'contacts' },
-  { label: 'Tickets', icon: 'exclamationmark.triangle.fill', route: 'tickets' },
 ] as const;
 
 const GUEST_ITEMS = [
@@ -34,7 +33,7 @@ const GUEST_ITEMS = [
   { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', alwaysOn: false },
   { label: 'Documents', icon: 'doc.fill', route: 'documents', alwaysOn: false },
   { label: 'Contacts', icon: 'phone.fill', route: 'contacts', alwaysOn: false },
-  { label: 'My Tickets', icon: 'exclamationmark.triangle.fill', route: 'tickets', alwaysOn: false },
+  { label: 'Maintenance', icon: 'calendar.badge.clock', route: 'events', alwaysOn: false },
 ] as const;
 
 export default function EstateHub() {
@@ -170,7 +169,7 @@ export default function EstateHub() {
               >
                 <IconSymbol name={item.icon} size={28} color={unlocked ? colors.tint : colors.icon} />
                 <ThemedText type="defaultSemiBold" style={[styles.tileLabel, !unlocked && { color: colors.icon }]}>
-                  {item.label}
+                  {item.route === 'events' ? t('titles.events') : item.label}
                 </ThemedText>
                 {!unlocked && (
                   <View style={styles.lockBadge}>
@@ -185,7 +184,7 @@ export default function EstateHub() {
           <View style={[styles.hint, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
             <IconSymbol name="lock.fill" size={13} color={colors.icon} />
             <ThemedText style={[styles.hintText, { color: colors.icon }]}>
-              FAQ, Documents, Contacts and Tickets unlock 3 days before your stay.
+              FAQ, Documents, Contacts and Maintenance unlock 3 days before your stay.
             </ThemedText>
           </View>
         )}

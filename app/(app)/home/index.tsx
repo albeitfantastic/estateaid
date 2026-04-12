@@ -25,29 +25,25 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useEventStore } from '@/store/event-store';
 import { useStayStore } from '@/store/stay-store';
-import { useTicketStore } from '@/store/ticket-store';
-import type { Estate, EstateEvent, Stay, Ticket, TicketPriority } from '@/types';
+import { isIssueOpenStatus, isIssueTask } from '@/lib/issue-task';
+import type { Estate, EstateEvent, IssuePriority, Stay } from '@/types';
 
 const MAINTENANCE_HOME_HORIZON_DAYS = 120;
 const UPCOMING_PREVIEW_LIMIT = 5;
 
-const PRIORITY_ORDER: Record<TicketPriority, number> = {
+const PRIORITY_ORDER: Record<IssuePriority, number> = {
   urgent: 0,
   high: 1,
   normal: 2,
   low: 3,
 };
 
-const PRIORITY_BAR: Record<TicketPriority, string> = {
+const PRIORITY_BAR: Record<IssuePriority, string> = {
   low: '#94a3b8',
   normal: '#0a7ea4',
   high: '#f59e0b',
   urgent: '#ef4444',
 };
-
-function isTicketOpenStatus(t: Ticket) {
-  return t.status === 'open' || t.status === 'in_progress';
-}
 
 function getMaintenanceRelativeLabel(
   nextDate: string,
@@ -118,7 +114,6 @@ export default function OwnerDashboard() {
   const allEstates = useEstateStore((s) => s.estates);
   const allStayRequests = useStayStore((s) => s.stayRequests);
   const allStays = useStayStore((s) => s.stays);
-  const allTickets = useTicketStore((s) => s.tickets);
   const allMaintenanceEvents = useEventStore((s) => s.events);
   const allInvitations = useInvitationStore((s) => s.invitations);
   const todayStr = today();
@@ -152,12 +147,15 @@ export default function OwnerDashboard() {
     [allStayRequests, estateIds]
   );
 
-  const openTicketsCount = useMemo(
+  const openIssuesCount = useMemo(
     () =>
-      allTickets.filter(
-        (tk) => estateIds.includes(tk.estateId) && (tk.status === 'open' || tk.status === 'in_progress')
+      allMaintenanceEvents.filter(
+        (ev) =>
+          estateIds.includes(ev.estateId) &&
+          isIssueTask(ev) &&
+          isIssueOpenStatus(ev.status)
       ).length,
-    [allTickets, estateIds]
+    [allMaintenanceEvents, estateIds]
   );
 
   const guestsCount = useMemo(() => {
@@ -171,22 +169,26 @@ export default function OwnerDashboard() {
     return ids.size;
   }, [allInvitations, estateIds]);
 
-  // Hero: open tickets sorted by urgency then due date, top 3
-  const heroTickets = useMemo(() => {
-    return allTickets
-      .filter((tk) => estateIds.includes(tk.estateId) && isTicketOpenStatus(tk))
+  // Hero: open issues sorted by urgency then due date, top 3
+  const heroIssues = useMemo(() => {
+    return allMaintenanceEvents
+      .filter(
+        (ev) => estateIds.includes(ev.estateId) && isIssueTask(ev) && isIssueOpenStatus(ev.status)
+      )
       .sort((a, b) => {
-        const pd = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+        const pa = a.priority ?? 'normal';
+        const pb = b.priority ?? 'normal';
+        const pd = PRIORITY_ORDER[pa] - PRIORITY_ORDER[pb];
         if (pd !== 0) return pd;
-        if (a.dueDate && b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
-        if (a.dueDate) return -1;
-        if (b.dueDate) return 1;
-        return b.updatedAt.localeCompare(a.updatedAt);
+        if (a.date && b.date) return a.date < b.date ? -1 : 1;
+        if (a.date) return -1;
+        if (b.date) return 1;
+        return (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt);
       })
       .slice(0, 3);
-  }, [allTickets, estateIds]);
+  }, [allMaintenanceEvents, estateIds]);
 
-  const hasAttentionItems = heroTickets.length > 0;
+  const hasAttentionItems = heroIssues.length > 0;
 
   // Unified upcoming: merge stays + maintenance sorted by date
   const upcomingItems = useMemo((): UpcomingItem[] => {
@@ -216,7 +218,7 @@ export default function OwnerDashboard() {
       });
 
     const maintItems: UpcomingItem[] = [];
-    for (const ev of allMaintenanceEvents.filter((e) => estateIds.includes(e.estateId))) {
+    for (const ev of allMaintenanceEvents.filter((e) => estateIds.includes(e.estateId) && !isIssueTask(e))) {
       const occ = getEventOccurrences(ev, todayStr, horizon);
       if (!occ.length) continue;
       const nextDate = [...occ].sort((a, b) => a.localeCompare(b))[0]!;
@@ -259,18 +261,18 @@ export default function OwnerDashboard() {
   const firstName = currentUser?.name?.split(' ')[0] ?? '';
 
   const dynamicSubtitle = useMemo(() => {
-    if (heroTickets.length > 0) {
-      const urgentCount = heroTickets.filter((tk) => tk.priority === 'urgent').length;
+    if (heroIssues.length > 0) {
+      const urgentCount = heroIssues.filter((ev) => ev.priority === 'urgent').length;
       if (urgentCount > 0)
         return `${urgentCount} urgent issue${urgentCount > 1 ? 's' : ''} need attention`;
-      return `${heroTickets.length} thing${heroTickets.length > 1 ? 's' : ''} need${heroTickets.length === 1 ? 's' : ''} your attention`;
+      return `${heroIssues.length} thing${heroIssues.length > 1 ? 's' : ''} need${heroIssues.length === 1 ? 's' : ''} your attention`;
     }
     const arrivingToday = upcomingItems.find(
       (i) => i.kind === 'stay' && i.stay.from === todayStr
     );
     if (arrivingToday) return 'Guest arriving today';
     return 'Everything looks good today';
-  }, [heroTickets, upcomingItems, todayStr]);
+  }, [heroIssues, upcomingItems, todayStr]);
 
   return (
     <ThemedView style={styles.container}>
@@ -280,7 +282,7 @@ export default function OwnerDashboard() {
           <ThemedText type="title" style={styles.greeting}>
             Hello, {firstName}
           </ThemedText>
-          <ThemedText type="caption" style={[styles.sub, { color: heroTickets.length > 0 ? colors.warning : colors.success }]}>
+          <ThemedText type="caption" style={[styles.sub, { color: heroIssues.length > 0 ? colors.warning : colors.success }]}>
             {dynamicSubtitle}
           </ThemedText>
         </View>
@@ -335,17 +337,18 @@ export default function OwnerDashboard() {
           </View>
         )}
 
-        {heroTickets.length > 0 && (
+        {heroIssues.length > 0 && (
           <View style={styles.heroList}>
-            {heroTickets.map((ticket) => {
-              const estateName = estateById[ticket.estateId]?.name ?? '—';
-              const barColor = PRIORITY_BAR[ticket.priority];
-              const isUrgent = ticket.priority === 'urgent';
-              const isHigh = ticket.priority === 'high';
+            {heroIssues.map((issue) => {
+              const estateName = estateById[issue.estateId]?.name ?? '—';
+              const pri = issue.priority ?? 'normal';
+              const barColor = PRIORITY_BAR[pri];
+              const isUrgent = issue.priority === 'urgent';
+              const isHigh = issue.priority === 'high';
               return (
                 <NextActionCard
-                  key={ticket.id}
-                  ticket={ticket}
+                  key={issue.id}
+                  issue={issue}
                   estateName={estateName}
                   barColor={barColor}
                   isUrgent={isUrgent}
@@ -353,7 +356,7 @@ export default function OwnerDashboard() {
                   colors={colors}
                   onPress={() =>
                     router.push(
-                      `/(app)/estates/${ticket.estateId}/tickets/${ticket.id}` as never
+                      `/(app)/estates/${issue.estateId}/events/${issue.id}` as never
                     )
                   }
                 />
@@ -434,16 +437,16 @@ export default function OwnerDashboard() {
             <View style={[styles.overviewDivider, { backgroundColor: colors.border }]} />
 
             <TouchableOpacity
-              onPress={() => router.push('/(app)/tickets' as never)}
+              onPress={() => router.push('/(app)/calendar' as never)}
               style={[styles.overviewStatWrap, styles.overviewStatContent]}
               activeOpacity={0.75}
             >
               <IconSymbol name="exclamationmark.triangle.fill" size={15} color={colors.tint} />
               <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
-                {openTicketsCount}
+                {openIssuesCount}
               </ThemedText>
               <ThemedText style={[styles.overviewLabel, { color: colors.textSecondary }]}>
-                Tickets
+                {t('ownerHome.openIssues')}
               </ThemedText>
             </TouchableOpacity>
           </View>
@@ -609,7 +612,7 @@ export default function OwnerDashboard() {
 // ── NextActionCard ─────────────────────────────────────────────────────────────
 
 interface NextActionCardProps {
-  ticket: Ticket;
+  issue: EstateEvent;
   estateName: string;
   barColor: string;
   isUrgent: boolean;
@@ -619,7 +622,7 @@ interface NextActionCardProps {
 }
 
 function NextActionCard({
-  ticket,
+  issue,
   estateName,
   barColor,
   isUrgent,
@@ -654,7 +657,7 @@ function NextActionCard({
       <View style={styles.nextActionBody}>
         <View style={styles.nextActionTitleRow}>
           <ThemedText type="defaultSemiBold" numberOfLines={1} style={[styles.nextActionTitle, { flex: 1 }]}>
-            {ticket.title}
+            {issue.title}
           </ThemedText>
           {isUrgent && (
             <View style={[styles.urgentChip, { backgroundColor: colors.error + '20', borderColor: colors.error + '50' }]}>
@@ -664,11 +667,11 @@ function NextActionCard({
         </View>
         <ThemedText style={[styles.nextActionMeta, { color: colors.textSecondary }]} numberOfLines={1}>
           {estateName}
-          {ticket.dueDate ? ` · Due ${formatDate(ticket.dueDate)}` : ''}
+          {issue.date ? ` · Due ${formatDate(issue.date)}` : ''}
         </ThemedText>
       </View>
       <View style={styles.nextActionRight}>
-        <StatusBadge status={ticket.status} />
+        <StatusBadge status={issue.status ?? 'open'} />
         <View style={[styles.openBtn, { borderColor: colors.border }]}>
           <ThemedText style={[styles.openBtnText, { color: colors.tint }]}>Open</ThemedText>
           <IconSymbol name="chevron.right" size={11} color={colors.tint} />

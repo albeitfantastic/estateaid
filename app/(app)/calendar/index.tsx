@@ -17,18 +17,13 @@ import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useEventStore } from '@/store/event-store';
 import { useStayStore } from '@/store/stay-store';
-import { useTicketStore } from '@/store/ticket-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
-import type { Ticket } from '@/types';
+import { isIssueTask } from '@/lib/issue-task';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-const TICKET_DUE_DOT = '#f59e0b';
-
-function isTicketOpenForCalendar(t: Ticket) {
-  return t.status === 'open' || t.status === 'in_progress';
-}
+const ISSUE_DUE_DOT = '#f59e0b';
 
 export default function OwnerCalendar() {
   const { t } = useTranslation();
@@ -41,7 +36,6 @@ export default function OwnerCalendar() {
   const allEstates = useEstateStore((s) => s.estates);
   const allStays = useStayStore((s) => s.stays);
   const allEvents = useEventStore((s) => s.events);
-  const allTickets = useTicketStore((s) => s.tickets);
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
 
   const myEstates = useMemo(
@@ -103,17 +97,6 @@ export default function OwnerCalendar() {
     [allEvents, selectedEstateId]
   );
 
-  const estateOpenTicketsWithDue = useMemo(
-    () =>
-      allTickets.filter(
-        (tk) =>
-          tk.estateId === selectedEstateId &&
-          !!tk.dueDate &&
-          isTicketOpenForCalendar(tk)
-      ),
-    [allTickets, selectedEstateId]
-  );
-
   const dayInfoMap = useMemo(() => {
     const map: Record<string, DayInfo> = {};
     estateStays.forEach(({ from, to }) => {
@@ -149,22 +132,12 @@ export default function OwnerCalendar() {
         };
       });
     });
-    estateOpenTicketsWithDue.forEach((ticket) => {
-      const d = ticket.dueDate!;
-      if (d < firstDay || d > lastDay) return;
-      const existing = map[d] ?? { dateStr: d };
-      map[d] = {
-        ...existing,
-        dots: [...(existing.dots ?? []), { color: TICKET_DUE_DOT, key: `ticket-${ticket.id}` }],
-      };
-    });
     finalizeCalendarAvailability(map, viewYear, viewMonth);
     return map;
   }, [
     estateStays,
     myStays,
     estateEvents,
-    estateOpenTicketsWithDue,
     availabilityRules,
     selectedEstateId,
     viewYear,
@@ -190,11 +163,6 @@ export default function OwnerCalendar() {
       (event) => getEventOccurrences(event, selectedDay, selectedDay).length > 0
     );
   }, [selectedDay, estateEvents]);
-
-  const selectedDayTicketDues = useMemo(() => {
-    if (!selectedDay) return [];
-    return estateOpenTicketsWithDue.filter((tk) => tk.dueDate === selectedDay);
-  }, [selectedDay, estateOpenTicketsWithDue]);
 
   const selectedEstate = myEstates.find((e) => e.id === selectedEstateId);
   const canGoBack = navigation.canGoBack();
@@ -325,39 +293,45 @@ export default function OwnerCalendar() {
                   )}
                   {selectedDayEvents.length > 0 && (
                     <View style={styles.eventList}>
-                      {selectedDayEvents.map((event) => (
-                        <View key={event.id} style={styles.eventRow}>
-                          <View
-                            style={[styles.eventDot, { backgroundColor: event.color ?? colors.tint }]}
-                          />
-                          <ThemedText style={[styles.eventTitle, { color: colors.text }]}>
-                            {event.title}
-                          </ThemedText>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                  {selectedDayTicketDues.length > 0 && (
-                    <View style={styles.eventList}>
-                      {selectedDayTicketDues.map((tk) => (
-                        <TouchableOpacity
-                          key={tk.id}
-                          style={styles.eventRow}
-                          onPress={() =>
-                            router.push(`/(app)/estates/${tk.estateId}/tickets/${tk.id}` as never)
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <View style={[styles.eventDot, { backgroundColor: TICKET_DUE_DOT }]} />
-                          <ThemedText
-                            style={[styles.eventTitle, { color: colors.text, flex: 1 }]}
-                            numberOfLines={1}
+                      {selectedDayEvents.map((event) => {
+                        const dotColor =
+                          isIssueTask(event) && (event.status === 'open' || event.status === 'in_progress')
+                            ? ISSUE_DUE_DOT
+                            : event.color ?? colors.tint;
+                        const content = (
+                          <>
+                            <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
+                            <ThemedText
+                              style={[styles.eventTitle, { color: colors.text, flex: 1 }]}
+                              numberOfLines={1}
+                            >
+                              {event.title}
+                              {isIssueTask(event) ? ` · ${event.status ?? ''}` : ''}
+                            </ThemedText>
+                            {isIssueTask(event) ? (
+                              <IconSymbol name="chevron.right" size={12} color={colors.icon} />
+                            ) : null}
+                          </>
+                        );
+                        return isIssueTask(event) ? (
+                          <TouchableOpacity
+                            key={event.id}
+                            style={styles.eventRow}
+                            onPress={() =>
+                              router.push(
+                                `/(app)/estates/${event.estateId}/events/${event.id}` as never
+                              )
+                            }
+                            activeOpacity={0.7}
                           >
-                            {tk.title}
-                          </ThemedText>
-                          <IconSymbol name="chevron.right" size={12} color={colors.icon} />
-                        </TouchableOpacity>
-                      ))}
+                            {content}
+                          </TouchableOpacity>
+                        ) : (
+                          <View key={event.id} style={styles.eventRow}>
+                            {content}
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                 </View>
@@ -471,9 +445,9 @@ export default function OwnerCalendar() {
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: TICKET_DUE_DOT }]} />
+                <View style={[styles.legendDot, { backgroundColor: ISSUE_DUE_DOT }]} />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  {t('ticketsHub.legendTicketDue')}
+                  {t('ticketsHub.legendIssueDue')}
                 </ThemedText>
               </View>
             </View>

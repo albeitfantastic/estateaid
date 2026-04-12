@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { IssueThreadScreen } from '@/components/maintenance/issue-thread-screen';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { isIssueTask } from '@/lib/issue-task';
 import { useEventStore } from '@/store/event-store';
-import { RecurrenceFrequency } from '@/types';
+import type { EstateEvent, RecurrenceFrequency } from '@/types';
 
 const EVENT_COLORS = ['#22c55e', '#8B5CF6', '#0a7ea4', '#f59e0b', '#ef4444', '#B5703A', '#64748B', '#2E7D91'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -21,24 +23,22 @@ const FREQ_OPTIONS: { value: RecurrenceFrequency; label: string }[] = [
   { value: 'monthly', label: 'Monthly' },
 ];
 
-export default function EditEvent() {
+function paramId(v: string | string[] | undefined): string {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v[0]) return v[0];
+  return '';
+}
+
+export default function EstateEventDetailScreen() {
   const { t } = useTranslation();
-  const { estateId, eventId } = useLocalSearchParams<{ estateId: string; eventId: string }>();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const { events, updateEvent, deleteEvent } = useEventStore();
-
+  const { estateId: estateIdRaw, eventId: eventIdRaw } = useLocalSearchParams<{
+    estateId: string | string[];
+    eventId: string | string[];
+  }>();
+  const estateId = paramId(estateIdRaw);
+  const eventId = paramId(eventIdRaw);
+  const events = useEventStore((s) => s.events);
   const event = events.find((e) => e.id === eventId);
-
-  const [title, setTitle] = useState(event?.title ?? '');
-  const [description, setDescription] = useState(event?.description ?? '');
-  const [color, setColor] = useState(event?.color ?? EVENT_COLORS[0]);
-  const [taskDate, setTaskDate] = useState(event?.date ?? '');
-  const [frequency, setFrequency] = useState<RecurrenceFrequency>(event?.recurrence?.frequency ?? 'weekly');
-  const [dayOfWeek, setDayOfWeek] = useState(event?.recurrence?.dayOfWeek ?? 1);
-  const [dayOfMonth, setDayOfMonth] = useState(event?.recurrence?.dayOfMonth ?? 1);
 
   if (!event) {
     return (
@@ -48,6 +48,34 @@ export default function EditEvent() {
     );
   }
 
+  if (isIssueTask(event)) {
+    return <IssueThreadScreen event={event} estateId={estateId} />;
+  }
+
+  return <EditMaintenanceForm event={event} />;
+}
+
+function EditMaintenanceForm({ event: initial }: { event: EstateEvent }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const { updateEvent, deleteEvent } = useEventStore();
+  const eventId = initial.id;
+
+  const [title, setTitle] = useState(initial.title);
+  const [description, setDescription] = useState(initial.description ?? '');
+  const [color, setColor] = useState(initial.color ?? EVENT_COLORS[0]);
+  const [taskDate, setTaskDate] = useState(initial.date ?? '');
+  const [frequency, setFrequency] = useState<RecurrenceFrequency>(
+    initial.recurrence?.frequency ?? 'weekly'
+  );
+  const [dayOfWeek, setDayOfWeek] = useState(initial.recurrence?.dayOfWeek ?? 1);
+  const [dayOfMonth, setDayOfMonth] = useState(initial.recurrence?.dayOfMonth ?? 1);
+
+  const event = initial;
+
   function save() {
     if (!title.trim()) return;
     const patch: Record<string, unknown> = {
@@ -55,25 +83,36 @@ export default function EditEvent() {
       description: description.trim() || undefined,
       color,
     };
-    if (event!.type === 'task') {
+    if (initial.type === 'task') {
       patch.date = taskDate;
     } else {
       patch.recurrence = {
-        ...event!.recurrence,
+        ...initial.recurrence,
         frequency,
-        dayOfWeek: (frequency === 'weekly' || frequency === 'biweekly') ? dayOfWeek : undefined,
+        dayOfWeek: frequency === 'weekly' || frequency === 'biweekly' ? dayOfWeek : undefined,
         dayOfMonth: frequency === 'monthly' ? dayOfMonth : undefined,
       };
     }
-    updateEvent(eventId, patch);
+    void updateEvent(eventId, patch);
     router.back();
   }
 
   function confirmDelete() {
-    Alert.alert(t('maintenanceSchedule.deleteTitle'), t('maintenanceSchedule.deleteMessage', { title: event!.title }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('editEstateScreen.deleteConfirmCta'), style: 'destructive', onPress: () => { deleteEvent(eventId); router.back(); } },
-    ]);
+    Alert.alert(
+      t('maintenanceSchedule.deleteTitle'),
+      t('maintenanceSchedule.deleteMessage', { title: title.trim() || initial.title }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('editEstateScreen.deleteConfirmCta'),
+          style: 'destructive',
+          onPress: () => {
+            void deleteEvent(eventId);
+            router.back();
+          },
+        },
+      ]
+    );
   }
 
   const isRecurring = event.type === 'recurring';
