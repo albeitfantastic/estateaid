@@ -2,8 +2,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from './icon-symbol';
-import { Colors, Elevation, Fonts, Layout, Radius } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 interface EmptyStateProps {
   icon?: string;
@@ -14,24 +13,23 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: EmptyStateProps) {
-  const colorScheme = useColorScheme();
-  const scheme = colorScheme ?? 'light';
-  const colors = Colors[scheme];
+  const t = useAppTheme();
+  const colors = t.colors;
 
   return (
     <View style={styles.container}>
       {icon && (
-        <View style={[styles.iconWrap, { backgroundColor: colors.tintMuted }]}>
-          <IconSymbol name={icon as never} size={32} color={colors.tint} />
+        <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
+          <IconSymbol name={icon as never} size={32} color={colors.primary} />
         </View>
       )}
       <ThemedText style={styles.title}>{title}</ThemedText>
       {subtitle && (
-        <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</ThemedText>
+        <ThemedText style={[styles.subtitle, { color: colors.textMuted }]}>{subtitle}</ThemedText>
       )}
       {actionLabel && onAction && (
         <TouchableOpacity
-          style={[styles.btn, { backgroundColor: colors.tint }, Elevation.fab[scheme]]}
+          style={[styles.btn, { backgroundColor: colors.primary }, t.shadows.md]}
           onPress={onAction}
           activeOpacity={0.8}
         >
@@ -47,14 +45,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingVertical: Layout.sectionGap * 2,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
     gap: 12,
   },
   iconWrap: {
     width: 72,
     height: 72,
-    borderRadius: Radius.xl,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
@@ -63,22 +61,22 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     textAlign: 'center',
-    fontFamily: Fonts.headingSemiBold,
+    fontFamily: 'Manrope_600SemiBold',
     letterSpacing: -0.2,
   },
   subtitle: {
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 21,
-    fontFamily: Fonts.body,
+    fontFamily: 'Manrope_400Regular',
     opacity: 0.75,
   },
   btn: {
     marginTop: 4,
-    minHeight: Layout.touchMin,
+    minHeight: 44,
     paddingHorizontal: 28,
     paddingVertical: 12,
-    borderRadius: Radius.lg,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -86,7 +84,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 15,
-    fontFamily: Fonts.headingSemiBold,
+    fontFamily: 'Manrope_600SemiBold',
     letterSpacing: 0.1,
   },
 });

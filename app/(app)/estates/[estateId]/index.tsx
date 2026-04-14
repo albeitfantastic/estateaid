@@ -18,13 +18,13 @@ import { useHasFullHostAccess } from '@/lib/access-tier';
 import { useMemo } from 'react';
 
 const OWNER_ITEMS = [
-  { label: 'Guests', icon: 'person.2.fill', route: 'guests' },
-  { label: 'Stay Requests', icon: 'calendar', route: 'stays' },
-  { label: 'Availability', icon: 'calendar.badge.exclamationmark', route: 'availability' },
-  { label: 'Events', icon: 'calendar.badge.clock', route: 'events' },
-  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq' },
-  { label: 'Documents', icon: 'doc.fill', route: 'documents' },
-  { label: 'Contacts', icon: 'phone.fill', route: 'contacts' },
+  { label: 'Guests', icon: 'person.2.fill', route: 'guests', primary: true },
+  { label: 'Stay Requests', icon: 'calendar', route: 'stays', primary: true },
+  { label: 'Availability', icon: 'calendar.badge.exclamationmark', route: 'availability', primary: false },
+  { label: 'Events', icon: 'calendar.badge.clock', route: 'events', primary: false },
+  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', primary: false },
+  { label: 'Documents', icon: 'doc.fill', route: 'documents', primary: false },
+  { label: 'Contacts', icon: 'phone.fill', route: 'contacts', primary: false },
 ] as const;
 
 const GUEST_ITEMS = [
@@ -110,7 +110,10 @@ export default function EstateHub() {
                 onPress={() => router.push(`/(app)/estates/${estateId}/${item.route}` as never)}
                 style={[
                   styles.tile,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  {
+                    backgroundColor: item.primary ? colors.tintMuted : colors.surface,
+                    borderColor: item.primary ? colors.tintMuted : colors.border,
+                  },
                   Elevation.card[scheme],
                 ]}
               >

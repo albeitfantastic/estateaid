@@ -3,13 +3,12 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuthStore } from '@/store/auth-store';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 export default function OwnerProfile() {
   const { currentUser, clearUser, themePreference, setThemePreference } = useAuthStore();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme];
+  const appTheme = useAppTheme();
+  const colors = appTheme.colors;
   const router = useRouter();
   const isDark = themePreference === 'dark';
 
@@ -20,7 +19,7 @@ export default function OwnerProfile() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.avatar, { backgroundColor: colors.tint }]}>
+      <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
         <ThemedText style={styles.avatarText}>
           {currentUser?.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
         </ThemedText>
@@ -28,23 +27,23 @@ export default function OwnerProfile() {
       <ThemedText type="title">{currentUser?.name}</ThemedText>
       <ThemedText style={{ opacity: 0.5 }}>{currentUser?.email}</ThemedText>
 
-      <View style={[styles.settingsBox, { backgroundColor: colors.surface ?? colors.background, borderColor: colors.border ?? colors.icon + '22' }]}>
+      <View style={[styles.settingsBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.settingRow}>
           <ThemedText style={styles.settingLabel}>Dark Mode</ThemedText>
           <Switch
             value={isDark}
             onValueChange={(v) => setThemePreference(v ? 'dark' : 'light')}
-            trackColor={{ false: colors.border ?? '#E5E7EA', true: colors.tint }}
+            trackColor={{ false: colors.border, true: colors.primary }}
             thumbColor="#FFFFFF"
           />
         </View>
       </View>
 
       <TouchableOpacity
-        style={[styles.btn, { borderColor: colors.tint }]}
+        style={[styles.btn, { borderColor: colors.primary }]}
         onPress={switchRole}
       >
-        <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>Switch Role</ThemedText>
+        <ThemedText style={{ color: colors.primary, fontWeight: '600' }}>Switch Role</ThemedText>
       </TouchableOpacity>
     </ThemedView>
   );

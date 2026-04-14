@@ -8,8 +8,7 @@ import { MonthGrid, DayInfo } from '@/components/calendar/month-grid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
 import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
@@ -30,8 +29,8 @@ export default function OwnerCalendar() {
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const appTheme = useAppTheme();
+  const colors = appTheme.colors;
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allStays = useStayStore((s) => s.stays);
@@ -127,7 +126,7 @@ export default function OwnerCalendar() {
           ...existing,
           dots: [
             ...(existing.dots ?? []),
-            { color: event.color ?? colors.tint, key: event.id },
+            { color: event.color ?? colors.primary, key: event.id },
           ],
         };
       });
@@ -142,7 +141,7 @@ export default function OwnerCalendar() {
     selectedEstateId,
     viewYear,
     viewMonth,
-    colors.tint,
+    colors.primary,
   ]);
 
   const selectedDayData = useMemo(() => {
@@ -196,8 +195,8 @@ export default function OwnerCalendar() {
                   key={estate.id}
                   style={[
                     styles.estatePill,
-                    { borderColor: colors.tint + '44' },
-                    active && { backgroundColor: colors.tint, borderColor: colors.tint },
+                    { borderColor: colors.primary + '44' },
+                    active && { backgroundColor: colors.primary, borderColor: colors.primary },
                   ]}
                   onPress={() => pickEstate(estate.id)}
                   activeOpacity={0.8}
@@ -212,13 +211,13 @@ export default function OwnerCalendar() {
 
           <View style={styles.nav}>
             <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-              <IconSymbol name="arrow.left" size={18} color={colors.tint} />
+              <IconSymbol name="arrow.left" size={18} color={colors.primary} />
             </TouchableOpacity>
             <ThemedText type="defaultSemiBold" style={styles.monthLabel}>
               {MONTHS[viewMonth]} {viewYear}
             </ThemedText>
             <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-              <IconSymbol name="arrow.right" size={18} color={colors.tint} />
+              <IconSymbol name="arrow.right" size={18} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -234,7 +233,7 @@ export default function OwnerCalendar() {
                         ? '#ef444410'
                         : selectedDayData.type === 'unavailable'
                           ? '#64748b14'
-                          : colors.tint + '0E',
+                          : colors.primarySoft,
                   borderColor:
                     selectedDayData.type === 'my-stay'
                       ? '#22c55e44'
@@ -242,7 +241,7 @@ export default function OwnerCalendar() {
                         ? '#ef444430'
                         : selectedDayData.type === 'unavailable'
                           ? '#64748b40'
-                          : colors.tint + '33',
+                          : colors.primary + '33',
                 },
               ]}
             >
@@ -297,7 +296,7 @@ export default function OwnerCalendar() {
                         const dotColor =
                           isIssueTask(event) && (event.status === 'open' || event.status === 'in_progress')
                             ? ISSUE_DUE_DOT
-                            : event.color ?? colors.tint;
+                            : event.color ?? colors.primary;
                         const content = (
                           <>
                             <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
@@ -345,7 +344,7 @@ export default function OwnerCalendar() {
           <View
             style={[
               styles.calendarWrap,
-              { backgroundColor: colors.background, borderColor: colors.icon + '22' },
+              { backgroundColor: colors.background, borderColor: colors.border },
             ]}
           >
             <MonthGrid
@@ -362,7 +361,7 @@ export default function OwnerCalendar() {
             onPress={() => setLegendOpen((o) => !o)}
             activeOpacity={0.7}
           >
-            <ThemedText style={[styles.legendToggleLabel, { color: colors.icon }]}>
+            <ThemedText style={[styles.legendToggleLabel, { color: colors.textMuted }]}>
               {t('guestCalendar.legend')}
             </ThemedText>
             <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
@@ -372,7 +371,7 @@ export default function OwnerCalendar() {
             <View
               style={[
                 styles.legendBox,
-                { backgroundColor: colors.background, borderColor: colors.icon + '22' },
+                { backgroundColor: colors.background, borderColor: colors.border },
               ]}
             >
               <View style={styles.legendRow}>
@@ -433,13 +432,13 @@ export default function OwnerCalendar() {
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 2.5 }]} />
+                <View style={[styles.legendSwatchRing, { borderColor: colors.primary, borderWidth: 2.5 }]} />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendSelectedDay')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: colors.tint }]} />
+                <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendPropertyEvent')}
                 </ThemedText>

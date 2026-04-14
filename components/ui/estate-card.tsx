@@ -3,8 +3,7 @@ import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from './icon-symbol';
-import { Colors, Fonts, Radius } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 import { Estate } from '@/types';
 
 interface EstateCardProps {
@@ -14,14 +13,14 @@ interface EstateCardProps {
 }
 
 export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const t = useAppTheme();
+  const colors = t.colors;
 
   return (
     <TouchableOpacity
       style={[styles.card, {
-        backgroundColor: colors.surface,
-        borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
+        backgroundColor: colors.card,
+        borderColor: colors.border,
         shadowColor: colors.text,
       }]}
       onPress={onPress}
@@ -34,8 +33,8 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
           contentFit="cover"
         />
       ) : (
-        <View style={[styles.imagePlaceholder, { backgroundColor: colors.tint + '14' }]}>
-          <IconSymbol name="building.2.fill" size={36} color={colors.tint + 'AA'} />
+        <View style={[styles.imagePlaceholder, { backgroundColor: colors.primarySoft }]}>
+          <IconSymbol name="building.2.fill" size={36} color={colors.primary} />
         </View>
       )}
 
@@ -52,21 +51,21 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
         </View>
 
         <View style={styles.locationRow}>
-          <IconSymbol name="map.fill" size={12} color={colors.icon + 'BB'} />
-          <ThemedText style={[styles.location, { color: colors.icon }]} numberOfLines={1}>
+          <IconSymbol name="map.fill" size={12} color={colors.icon} />
+          <ThemedText style={[styles.location, { color: colors.textMuted }]} numberOfLines={1}>
             {estate.location}
           </ThemedText>
         </View>
 
         {estate.description && (
-          <ThemedText style={[styles.description, { color: colors.icon }]} numberOfLines={2}>
+          <ThemedText style={[styles.description, { color: colors.textMuted }]} numberOfLines={2}>
             {estate.description}
           </ThemedText>
         )}
       </View>
 
-      <View style={[styles.chevronWrap, { backgroundColor: colors.tint + '12' }]}>
-        <IconSymbol name="chevron.right" size={13} color={colors.tint} />
+      <View style={[styles.chevronWrap, { backgroundColor: colors.primarySoft }]}>
+        <IconSymbol name="chevron.right" size={13} color={colors.primary} />
       </View>
     </TouchableOpacity>
   );
@@ -74,7 +73,7 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.xl,
+    borderRadius: 28,
     borderWidth: StyleSheet.hairlineWidth,
     marginBottom: 16,
     overflow: 'hidden',
@@ -108,18 +107,18 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     flex: 1,
-    fontFamily: Fonts.headingSemiBold,
+    fontFamily: 'Manrope_600SemiBold',
     letterSpacing: -0.2,
   },
   badge: {
     paddingHorizontal: 9,
     paddingVertical: 3,
-    borderRadius: Radius.full,
+    borderRadius: 999,
   },
   badgeText: {
     fontSize: 11,
     fontWeight: '600',
-    fontFamily: Fonts.label,
+    fontFamily: 'Manrope_600SemiBold',
   },
   locationRow: {
     flexDirection: 'row',
@@ -130,14 +129,14 @@ const styles = StyleSheet.create({
   location: {
     fontSize: 13,
     flex: 1,
-    fontFamily: Fonts.body,
+    fontFamily: 'Manrope_400Regular',
     opacity: 0.8,
   },
   description: {
     fontSize: 13,
     lineHeight: 19,
     marginTop: 3,
-    fontFamily: Fonts.body,
+    fontFamily: 'Manrope_400Regular',
     opacity: 0.7,
   },
   chevronWrap: {
@@ -146,7 +145,7 @@ const styles = StyleSheet.create({
     bottom: 18,
     width: 26,
     height: 26,
-    borderRadius: Radius.full,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },

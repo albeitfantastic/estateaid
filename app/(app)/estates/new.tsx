@@ -98,7 +98,7 @@ export default function NewEstate() {
       >
         {/* Cover photo picker */}
         <TouchableOpacity
-          style={[styles.photoWrap, { borderColor: colors.border ?? colors.icon + '44', backgroundColor: colors.tint + '10' }]}
+          style={[styles.photoWrap, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}
           onPress={pickPhoto}
           activeOpacity={0.8}
         >

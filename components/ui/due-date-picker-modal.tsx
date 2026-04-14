@@ -2,8 +2,7 @@ import { useMemo } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 import { formatDate, toISODate } from '@/lib/date-utils';
 
 type Props = {
@@ -17,8 +16,8 @@ type Props = {
 };
 
 export function DueDatePickerModal({ visible, onClose, onSelectDate, onClear, title, clearLabel }: Props) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const t = useAppTheme();
+  const colors = t.colors;
 
   const dayOptions = useMemo(() => {
     const out: string[] = [];
@@ -35,13 +34,13 @@ export function DueDatePickerModal({ visible, onClose, onSelectDate, onClear, ti
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.sheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <ThemedText type="defaultSemiBold" style={styles.sheetTitle}>
             {title}
           </ThemedText>
           {onClear ? (
             <TouchableOpacity onPress={() => { onClear(); onClose(); }} style={styles.clearBtn}>
-              <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{clearLabel}</ThemedText>
+              <ThemedText style={{ color: colors.primary, fontWeight: '600' }}>{clearLabel}</ThemedText>
             </TouchableOpacity>
           ) : null}
           <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -55,7 +54,7 @@ export function DueDatePickerModal({ visible, onClose, onSelectDate, onClear, ti
                 }}
               >
                 <ThemedText>{formatDate(d)}</ThemedText>
-                <ThemedText style={[styles.iso, { color: colors.icon }]}>{d}</ThemedText>
+                <ThemedText style={[styles.iso, { color: colors.textMuted }]}>{d}</ThemedText>
               </TouchableOpacity>
             ))}
           </ScrollView>

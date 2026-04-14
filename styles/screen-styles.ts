@@ -4,7 +4,15 @@
  */
 import { StyleSheet } from 'react-native';
 
-import { Fonts, Layout, Radius } from '@/constants/theme';
+const Layout = { screenPaddingX: 24, sectionGap: 20, touchMin: 44 } as const;
+const Radius = { sm: 12, md: 16, lg: 20, xl: 28, full: 999 } as const;
+const Fonts = {
+  heading: 'Manrope_700Bold',
+  headingSemiBold: 'Manrope_600SemiBold',
+  label: 'Manrope_500Medium',
+  labelBold: 'Manrope_700Bold',
+  body: 'Manrope_400Regular',
+} as const;
 
 /** Auth screen palette (matches app/(auth)/index.tsx) */
 const AuthPalette = {

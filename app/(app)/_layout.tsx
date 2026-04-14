@@ -1,34 +1,30 @@
 import { router, Tabs } from 'expo-router';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Fonts, Glass } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { TabBarGlassBackground } from '@/components/ui/tab-bar-glass-background';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 export default function OwnerTabLayout() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const glass = Glass[colorScheme ?? 'light'];
+  const appTheme = useAppTheme();
   const { t, i18n } = useTranslation();
 
   return (
     <Tabs
       key={i18n.resolvedLanguage}
       screenOptions={{
-        tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        tabBarActiveTintColor: appTheme.colors.primary,
+        tabBarInactiveTintColor: appTheme.colors.iconMuted,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarBackground: () => (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: glass.tabBar }]} />
-        ),
+        tabBarBackground: () => <TabBarGlassBackground />,
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',
           borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: glass.border,
+          borderTopColor: appTheme.colors.border,
           ...Platform.select({
             ios: {
               shadowColor: '#252220',
@@ -41,7 +37,7 @@ export default function OwnerTabLayout() {
           }),
         },
         tabBarLabelStyle: {
-          fontFamily: Fonts.label,
+          fontFamily: appTheme.typography.fontFamily.medium,
           fontSize: 10,
           letterSpacing: 0.15,
         },

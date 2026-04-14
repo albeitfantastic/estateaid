@@ -10,9 +10,8 @@ import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Elevation, Fonts, Layout, Radius } from '@/constants/theme';
 import { useHasFullHostAccess } from '@/lib/access-tier';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
@@ -24,8 +23,8 @@ export default function OwnerEstates() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const appTheme = useAppTheme();
+  const colors = appTheme.colors;
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
@@ -52,7 +51,7 @@ export default function OwnerEstates() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <ThemedText type="title" style={styles.title}>
           {t('titles.properties')}
         </ThemedText>
@@ -62,7 +61,7 @@ export default function OwnerEstates() {
           accessibilityRole="button"
           accessibilityLabel={t('estatesList.addEstate')}
           onPress={() => router.push('/(app)/estates/new' as never)}
-          style={[styles.addBtn, { backgroundColor: colors.tint }, Elevation.fab[colorScheme ?? 'light']]}
+          style={[styles.addBtn, { backgroundColor: colors.primary }, appTheme.shadows.md]}
           activeOpacity={0.8}
         >
           <IconSymbol name="plus" size={20} color="#fff" />
@@ -126,22 +125,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: Layout.sectionGap,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
     gap: 12,
   },
   title: { flex: 1, flexShrink: 1, fontSize: 28, fontWeight: '700', paddingRight: 8 },
   container: { flex: 1 },
   addBtn: {
-    width: Layout.touchMin,
-    height: Layout.touchMin,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.md,
+    borderRadius: 16,
   },
   back: { padding: 4 },
-  list: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 10, gap: 4 },
-  cardWrap: { position: 'relative', borderRadius: Radius.lg, overflow: 'hidden' },
+  list: { paddingHorizontal: 24, paddingTop: 10, gap: 4 },
+  cardWrap: { position: 'relative', borderRadius: 20, overflow: 'hidden' },
   cardLockBadge: {
     position: 'absolute',
     top: 12,
@@ -161,13 +160,13 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: Radius.sm,
+    borderRadius: 12,
   },
   roleBadgeText: {
     fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontFamily: Fonts.labelBold,
+    fontFamily: 'Manrope_700Bold',
   },
 });

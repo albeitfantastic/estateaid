@@ -9,8 +9,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, EstateColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { EstateColors } from '@/constants/estate-colors';
+import { useAppTheme } from '@/theme/useAppTheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
@@ -21,8 +21,8 @@ export default function GuestsIndex() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const appTheme = useAppTheme();
+  const colors = appTheme.colors;
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const { invitations, revokeInvitation } = useInvitationStore();
@@ -90,11 +90,11 @@ export default function GuestsIndex() {
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+          <IconSymbol name="arrow.left" size={22} color={colors.primary} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>{t('titles.guests')}</ThemedText>
         <TouchableOpacity
-          style={[styles.inviteBtn, { backgroundColor: colors.tint }]}
+          style={[styles.inviteBtn, { backgroundColor: colors.primary }, appTheme.shadows.sm]}
           onPress={() => router.push('/(app)/stays?tab=invite' as never)}
           activeOpacity={0.8}
         >
@@ -127,22 +127,22 @@ export default function GuestsIndex() {
                 return (
                   <TouchableOpacity
                     key={guestId}
-                    style={[styles.row, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}
+                    style={[styles.row, { borderColor: colors.border, backgroundColor: colors.card }, appTheme.shadows.sm]}
                     onPress={() => router.push(`/(app)/guests/${guestId}` as never)}
                     activeOpacity={0.75}
                   >
-                    <View style={[styles.avatar, { backgroundColor: colors.tint + '20' }]}>
-                      <ThemedText style={[styles.avatarText, { color: colors.tint }]}>{initial}</ThemedText>
+                    <View style={[styles.avatar, { backgroundColor: colors.primarySoft }]}>
+                      <ThemedText style={[styles.avatarText, { color: colors.primary }]}>{initial}</ThemedText>
                     </View>
                     <View style={styles.rowInfo}>
                       <ThemedText type="defaultSemiBold" style={styles.guestName}>{displayName}</ThemedText>
                       {!!emailHint && (
-                        <ThemedText style={[styles.guestEmail, { color: colors.icon }]}>{emailHint}</ThemedText>
+                        <ThemedText style={[styles.guestEmail, { color: colors.textMuted }]}>{emailHint}</ThemedText>
                       )}
                       <View style={styles.accessPills}>
                         {accesses.map(({ estateId, role }) => {
                           const estate = estates.find((e) => e.id === estateId);
-                          const dotColor = estateColorMap[estateId] ?? colors.tint;
+                          const dotColor = estateColorMap[estateId] ?? colors.primary;
                           return (
                             <View key={estateId} style={[styles.accessPill, { backgroundColor: dotColor + '18', borderColor: dotColor + '44' }]}>
                               <View style={[styles.pillDot, { backgroundColor: dotColor }]} />
@@ -167,14 +167,14 @@ export default function GuestsIndex() {
               <SectionHeader title={`${pendingInvites.length} Pending Invite${pendingInvites.length !== 1 ? 's' : ''}`} />
               {pendingInvites.map((inv) => {
                 const estate = estates.find((e) => e.id === inv.estateId);
-                const dotColor = estateColorMap[inv.estateId] ?? colors.tint;
+                const dotColor = estateColorMap[inv.estateId] ?? colors.primary;
                 const role = inv.role ?? 'guest';
                 return (
                   <View
                     key={inv.id}
-                    style={[styles.row, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}
+                    style={[styles.row, { borderColor: colors.border, backgroundColor: colors.card }, appTheme.shadows.sm]}
                   >
-                    <View style={[styles.keyIcon, { backgroundColor: colors.icon + '12' }]}>
+                    <View style={[styles.keyIcon, { backgroundColor: colors.surface }]}>
                       <IconSymbol name="key.fill" size={18} color={colors.icon} />
                     </View>
                     <View style={styles.rowInfo}>
@@ -192,11 +192,11 @@ export default function GuestsIndex() {
                     </View>
                     <View style={styles.rowActions}>
                       <TouchableOpacity
-                        style={[styles.iconBtn, { backgroundColor: colors.tint + '15' }]}
+                        style={[styles.iconBtn, { backgroundColor: colors.primarySoft }]}
                         onPress={() => sharePendingCode(inv.id)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
-                        <IconSymbol name="square.and.arrow.up" size={15} color={colors.tint} />
+                        <IconSymbol name="square.and.arrow.up" size={15} color={colors.primary} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.iconBtn, { backgroundColor: '#ef444415' }]}

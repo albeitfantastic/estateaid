@@ -1,7 +1,6 @@
 import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
 
-import { Colors, Elevation, Radius, type ColorSchemeName } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 type SurfaceCardProps = ViewProps & {
   variant?: 'elevated' | 'outline' | 'muted';
@@ -22,9 +21,9 @@ export function SurfaceCard({
   children,
   ...rest
 }: SurfaceCardProps) {
-  const scheme = (useColorScheme() ?? 'light') as ColorSchemeName;
-  const colors = Colors[scheme];
-  const shadow = variant === 'elevated' ? Elevation.card[scheme] : {};
+  const t = useAppTheme();
+  const colors = t.colors;
+  const shadow = variant === 'elevated' ? t.shadows.md : {};
   const pad =
     padded === false ? 0 : typeof padded === 'number' ? padded : 14;
 
@@ -34,7 +33,7 @@ export function SurfaceCard({
         styles.base,
         {
           backgroundColor:
-            variant === 'muted' ? colors.surfaceMuted : colors.surface,
+            variant === 'muted' ? colors.surface : colors.card,
           borderColor: colors.border,
           borderWidth:
             variant === 'outline' || variant === 'elevated'
@@ -56,7 +55,7 @@ export function SurfaceCard({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: Radius.xl,
+    borderRadius: 28,
     overflow: 'hidden',
     flexDirection: 'row',
   },

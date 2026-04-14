@@ -21,8 +21,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GoogleLogo } from '@/components/auth/google-logo';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Elevation, Layout, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { radius, spacing } from '@/theme';
+import { useAppTheme } from '@/theme/useAppTheme';
 import {
   authRedirectUri,
   ensureProfileRowForAuthUser,
@@ -107,8 +108,8 @@ export default function AuthScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
+  const appTheme = useAppTheme();
   const dark = colorScheme === 'dark';
-  const scheme = dark ? 'dark' : 'light';
   const { setUser, resetOnboarding, pendingInviteCode, setPendingInviteCode } = useAuthStore();
   const { redeemCode } = useInvitationStore();
 
@@ -273,8 +274,8 @@ export default function AuthScreen() {
           <View
             style={[
               s.card,
-              { backgroundColor: cardBg, borderColor: Colors[scheme].border },
-              Elevation.card[scheme],
+              { backgroundColor: cardBg, borderColor: appTheme.colors.border },
+              appTheme.shadows.md,
             ]}
           >
             {/* ── Header ── */}
@@ -430,7 +431,7 @@ export default function AuthScreen() {
             {/* ── CTA ── */}
             {showEmailForm && (
             <TouchableOpacity
-              style={[s.ctaWrap, Elevation.fab[scheme], anyLoading && { opacity: 0.7 }]}
+              style={[s.ctaWrap, appTheme.shadows.md, anyLoading && { opacity: 0.7 }]}
               onPress={mode === 'signin' ? handleSignIn : handleSignUp}
               disabled={anyLoading}
               activeOpacity={0.85}
@@ -480,14 +481,14 @@ const s = StyleSheet.create({
   scroll: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Layout.sectionGap + 12,
-    paddingHorizontal: Layout.screenPaddingX,
+    paddingVertical: spacing.section + 12,
+    paddingHorizontal: spacing.screen,
   },
   card: {
     width: '100%',
     maxWidth: 390,
-    borderRadius: Radius.lg,
-    padding: Layout.sectionGap + 12,
+    borderRadius: radius.lg,
+    padding: spacing.section + 12,
     borderWidth: StyleSheet.hairlineWidth,
     gap: 0,
   },
@@ -504,10 +505,10 @@ const s = StyleSheet.create({
   tab:       { flex: 1, paddingVertical: 11, borderRadius: 8, alignItems: 'center' },
   tabText:   { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // oauth
-  oauthGroup: { gap: 10, marginBottom: 20 },
+  oauthGroup: { gap: 10, marginBottom: spacing.xxl },
   oauthBtn: {
-    minHeight: Layout.touchMin,
-    borderRadius: Radius.md,
+    minHeight: 44,
+    borderRadius: radius.md,
     borderWidth: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
@@ -529,7 +530,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   oauthLabel: { flex: 1, textAlign: 'center' },
-  oauthLoading: { flex: 1, minHeight: Layout.touchMin - 8, alignItems: 'center', justifyContent: 'center' },
+  oauthLoading: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
   oauthText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // divider
   divRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
@@ -541,8 +542,8 @@ const s = StyleSheet.create({
   emailBtn:  { height: 50, borderRadius: 10, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 4 },
   emailBtnText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   // cta
-  ctaWrap:   { borderRadius: Radius.md, marginBottom: Layout.sectionGap - 4 },
-  cta:       { minHeight: Layout.touchMin, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  ctaWrap:   { borderRadius: radius.md, marginBottom: spacing.section - 4 },
+  cta:       { minHeight: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   ctaText:   { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'Manrope_700Bold', letterSpacing: 0.3 },
   // footer
   footerText: { textAlign: 'center', fontSize: 13, fontFamily: 'Manrope_400Regular', lineHeight: 20 },

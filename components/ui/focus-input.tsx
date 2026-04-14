@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { typography } from '@/theme';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 interface FocusInputProps extends TextInputProps {
   label: string;
@@ -10,9 +10,9 @@ interface FocusInputProps extends TextInputProps {
 }
 
 export function FocusInput({ label, accentColor, style, ...props }: FocusInputProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const accent = accentColor ?? colors.tint;
+  const t = useAppTheme();
+  const colors = t.colors;
+  const accent = accentColor ?? colors.primary;
 
   const [focused, setFocused] = useState(false);
   const isMultiline = !!props.multiline;
@@ -26,7 +26,7 @@ export function FocusInput({ label, accentColor, style, ...props }: FocusInputPr
           baseInput,
           {
             borderColor: focused ? accent : colors.border,
-            backgroundColor: colors.surface,
+            backgroundColor: colors.card,
             color: colors.text,
             shadowColor: accent,
             shadowOpacity: focused ? 0.14 : 0,
@@ -35,7 +35,7 @@ export function FocusInput({ label, accentColor, style, ...props }: FocusInputPr
           },
           style,
         ]}
-        placeholderTextColor={colors.icon}
+        placeholderTextColor={colors.textSoft}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         {...props}
@@ -51,7 +51,7 @@ export const inputBaseStyle = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-    fontFamily: Fonts.labelBold,
+    fontFamily: typography.fontFamily.bold,
   },
   input: {
     height: 50,
@@ -59,7 +59,7 @@ export const inputBaseStyle = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 15,
-    fontFamily: Fonts.body,
+    fontFamily: typography.fontFamily.regular,
   },
 });
 
@@ -70,7 +70,7 @@ const s = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-    fontFamily: Fonts.labelBold,
+    fontFamily: typography.fontFamily.bold,
   },
   input: {
     height: 50,
@@ -78,7 +78,7 @@ const s = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 15,
-    fontFamily: Fonts.body,
+    fontFamily: typography.fontFamily.regular,
   },
   /** Multiline must not use a fixed height or content overflows and overlaps fields below. */
   inputMultiline: {
@@ -89,7 +89,7 @@ const s = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     fontSize: 15,
-    fontFamily: Fonts.body,
+    fontFamily: typography.fontFamily.regular,
     textAlignVertical: 'top',
   },
 });
