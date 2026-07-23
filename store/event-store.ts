@@ -154,7 +154,15 @@ export const useEventStore = create<EventState>()(
           dbPatch.messages = messagesToDb(patch.messages);
         dbPatch.updated_at = ev?.updatedAt ?? updatedAt;
         if (Object.keys(dbPatch).length > 0) {
-          await supabase.from('estate_events').update(dbPatch).eq('id', id);
+          const { error } = await supabase.from('estate_events').update(dbPatch).eq('id', id);
+          // #region agent log
+          const { debugLog } = await import('@/lib/debug-session-log');
+          debugLog('H5', 'event-store.ts:updateEvent', 'remote update finished', {
+            eventId: id,
+            hasError: !!error,
+            errorMessage: error?.message ?? null,
+          });
+          // #endregion
         }
       },
       deleteEvent: async (id) => {

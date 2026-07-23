@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { isIssueTask } from '@/lib/issue-task';
+import { debugLog } from '@/lib/debug-session-log';
 import { useEventStore } from '@/store/event-store';
 import type { EstateEvent, RecurrenceFrequency } from '@/types';
 
@@ -93,6 +94,13 @@ function EditMaintenanceForm({ event: initial }: { event: EstateEvent }) {
         dayOfMonth: frequency === 'monthly' ? dayOfMonth : undefined,
       };
     }
+    // #region agent log
+    debugLog('H5', 'events/[eventId].tsx:save', 'updateEvent fired without await then router.back', {
+      eventId,
+      awaited: false,
+      title: title.trim(),
+    });
+    // #endregion
     void updateEvent(eventId, patch);
     router.back();
   }

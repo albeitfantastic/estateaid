@@ -13,6 +13,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useDocumentStore } from '@/store/document-store';
 import { uploadEstateDocumentFile } from '@/lib/estate-document-storage';
+import { debugLog } from '@/lib/debug-session-log';
 import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
 import { DocumentCategory } from '@/types';
@@ -56,6 +57,14 @@ export default function UploadDocument() {
       return;
     }
 
+    // #region agent log
+    debugLog('H2', 'documents/upload.tsx:submit', 'calling addDocument without await then router.back', {
+      documentId,
+      estateId,
+      storagePath: uploadResult.path,
+      awaited: false,
+    });
+    // #endregion
     addDocument({
       id: documentId,
       estateId,

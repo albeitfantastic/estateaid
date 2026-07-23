@@ -58,6 +58,15 @@ export const useDocumentStore = create<DocumentState>()(
       addDocument: async (document) => {
         set((s) => ({ documents: [...s.documents, document] }));
         const { error } = await supabase.from('estate_documents').insert(toDb(document));
+        // #region agent log
+        const { debugLog } = await import('@/lib/debug-session-log');
+        debugLog('H2', 'document-store.ts:addDocument', 'insert finished', {
+          documentId: document.id,
+          estateId: document.estateId,
+          hasError: !!error,
+          errorMessage: error?.message ?? null,
+        });
+        // #endregion
         if (error) set((s) => ({ documents: s.documents.filter((d) => d.id !== document.id) }));
       },
       updateDocument: async (id, patch) => {

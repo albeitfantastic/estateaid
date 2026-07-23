@@ -15,6 +15,7 @@ import { useStayStore } from '@/store/stay-store';
 import { getEstateRole } from '@/lib/estate-role';
 import { addDays, today } from '@/lib/date-utils';
 import { useHasFullHostAccess } from '@/lib/access-tier';
+import { debugLog } from '@/lib/debug-session-log';
 import { useMemo } from 'react';
 
 const OWNER_ITEMS = [
@@ -54,6 +55,14 @@ export default function EstateHub() {
   const hasFullHost = useHasFullHostAccess();
 
   const isEstateOwner = estate?.ownerId === currentUser?.id;
+  // #region agent log
+  debugLog('H4', 'estates/[estateId]/index.tsx:role', 'computing estateRole', {
+    hasEstate: !!estate,
+    hasCurrentUser: !!currentUser,
+    isEstateOwner,
+    estateId,
+  });
+  // #endregion
   const estateRole = isEstateOwner
     ? 'owner'
     : getEstateRole(allInvitations, estateId, currentUser!.id, currentUser?.email);
@@ -168,7 +177,16 @@ export default function EstateHub() {
                 ]}
                 onPress={() => {
                   if (!unlocked) return;
-                  router.push(`/(app)/estates/${estateId}/${item.route}` as never);
+                  const target = `/(app)/estates/${estateId}/${item.route}`;
+                  // #region agent log
+                  debugLog('H1', 'estates/[estateId]/index.tsx:guest-nav', 'guest tile navigate', {
+                    label: item.label,
+                    route: item.route,
+                    target,
+                    estateId,
+                  });
+                  // #endregion
+                  router.push(target as never);
                 }}
                 activeOpacity={unlocked ? 0.75 : 1}
               >
