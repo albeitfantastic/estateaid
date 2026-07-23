@@ -2,9 +2,9 @@ import { User } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { debugLog } from '@/lib/debug-session-log';
 import { supabase } from '@/lib/supabase';
 
-export type OwnerTier = 'starter' | 'premium';
 export type ThemePreference = 'light' | 'dark';
 
 /** Onboarding flag is scoped to this user id so a new account on the same device is not skipped. */
@@ -39,7 +39,6 @@ interface AuthState {
   hasCompletedOnboarding: boolean;
   /** User id for which `hasCompletedOnboarding` applies; must match `currentUser.id` to skip onboarding. */
   onboardingCompletedForUserId: string | null;
-  selectedTier: OwnerTier | null;
   pendingInviteCode: string | null;
   themePreference: ThemePreference;
   /** Persisted; when false, skip push registration and clear server token. */
@@ -48,7 +47,7 @@ interface AuthState {
   patchUser: (partial: Partial<Pick<User, 'name' | 'avatarUrl' | 'trialEndsAt' | 'trialStartedAt'>>) => void;
   clearUser: () => void;
   setHydrated: () => void;
-  completeOnboarding: (tier?: OwnerTier) => void;
+  completeOnboarding: () => void;
   resetOnboarding: () => void;
   setPendingInviteCode: (code: string | null) => void;
   setThemePreference: (theme: ThemePreference) => void;
@@ -65,7 +64,6 @@ export const useAuthStore = create<AuthState>()(
       isHydrated: false,
       hasCompletedOnboarding: false,
       onboardingCompletedForUserId: null,
-      selectedTier: null,
       pendingInviteCode: null,
       themePreference: 'light',
       notificationsEnabled: true,
@@ -77,37 +75,102 @@ export const useAuthStore = create<AuthState>()(
         }),
       clearUser: () => set({ currentUser: null }),
       setHydrated: () => set({ isHydrated: true }),
-      completeOnboarding: (tier) =>
+      completeOnboarding: () =>
         set((s) => ({
           hasCompletedOnboarding: true,
           onboardingCompletedForUserId: s.currentUser?.id ?? s.onboardingCompletedForUserId,
-          ...(tier ? { selectedTier: tier } : {}),
         })),
       resetOnboarding: () => set({ hasCompletedOnboarding: false, onboardingCompletedForUserId: null }),
       setPendingInviteCode: (code) => set({ pendingInviteCode: code }),
       setThemePreference: (theme) => set({ themePreference: theme }),
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       bootstrapSession: async () => {
-        try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at')
-              .eq('id', session.user.id)
-              .single();
-            if (profile) {
-              set({
-                currentUser: profileToUser(profile as Record<string, unknown>, session.user.email!),
-              });
-            }
+        // #region agent log
+        const _bootT0 = Date.now();
+        const _host = (process.env.EXPO_PUBLIC_SUPABASE_URL || '')
+          .replace(/^https?:\/\//, '')
+          .split('/')[0];
+        debugLog('B', 'store/auth-store.ts:bootstrapSession:entry', 'bootstrapSession started', {
+          supabaseUrlPresent: !!process.env.EXPO_PUBLIC_SUPABASE_URL,
+          supabaseHost: _host,
+        });
+        // Non-blocking reachability probe (must not delay hydration)
+        void (async () => {
+          const _probeUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/auth/v1/health`;
+          const _probeT0 = Date.now();
+          try {
+            const _probeRes = await fetch(_probeUrl, { method: 'GET' });
+            debugLog('A', 'store/auth-store.ts:bootstrapSession:probe', 'supabase health probe ok', {
+              status: _probeRes.status,
+              ms: Date.now() - _probeT0,
+              urlHost: _host,
+            });
+          } catch (_probeErr) {
+            debugLog('A', 'store/auth-store.ts:bootstrapSession:probe', 'supabase health probe failed', {
+              ms: Date.now() - _probeT0,
+              error: String(_probeErr),
+              name: (_probeErr as { name?: string })?.name,
+              urlHost: _host,
+            });
           }
-        } catch {
-          // session check failed — leave currentUser as null
+        })();
+        // #endregion
+        const BOOTSTRAP_MS = 4000;
+        try {
+          // #region agent log
+          debugLog('B', 'store/auth-store.ts:bootstrapSession:beforeGetSession', 'calling getSession', {
+            elapsedMs: Date.now() - _bootT0,
+            timeoutMs: BOOTSTRAP_MS,
+          });
+          // #endregion
+          await Promise.race([
+            (async () => {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              // #region agent log
+              debugLog('B', 'store/auth-store.ts:bootstrapSession:afterGetSession', 'getSession resolved', {
+                hasSession: !!session?.user,
+                elapsedMs: Date.now() - _bootT0,
+              });
+              // #endregion
+              if (session?.user) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at')
+                  .eq('id', session.user.id)
+                  .single();
+                if (profile) {
+                  set({
+                    currentUser: profileToUser(profile as Record<string, unknown>, session.user.email!),
+                  });
+                }
+              }
+            })(),
+            new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error('bootstrap_timeout')), BOOTSTRAP_MS);
+            }),
+          ]);
+        } catch (e) {
+          // #region agent log
+          debugLog('C', 'store/auth-store.ts:bootstrapSession:catch', 'bootstrapSession caught error', {
+            error: String(e),
+            name: (e as { name?: string })?.name,
+            elapsedMs: Date.now() - _bootT0,
+          });
+          // #endregion
+          // session check failed / timed out — leave currentUser as null
         } finally {
           set({ isHydrated: true });
+          // #region agent log
+          debugLog(
+            'B',
+            'store/auth-store.ts:bootstrapSession:finally',
+            'isHydrated set true',
+            { elapsedMs: Date.now() - _bootT0 },
+            'post-fix'
+          );
+          // #endregion
         }
       },
       refreshProfileFromSupabase: async () => {
@@ -140,7 +203,6 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         onboardingCompletedForUserId: state.onboardingCompletedForUserId,
-        selectedTier: state.selectedTier,
         pendingInviteCode: state.pendingInviteCode,
         themePreference: state.themePreference,
         notificationsEnabled: state.notificationsEnabled,

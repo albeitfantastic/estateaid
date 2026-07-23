@@ -8,6 +8,8 @@ import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { generateUuidV4 } from '@/lib/id';
 import { supabase } from '@/lib/supabase';
 import { dedupeById } from '@/lib/dedup-by-id';
+import { useAuthStore } from '@/store/auth-store';
+import { useActivityLogStore } from '@/store/activity-log-store';
 
 function requestFromDb(row: Record<string, unknown>): StayRequest {
   return {
@@ -179,10 +181,15 @@ export const useStayStore = create<StayState>()(
           supabase.from('stays').insert(stayToDb(stay)),
           supabase.from('stay_requests').update({ status: 'approved', owner_note: ownerNote ?? null, updated_at: updatedAt }).eq('id', requestId),
         ]);
+        const approveActorId = useAuthStore.getState().currentUser?.id;
+        if (approveActorId) {
+          useActivityLogStore.getState().logActivity(req.estateId, approveActorId, 'stay_request_approved');
+        }
         return { success: true };
       },
 
       declineStay: (requestId, ownerNote) => {
+        const req = get().stayRequests.find((r) => r.id === requestId);
         const updatedAt = new Date().toISOString();
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
@@ -190,9 +197,14 @@ export const useStayStore = create<StayState>()(
           ),
         }));
         void supabase.from('stay_requests').update({ status: 'declined', owner_note: ownerNote ?? null, updated_at: updatedAt }).eq('id', requestId);
+        const actorId = useAuthStore.getState().currentUser?.id;
+        if (req && actorId) {
+          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_declined');
+        }
       },
 
       proposeAlternative: (requestId, from, to, ownerNote) => {
+        const req = get().stayRequests.find((r) => r.id === requestId);
         const updatedAt = new Date().toISOString();
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
@@ -208,6 +220,10 @@ export const useStayStore = create<StayState>()(
           owner_note: ownerNote ?? null,
           updated_at: updatedAt,
         }).eq('id', requestId);
+        const actorId = useAuthStore.getState().currentUser?.id;
+        if (req && actorId) {
+          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_alternative_proposed');
+        }
       },
 
       askQuestion: (requestId, ownerNote) => {
@@ -221,6 +237,7 @@ export const useStayStore = create<StayState>()(
       },
 
       cancelRequest: (requestId) => {
+        const req = get().stayRequests.find((r) => r.id === requestId);
         const updatedAt = new Date().toISOString();
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
@@ -228,6 +245,10 @@ export const useStayStore = create<StayState>()(
           ),
         }));
         void supabase.from('stay_requests').update({ status: 'cancelled', updated_at: updatedAt }).eq('id', requestId);
+        const actorId = useAuthStore.getState().currentUser?.id;
+        if (req && actorId) {
+          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_cancelled');
+        }
       },
 
       updateRequest: (id, from, to) => {

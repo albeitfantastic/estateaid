@@ -13,7 +13,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFaqStore } from '@/store/faq-store';
 
-export default function OwnerFaq() {
+export default function FaqScreen() {
   const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();

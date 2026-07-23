@@ -28,13 +28,13 @@ interface GeneratedInvite {
   code: string;
 }
 
-export type OwnerInviteLayout = 'stack' | 'embedded';
+export type InviteContentLayout = 'stack' | 'embedded';
 
-export function OwnerInviteContent({
+export function InviteContent({
   layout,
   showPersonalNote = true,
 }: {
-  layout: OwnerInviteLayout;
+  layout: InviteContentLayout;
   /** When false, hides optional note field (e.g. Invitations tab Send). */
   showPersonalNote?: boolean;
 }) {

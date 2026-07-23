@@ -7,7 +7,6 @@ import { Colors, Elevation, Layout, Radius, type ThemeColors } from '@/constants
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { AccessTier } from '@/lib/access-tier';
 import { supportMailto } from '@/lib/support';
-import type { OwnerTier } from '@/store/auth-store';
 
 export type SettingsDestination = 'profile' | 'language' | 'subscription' | 'account';
 
@@ -18,7 +17,6 @@ export interface SettingsSheetProps {
   insets: { top: number; bottom: number };
   currentUser: { name: string; email: string } | null;
   accessTier: AccessTier;
-  selectedTier: OwnerTier | null;
   isDark: boolean;
   notificationsOn: boolean;
   onToggleDark: (v: boolean) => void;
@@ -34,7 +32,6 @@ export function SettingsSheet({
   insets,
   currentUser,
   accessTier,
-  selectedTier,
   isDark,
   notificationsOn,
   onToggleDark,
@@ -56,9 +53,7 @@ export function SettingsSheet({
       ? t('common.accessStandard')
       : accessTier === 'trial'
         ? t('common.accessTrial')
-        : selectedTier === 'premium'
-          ? t('common.premium')
-          : t('common.accessPro');
+        : t('common.accessPro');
 
   function go(dest: SettingsDestination) {
     onClose();

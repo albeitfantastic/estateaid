@@ -19,7 +19,7 @@ import { getEstateRole } from '@/lib/estate-role';
 import { guestEmailsMatch } from '@/lib/invite-email';
 import { showMaisonProUpgradePrompt } from '@/lib/maison-pro-upgrade';
 
-export default function OwnerEstates() {
+export default function EstatesList() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();

@@ -10,6 +10,8 @@ import type {
 import { supabase } from '@/lib/supabase';
 import { dedupeById } from '@/lib/dedup-by-id';
 import { isIssueTask, messagesToDb, normalizeEventMessages } from '@/lib/issue-task';
+import { useEstateStore } from '@/store/estate-store';
+import { getPushToken, sendPush } from '@/lib/notifications';
 
 function statusFromDb(raw: unknown): IssueStatus | undefined {
   const s = typeof raw === 'string' ? raw : 'open';
@@ -180,6 +182,16 @@ export const useEventStore = create<EventState>()(
               date: ev.date ?? null,
             })
             .eq('id', eventId);
+          const estate = useEstateStore.getState().estates.find((e) => e.id === ev.estateId);
+          const recipientId = message.authorId === estate?.ownerId ? ev.guestId : estate?.ownerId;
+          if (recipientId) {
+            void getPushToken(recipientId).then((token) =>
+              sendPush(token, `New message: ${ev.title}`, message.body.slice(0, 120), {
+                estateId: ev.estateId,
+                eventId,
+              })
+            );
+          }
         }
       },
       updateIssueMessage: async (eventId, messageId, patch) => {

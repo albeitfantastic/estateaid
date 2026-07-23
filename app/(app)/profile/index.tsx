@@ -5,7 +5,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-export default function OwnerProfile() {
+export default function ProfileScreen() {
   const { currentUser, clearUser, themePreference, setThemePreference } = useAuthStore();
   const appTheme = useAppTheme();
   const colors = appTheme.colors;

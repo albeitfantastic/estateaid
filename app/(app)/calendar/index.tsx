@@ -24,7 +24,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 const ISSUE_DUE_DOT = '#f59e0b';
 
-export default function OwnerCalendar() {
+export default function CalendarScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();

@@ -25,6 +25,7 @@ const OWNER_ITEMS = [
   { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', primary: false },
   { label: 'Documents', icon: 'doc.fill', route: 'documents', primary: false },
   { label: 'Contacts', icon: 'phone.fill', route: 'contacts', primary: false },
+  { label: 'Activity', icon: 'clock.fill', route: 'activity', primary: false },
 ] as const;
 
 const GUEST_ITEMS = [
@@ -34,6 +35,7 @@ const GUEST_ITEMS = [
   { label: 'Documents', icon: 'doc.fill', route: 'documents', alwaysOn: false },
   { label: 'Contacts', icon: 'phone.fill', route: 'contacts', alwaysOn: false },
   { label: 'Maintenance', icon: 'calendar.badge.clock', route: 'events', alwaysOn: false },
+  { label: 'Activity', icon: 'clock.fill', route: 'activity', alwaysOn: false },
 ] as const;
 
 export default function EstateHub() {

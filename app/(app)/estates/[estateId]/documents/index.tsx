@@ -22,7 +22,7 @@ const CATEGORY_LABELS: Record<DocumentCategory, string> = {
 };
 const CATEGORY_ORDER: DocumentCategory[] = ['emergency', 'rule', 'guide', 'manual', 'other'];
 
-export default function OwnerDocuments() {
+export default function DocumentsScreen() {
   const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();

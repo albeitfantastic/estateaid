@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Estate } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { dedupeById } from '@/lib/dedup-by-id';
+import { useActivityLogStore } from '@/store/activity-log-store';
 
 function fromDb(row: Record<string, unknown>): Estate {
   return {
@@ -64,6 +65,7 @@ export const useEstateStore = create<EstateState>()(
           set((s) => ({ estates: s.estates.filter((e) => e.id !== estate.id) }));
           return { error: error.message };
         }
+        useActivityLogStore.getState().logActivity(estate.id, estate.ownerId, 'estate_created');
         return { error: null };
       },
       updateEstate: async (id, patch) => {
@@ -77,6 +79,10 @@ export const useEstateStore = create<EstateState>()(
         if (patch.description !== undefined) dbPatch.description = patch.description;
         if (patch.timeZone !== undefined) dbPatch.time_zone = patch.timeZone;
         await supabase.from('estates').update(dbPatch).eq('id', id);
+        const estate = get().estates.find((e) => e.id === id);
+        if (estate) {
+          useActivityLogStore.getState().logActivity(id, estate.ownerId, 'estate_updated');
+        }
       },
       deleteEstate: async (id) => {
         const prev = get().estates;

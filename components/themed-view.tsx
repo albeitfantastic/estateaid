@@ -20,12 +20,6 @@ export function ThemedView({ style, lightColor, darkColor, children, ...otherPro
         source={require('@/assets/images/noise.png.png')}
         style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: noiseOpacity }}
         resizeMode="cover"
-        // #region agent log
-        onLoad={() => {fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'66fa9b'},body:JSON.stringify({sessionId:'66fa9b',runId:'paper-texture',hypothesisId:'A',location:'components/themed-view.tsx:26',message:'Noise image loaded',data:{opacity:noiseOpacity},timestamp:Date.now()})}).catch(()=>{});}}
-        // #endregion
-        // #region agent log
-        onError={(e) => {fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'66fa9b'},body:JSON.stringify({sessionId:'66fa9b',runId:'paper-texture',hypothesisId:'B',location:'components/themed-view.tsx:29',message:'Noise image failed',data:{opacity:noiseOpacity,error:String((e as any)?.nativeEvent?.error ?? '')},timestamp:Date.now()})}).catch(()=>{});}}
-        // #endregion
       />
       <LinearGradient
         pointerEvents="none"

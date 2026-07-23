@@ -1,5 +1,5 @@
 import { SettingsHubContent } from '@/components/settings/settings-hub-content';
 
-export default function OwnerSettingsHub() {
+export default function SettingsHub() {
   return <SettingsHubContent />;
 }

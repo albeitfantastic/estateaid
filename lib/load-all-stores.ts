@@ -7,6 +7,7 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
+import { useActivityLogStore } from '@/store/activity-log-store';
 export async function loadAllStores(): Promise<void> {
   await Promise.all([
     useEstateStore.getState().fetchFromSupabase(),
@@ -18,5 +19,6 @@ export async function loadAllStores(): Promise<void> {
     useEventStore.getState().fetchFromSupabase(),
     useAvailabilityRuleStore.getState().fetchFromSupabase(),
     useFaqStore.getState().fetchFromSupabase(),
+    useActivityLogStore.getState().fetchFromSupabase(),
   ]);
 }

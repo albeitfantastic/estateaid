@@ -19,7 +19,7 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange } from '@/lib/date-utils';
 
-export default function OwnerRequests() {
+export default function RequestsInbox() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();

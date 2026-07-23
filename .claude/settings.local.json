@@ -69,7 +69,8 @@
       "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/stays/\")",
       "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/estates/[estateId]/\")",
       "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/estates/[estateId]/tickets/\")",
-      "Bash(grep -n \"colors\\\\.\" /c/Users/svenk/local_projects/EstateAid/app/\\\\\\(app\\\\\\)/estates/[estateId]/index.tsx)"
+      "Bash(grep -n \"colors\\\\.\" /c/Users/svenk/local_projects/EstateAid/app/\\\\\\(app\\\\\\)/estates/[estateId]/index.tsx)",
+      "Bash(winget upgrade:*)"
     ]
   }
 }

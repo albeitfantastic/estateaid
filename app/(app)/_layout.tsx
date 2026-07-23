@@ -7,7 +7,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TabBarGlassBackground } from '@/components/ui/tab-bar-glass-background';
 import { useAppTheme } from '@/theme/useAppTheme';
 
-export default function OwnerTabLayout() {
+export default function AppTabLayout() {
   const appTheme = useAppTheme();
   const { t, i18n } = useTranslation();
 

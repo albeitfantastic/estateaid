@@ -81,7 +81,7 @@ type UpcomingItem =
       sortDate: string;
     };
 
-export default function OwnerDashboard() {
+export default function HomeDashboard() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -104,7 +104,6 @@ export default function OwnerDashboard() {
     themePreference,
     setThemePreference,
     signOut,
-    selectedTier,
     notificationsEnabled,
     setNotificationsEnabled,
   } = useAuthStore();
@@ -312,7 +311,6 @@ export default function OwnerDashboard() {
           currentUser ? { name: currentUser.name, email: currentUser.email } : null
         }
         accessTier={accessTier}
-        selectedTier={selectedTier}
         isDark={isDark}
         notificationsOn={notificationsEnabled}
         onToggleDark={(v: boolean) => setThemePreference(v ? 'dark' : 'light')}

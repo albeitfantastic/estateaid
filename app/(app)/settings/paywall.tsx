@@ -8,7 +8,7 @@ import { PaywallScreen } from '@/components/paywall/paywall-screen';
  * dismissing routes to the exit offer instead of going home.
  * This ensures the exit offer is shown exactly once per flow session.
  */
-export default function OwnerPaywall() {
+export default function PaywallRoute() {
   const router = useRouter();
   const { fromFlow } = useLocalSearchParams<{ fromFlow?: string }>();
 

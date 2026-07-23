@@ -1,8 +1,9 @@
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
 
-import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 import { SplashScreenOverlay } from '@/components/ui/splash-screen';
+import { debugLog } from '@/lib/debug-session-log';
+import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 
 /**
  * Root index screen — acts as the auth gate.
@@ -18,7 +19,15 @@ export default function Index() {
     return (
       <SplashScreenOverlay
         isHydrated={isHydrated}
-        onDone={() => setSplashDone(true)}
+        onDone={() => {
+          // #region agent log
+          debugLog('D', 'app/index.tsx:onDone', 'splash onDone received by Index', {
+            isHydrated,
+            hasUser: !!currentUser,
+          }, 'post-fix');
+          // #endregion
+          setSplashDone(true);
+        }}
       />
     );
   }
