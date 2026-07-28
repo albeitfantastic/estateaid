@@ -10,8 +10,8 @@ import { StatusBadge } from '@/components/ui/badge';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Layout, Radius, elevationStyle } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { radius, spacing } from '@/theme';
+import { useAppTheme } from '@/theme/useAppTheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
@@ -19,13 +19,12 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange } from '@/lib/date-utils';
 
-export default function OwnerRequests() {
+export default function RequestsInbox() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const scheme = colorScheme ?? 'light';
-  const colors = Colors[scheme];
+  const appTheme = useAppTheme();
+  const colors = appTheme.colors;
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const estates = useMemo(
@@ -50,7 +49,7 @@ export default function OwnerRequests() {
       
         <ThemedText type="title" style={styles.title}>{t('titles.inbox')}</ThemedText>
         {allRequests.length > 0 && (
-          <View style={[styles.badge, { backgroundColor: colors.tint }]}>
+          <View style={[styles.badge, { backgroundColor: colors.primary }]}>
             <ThemedText style={styles.badgeText}>{allRequests.length}</ThemedText>
           </View>
         )}
@@ -75,17 +74,17 @@ export default function OwnerRequests() {
                 key={req.id}
                 style={[
                   styles.row,
-                  { borderColor: colors.border, backgroundColor: colors.surface },
-                  elevationStyle('row', scheme),
+                  { borderColor: colors.border, backgroundColor: colors.card },
+                  appTheme.shadows.sm,
                 ]}
                 onPress={() => router.push(`/(app)/estates/${req.estateId}/stays/${req.id}` as never)}
                 activeOpacity={0.8}
               >
-                <Avatar name={guestName} size={44} color={colors.tint} />
+                <Avatar name={guestName} size={44} color={colors.primary} />
                 <View style={styles.info}>
                   <ThemedText type="defaultSemiBold">{guestName}</ThemedText>
-                  <ThemedText style={[styles.estate, { color: colors.tint }]}>{estate?.name}</ThemedText>
-                  <ThemedText style={[styles.dates, { color: colors.icon }]}>
+                  <ThemedText style={[styles.estate, { color: colors.primary }]}>{estate?.name}</ThemedText>
+                  <ThemedText style={[styles.dates, { color: colors.textMuted }]}>
                     {formatDateRange(req.requestedFrom, req.requestedTo)}
                   </ThemedText>
                 </View>
@@ -107,19 +106,19 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: Layout.sectionGap - 4,
+    paddingHorizontal: spacing.screen,
+    paddingBottom: spacing.section - 4,
     gap: 10,
   },
   title: { flex: 1, fontSize: 28, fontWeight: '700' },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.md },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.md },
   badgeText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  list: { paddingHorizontal: Layout.screenPaddingX },
+  list: { paddingHorizontal: spacing.screen },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderRadius: Radius.lg,
+    borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     marginBottom: 10,
     gap: 12,

@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Invitation, InvitationStatus, type EstateInviteRole } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useEstateStore } from '@/store/estate-store';
+import { useActivityLogStore } from '@/store/activity-log-store';
 import { dedupeById } from '@/lib/dedup-by-id';
 import { normalizeGuestEmail } from '@/lib/invite-email';
 import { getPushToken, sendPush } from '@/lib/notifications';
@@ -75,10 +76,14 @@ export const useInvitationStore = create<InvitationState>()(
           set((s) => ({ invitations: s.invitations.filter((i) => i.id !== invitation.id) }));
           return { error: error.message };
         }
+        useActivityLogStore
+          .getState()
+          .logActivity(invitation.estateId, invitation.ownerId, 'invitation_sent');
         return { error: null };
       },
       respondToInvitation: (id, status, guestId) => {
         const respondedAt = new Date().toISOString();
+        const inv = get().invitations.find((i) => i.id === id);
         set((s) => ({
           invitations: s.invitations.map((inv) =>
             inv.id === id
@@ -92,14 +97,24 @@ export const useInvitationStore = create<InvitationState>()(
         if (status === 'accepted') {
           void useEstateStore.getState().fetchFromSupabase();
         }
+        const actorId = guestId ?? inv?.guestId;
+        if (inv && actorId) {
+          useActivityLogStore
+            .getState()
+            .logActivity(inv.estateId, actorId, status === 'accepted' ? 'invitation_accepted' : 'invitation_declined');
+        }
       },
       revokeInvitation: (id) => {
+        const inv = get().invitations.find((i) => i.id === id);
         set((s) => ({
           invitations: s.invitations.map((inv) =>
             inv.id === id ? { ...inv, status: 'revoked' as InvitationStatus } : inv
           ),
         }));
         void supabase.from('invitations').update({ status: 'revoked' }).eq('id', id);
+        if (inv) {
+          useActivityLogStore.getState().logActivity(inv.estateId, inv.ownerId, 'invitation_revoked');
+        }
       },
       updateInvitationRole: (id, role) => {
         set((s) => ({
@@ -158,6 +173,9 @@ export const useInvitationStore = create<InvitationState>()(
                   : [...s.invitations, invAccepted],
               }));
               void useEstateStore.getState().fetchFromSupabase();
+              useActivityLogStore
+                .getState()
+                .logActivity(invAccepted.estateId, guestId, 'invitation_accepted');
               return { success: true, invitation: invAccepted };
             }
             if (p.ok === false) {
@@ -218,6 +236,7 @@ export const useInvitationStore = create<InvitationState>()(
           ),
         }));
         void useEstateStore.getState().fetchFromSupabase();
+        useActivityLogStore.getState().logActivity(inv.estateId, guestId, 'invitation_accepted');
         return { success: true, invitation: { ...inv!, status: 'accepted', guestId } };
       },
       getInvitationsByEstate: (estateId) =>

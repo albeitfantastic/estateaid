@@ -16,7 +16,7 @@ import { ContactCategory } from '@/types';
 const CATEGORY_ORDER: ContactCategory[] = ['emergency', 'staff', 'service', 'utility', 'neighbor', 'other'];
 const CATEGORY_LABELS: Record<ContactCategory, string> = { emergency: 'Emergency', staff: 'Staff', service: 'Services', utility: 'Utilities', neighbor: 'Neighbors', other: 'Other' };
 
-export default function OwnerContacts() {
+export default function ContactsScreen() {
   const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();

@@ -1,44 +1,30 @@
 import { router, Tabs } from 'expo-router';
-import { Platform, StyleSheet, View } from 'react-native';
-import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { Platform, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Fonts, Glass } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { TabBarGlassBackground } from '@/components/ui/tab-bar-glass-background';
+import { useAppTheme } from '@/theme/useAppTheme';
 
-const PAYWALL_ROUTES = new Set([
-  'paywall-trust',
-  'paywall-main',
-  'paywall-trial',
-  'paywall-outcome',
-  'paywall-exit',
-  'paywall',
-]);
-
-export default function OwnerTabLayout() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const glass = Glass[colorScheme ?? 'light'];
+export default function AppTabLayout() {
+  const appTheme = useAppTheme();
   const { t, i18n } = useTranslation();
 
   return (
     <Tabs
       key={i18n.resolvedLanguage}
       screenOptions={{
-        tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        tabBarActiveTintColor: appTheme.colors.primary,
+        tabBarInactiveTintColor: appTheme.colors.iconMuted,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarBackground: () => (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: glass.tabBar }]} />
-        ),
+        tabBarBackground: () => <TabBarGlassBackground />,
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',
           borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: glass.border,
+          borderTopColor: appTheme.colors.border,
           ...Platform.select({
             ios: {
               shadowColor: '#252220',
@@ -51,7 +37,7 @@ export default function OwnerTabLayout() {
           }),
         },
         tabBarLabelStyle: {
-          fontFamily: Fonts.label,
+          fontFamily: appTheme.typography.fontFamily.medium,
           fontSize: 10,
           letterSpacing: 0.15,
         },
@@ -89,25 +75,26 @@ export default function OwnerTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="maintenance/index"
+        options={{
+          title: t('tabs.maintenance'),
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol name={focused ? 'wrench.fill' : 'wrench'} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="stays"
         options={{
           title: t('tabs.stays'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="invitations/index"
-        options={{
-          title: t('tabs.invites'),
-          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'envelope.fill' : 'envelope'} color={color} />,
-        }}
-      />
+      <Tabs.Screen name="invitations/index" options={{ href: null }} />
       <Tabs.Screen name="guests" options={{ href: null }} />
       <Tabs.Screen name="plan-stay" options={{ href: null }} />
       <Tabs.Screen name="invite" options={{ href: null }} />
       <Tabs.Screen name="requests/index" options={{ href: null }} />
-      <Tabs.Screen name="tickets/new-ticket" options={{ href: null }} />
-      <Tabs.Screen name="tickets/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>

@@ -33,7 +33,7 @@ interface FaqState {
   faqs: FaqItem[];
   setFaqs: (faqs: FaqItem[]) => void;
   fetchFromSupabase: () => Promise<void>;
-  addFaq: (faq: FaqItem) => Promise<void>;
+  addFaq: (faq: FaqItem) => Promise<{ error: string | null }>;
   updateFaq: (id: string, patch: Partial<FaqItem>) => Promise<void>;
   deleteFaq: (id: string) => Promise<void>;
   reorderFaqs: (estateId: string, orderedIds: string[]) => Promise<void>;
@@ -52,7 +52,12 @@ export const useFaqStore = create<FaqState>()(
       addFaq: async (faq) => {
         set((s) => ({ faqs: [...s.faqs, faq] }));
         const { error } = await supabase.from('faqs').insert(toDb(faq));
-        if (error) set((s) => ({ faqs: s.faqs.filter((f) => f.id !== faq.id) }));
+        if (error) {
+          console.warn('addFaq: Supabase insert failed', error.message);
+          set((s) => ({ faqs: s.faqs.filter((f) => f.id !== faq.id) }));
+          return { error: error.message };
+        }
+        return { error: null };
       },
       updateFaq: async (id, patch) => {
         set((s) => ({

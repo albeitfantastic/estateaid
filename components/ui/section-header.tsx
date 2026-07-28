@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Fonts, Layout } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 import { showMaisonProUpgradePrompt } from '@/lib/maison-pro-upgrade';
 
 interface SectionHeaderProps {
@@ -16,13 +15,13 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, actionLabel, onAction, actionHostLocked }: SectionHeaderProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const appTheme = useAppTheme();
+  const colors = appTheme.colors;
   const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
-      <ThemedText style={[styles.title, { color: colors.textSecondary }]}>{title}</ThemedText>
+      <ThemedText style={[styles.title, { color: colors.textMuted }]}>{title}</ThemedText>
       {actionLabel && onAction && (
         <TouchableOpacity
           onPress={() => (actionHostLocked ? showMaisonProUpgradePrompt(t) : onAction())}
@@ -31,11 +30,11 @@ export function SectionHeader({ title, actionLabel, onAction, actionHostLocked }
           style={styles.actionRow}
         >
           {actionHostLocked && (
-            <View style={[styles.actionLock, { backgroundColor: colors.text + '14' }]}>
-              <IconSymbol name="lock.fill" size={10} color={colors.textSecondary} />
+            <View style={[styles.actionLock, { backgroundColor: colors.borderSoft }]}>
+              <IconSymbol name="lock.fill" size={10} color={colors.textMuted} />
             </View>
           )}
-          <ThemedText style={[styles.action, { color: colors.tint }]}>{actionLabel}</ThemedText>
+          <ThemedText style={[styles.action, { color: colors.primary }]}>{actionLabel}</ThemedText>
         </TouchableOpacity>
       )}
     </View>
@@ -48,7 +47,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 0,
-    paddingVertical: Layout.sectionGap - 8,
+    paddingVertical: 12,
     marginTop: 6,
   },
   title: {
@@ -56,12 +55,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.1,
-    fontFamily: Fonts.labelBold,
+    fontFamily: 'Manrope_700Bold',
   },
   action: {
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: Fonts.label,
+    fontFamily: 'Manrope_600SemiBold',
     letterSpacing: 0.2,
   },
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

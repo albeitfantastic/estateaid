@@ -1,11 +1,10 @@
 import { create } from 'zustand';
 
 import { supabase } from '@/lib/supabase';
-import { SEED_USERS } from '@/store/seed-data';
 
 export type ProfileRow = { id: string; name: string; pushToken?: string };
 
-/** Resolve a label for a user id: live profile → seed demo user → email hint → short id. */
+/** Resolve a label for a user id: live profile → email hint → short id. */
 export function resolveUserDisplayName(
   userId: string | undefined | null,
   profilesById: Record<string, ProfileRow>,
@@ -14,8 +13,6 @@ export function resolveUserDisplayName(
   if (!userId) return 'Unknown';
   const n = profilesById[userId]?.name?.trim();
   if (n) return n;
-  const seed = SEED_USERS.find((u) => u.id === userId);
-  if (seed) return seed.name;
   const email = emailHint?.trim();
   if (email) return email;
   return `User ${userId.slice(0, 8)}`;

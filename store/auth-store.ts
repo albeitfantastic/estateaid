@@ -1,10 +1,9 @@
+import { supabase } from '@/lib/supabase';
 import { User } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { supabase } from '@/lib/supabase';
 
-export type OwnerTier = 'starter' | 'premium';
 export type ThemePreference = 'light' | 'dark';
 
 /** Onboarding flag is scoped to this user id so a new account on the same device is not skipped. */
@@ -39,7 +38,6 @@ interface AuthState {
   hasCompletedOnboarding: boolean;
   /** User id for which `hasCompletedOnboarding` applies; must match `currentUser.id` to skip onboarding. */
   onboardingCompletedForUserId: string | null;
-  selectedTier: OwnerTier | null;
   pendingInviteCode: string | null;
   themePreference: ThemePreference;
   /** Persisted; when false, skip push registration and clear server token. */
@@ -48,7 +46,7 @@ interface AuthState {
   patchUser: (partial: Partial<Pick<User, 'name' | 'avatarUrl' | 'trialEndsAt' | 'trialStartedAt'>>) => void;
   clearUser: () => void;
   setHydrated: () => void;
-  completeOnboarding: (tier?: OwnerTier) => void;
+  completeOnboarding: () => void;
   resetOnboarding: () => void;
   setPendingInviteCode: (code: string | null) => void;
   setThemePreference: (theme: ThemePreference) => void;
@@ -65,7 +63,6 @@ export const useAuthStore = create<AuthState>()(
       isHydrated: false,
       hasCompletedOnboarding: false,
       onboardingCompletedForUserId: null,
-      selectedTier: null,
       pendingInviteCode: null,
       themePreference: 'light',
       notificationsEnabled: true,
@@ -77,35 +74,42 @@ export const useAuthStore = create<AuthState>()(
         }),
       clearUser: () => set({ currentUser: null }),
       setHydrated: () => set({ isHydrated: true }),
-      completeOnboarding: (tier) =>
+      completeOnboarding: () =>
         set((s) => ({
           hasCompletedOnboarding: true,
           onboardingCompletedForUserId: s.currentUser?.id ?? s.onboardingCompletedForUserId,
-          ...(tier ? { selectedTier: tier } : {}),
         })),
       resetOnboarding: () => set({ hasCompletedOnboarding: false, onboardingCompletedForUserId: null }),
       setPendingInviteCode: (code) => set({ pendingInviteCode: code }),
       setThemePreference: (theme) => set({ themePreference: theme }),
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       bootstrapSession: async () => {
+        const BOOTSTRAP_MS = 4000;
         try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at')
-              .eq('id', session.user.id)
-              .single();
-            if (profile) {
-              set({
-                currentUser: profileToUser(profile as Record<string, unknown>, session.user.email!),
-              });
-            }
-          }
+          await Promise.race([
+            (async () => {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              if (session?.user) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at')
+                  .eq('id', session.user.id)
+                  .single();
+                if (profile) {
+                  set({
+                    currentUser: profileToUser(profile as Record<string, unknown>, session.user.email!),
+                  });
+                }
+              }
+            })(),
+            new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error('bootstrap_timeout')), BOOTSTRAP_MS);
+            }),
+          ]);
         } catch {
-          // session check failed — leave currentUser as null
+          // session check failed / timed out — leave currentUser as null
         } finally {
           set({ isHydrated: true });
         }
@@ -140,7 +144,6 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         onboardingCompletedForUserId: state.onboardingCompletedForUserId,
-        selectedTier: state.selectedTier,
         pendingInviteCode: state.pendingInviteCode,
         themePreference: state.themePreference,
         notificationsEnabled: state.notificationsEnabled,

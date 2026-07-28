@@ -34,13 +34,14 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
+      "expo-document-picker",
       [
         "expo-splash-screen",
         {
           "image": "./logo_1426.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#FAFAF8",
+          "backgroundColor": "#F6F0E8",
           "dark": {
             "backgroundColor": "#0F1F1E"
           }

@@ -1,9 +1,7 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Fonts } from '@/constants/theme';
-import { Typography } from '@/constants/typography';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
@@ -28,63 +26,66 @@ export function ThemedText({
   type = 'default',
   ...rest
 }: ThemedTextProps) {
+  const t = useAppTheme();
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
-  const scheme = useColorScheme();
-  const linkColor = Colors[scheme ?? 'light'].brownMid;
+  const linkColor = t.colors.primary;
+  const tf = t.typography.fontFamily;
+  const ts = t.typography.size;
+  const lh = t.typography.lineHeight;
 
   return (
     <Text
       style={[
         { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        type === 'default'
+          ? { fontSize: ts.md, lineHeight: lh.md, fontFamily: tf.regular, fontWeight: '400' as const }
+          : undefined,
+        type === 'title'
+          ? { fontSize: ts.xxl, lineHeight: lh.xxl, fontFamily: tf.bold, fontWeight: '700' as const }
+          : undefined,
+        type === 'defaultSemiBold'
+          ? { fontSize: ts.md, lineHeight: lh.md, fontFamily: tf.semibold, fontWeight: '600' as const }
+          : undefined,
+        type === 'subtitle'
+          ? { fontSize: ts.xl, lineHeight: lh.xl, fontFamily: tf.bold, fontWeight: '700' as const }
+          : undefined,
+        type === 'link'
+          ? { fontSize: ts.md, lineHeight: lh.md, fontFamily: tf.medium, fontWeight: '500' as const }
+          : undefined,
         type === 'link' ? { color: linkColor } : undefined,
-        type === 'overline' ? styles.overline : undefined,
-        type === 'caption' ? styles.caption : undefined,
-        type === 'statValue' ? styles.statValue : undefined,
-        type === 'statLabel' ? styles.statLabel : undefined,
-        type === 'label' ? styles.label : undefined,
+        type === 'overline'
+          ? {
+              fontSize: ts.xs,
+              lineHeight: lh.xs,
+              fontFamily: tf.bold,
+              fontWeight: '700' as const,
+              letterSpacing: 1.2,
+              textTransform: 'uppercase' as const,
+            }
+          : undefined,
+        type === 'caption'
+          ? { fontSize: ts.xs, lineHeight: lh.xs, fontFamily: tf.regular, fontWeight: '400' as const }
+          : undefined,
+        type === 'statValue'
+          ? { fontSize: ts.xl, lineHeight: lh.xl, fontFamily: tf.bold, fontWeight: '700' as const }
+          : undefined,
+        type === 'statLabel'
+          ? {
+              fontSize: ts.xs,
+              lineHeight: lh.xs,
+              fontFamily: tf.medium,
+              fontWeight: '500' as const,
+              letterSpacing: 0.6,
+              textTransform: 'uppercase' as const,
+            }
+          : undefined,
+        type === 'label'
+          ? { fontSize: ts.sm, lineHeight: lh.sm, fontFamily: tf.medium, fontWeight: '500' as const }
+          : undefined,
         style,
       ]}
       {...rest}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  default: {
-    ...Typography.body,
-  },
-  defaultSemiBold: {
-    ...Typography.bodySemiBold,
-  },
-  title: {
-    ...Typography.hero,
-  },
-  subtitle: {
-    ...Typography.subtitle,
-  },
-  link: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontFamily: Fonts.body,
-  },
-  overline: {
-    ...Typography.overline,
-  },
-  caption: {
-    ...Typography.caption,
-  },
-  statValue: {
-    ...Typography.statValue,
-  },
-  statLabel: {
-    ...Typography.statLabel,
-  },
-  label: {
-    ...Typography.label,
-  },
-});
+const _styles = StyleSheet.create({});

@@ -2,8 +2,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { Colors, Elevation, Fonts, Layout, Radius } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 interface OnboardingQuestionProps {
   step: number;
@@ -27,9 +26,8 @@ export function OnboardingQuestion({
   onContinue,
 }: OnboardingQuestionProps) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const scheme = colorScheme ?? 'light';
-  const colors = Colors[scheme];
+  const appTheme = useAppTheme();
+  const colors = appTheme.colors;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
@@ -39,7 +37,7 @@ export function OnboardingQuestion({
             key={i}
             style={[
               styles.progressSegment,
-              { backgroundColor: i < step ? colors.tint : colors.border },
+              { backgroundColor: i < step ? colors.primary : colors.border },
             ]}
           />
         ))}
@@ -58,12 +56,12 @@ export function OnboardingQuestion({
                 key={i}
                 style={[
                   styles.option,
-                  { borderColor: colors.border, backgroundColor: colors.surface },
-                  Elevation.row[scheme],
+                  { borderColor: colors.border, backgroundColor: colors.card },
+                  appTheme.shadows.sm,
                   selected && {
-                    borderColor: colors.tint,
+                    borderColor: colors.primary,
                     borderWidth: 1.5,
-                    backgroundColor: colors.tint + '12',
+                    backgroundColor: colors.primarySoft,
                   },
                 ]}
                 onPress={() => onSelect(i)}
@@ -73,7 +71,7 @@ export function OnboardingQuestion({
                   style={[
                     styles.optionText,
                     { color: colors.text },
-                    selected && { color: colors.tint, fontFamily: Fonts.headingSemiBold, fontWeight: '600' },
+                    selected && { color: colors.primary, fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
                   ]}
                 >
                   {label}
@@ -81,11 +79,11 @@ export function OnboardingQuestion({
                 <View
                   style={[
                     styles.radio,
-                    { borderColor: colors.icon + '44' },
-                    selected && { borderColor: colors.tint, backgroundColor: colors.tint + '10' },
+                    { borderColor: colors.border },
+                    selected && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
                   ]}
                 >
-                  {selected && <View style={[styles.radioInner, { backgroundColor: colors.tint }]} />}
+                  {selected && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
                 </View>
               </TouchableOpacity>
             );
@@ -98,9 +96,9 @@ export function OnboardingQuestion({
           style={[
             styles.btn,
             {
-              backgroundColor: selectedIndex === null ? colors.surfaceMuted : colors.tint,
+              backgroundColor: selectedIndex === null ? colors.surface : colors.primary,
             },
-            selectedIndex === null ? styles.btnDisabled : Elevation.fab[scheme],
+            selectedIndex === null ? styles.btnDisabled : appTheme.shadows.md,
           ]}
           onPress={onContinue}
           disabled={selectedIndex === null}
@@ -122,24 +120,24 @@ const styles = StyleSheet.create({
   progressRow: {
     flexDirection: 'row',
     gap: 6,
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingTop: Layout.sectionGap,
+    paddingHorizontal: 24,
+    paddingTop: 20,
     paddingBottom: 8,
   },
   progressSegment: {
     flex: 1,
     height: 3,
-    borderRadius: Radius.full,
+    borderRadius: 999,
   },
   content: {
     flex: 1,
-    paddingHorizontal: Layout.screenPaddingX,
+    paddingHorizontal: 24,
     paddingTop: 36,
   },
   stepLabel: {
     fontSize: 12,
     fontWeight: '500',
-    fontFamily: Fonts.label,
+    fontFamily: 'Manrope_400Regular',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 16,
@@ -150,13 +148,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 36,
     letterSpacing: -0.5,
-    fontFamily: Fonts.heading,
+    fontFamily: 'Manrope_700Bold',
     marginBottom: 8,
   },
   hint: {
     fontSize: 15,
     lineHeight: 22,
-    fontFamily: Fonts.body,
+    fontFamily: 'Manrope_400Regular',
     marginBottom: 32,
   },
   options: {
@@ -166,22 +164,22 @@ const styles = StyleSheet.create({
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: Radius.lg,
+    borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     paddingVertical: 18,
-    paddingHorizontal: Layout.sectionGap,
+    paddingHorizontal: 20,
     gap: 12,
   },
   optionText: {
     flex: 1,
     fontSize: 16,
     lineHeight: 22,
-    fontFamily: Fonts.body,
+    fontFamily: 'Manrope_400Regular',
   },
   radio: {
     width: 22,
     height: 22,
-    borderRadius: Radius.full,
+    borderRadius: 999,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -189,15 +187,15 @@ const styles = StyleSheet.create({
   radioInner: {
     width: 10,
     height: 10,
-    borderRadius: Radius.full,
+    borderRadius: 999,
   },
   footer: {
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: Layout.sectionGap - 4,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
   },
   btn: {
-    borderRadius: Radius.lg,
-    minHeight: Layout.touchMin,
+    borderRadius: 20,
+    minHeight: 44,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -213,7 +211,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
-    fontFamily: Fonts.heading,
+    fontFamily: 'Manrope_700Bold',
     letterSpacing: 0.1,
   },
 });

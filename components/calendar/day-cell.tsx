@@ -1,8 +1,7 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 export interface DotData {
   color: string;
@@ -22,8 +21,8 @@ interface DayCellProps {
 }
 
 export function DayCell({ day, isToday, isPast, dots, availability, selected, onPress }: DayCellProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const t = useAppTheme();
+  const colors = t.colors;
 
   const blocked = availability === 'blocked';
   const myStay = availability === 'my-stay';
@@ -35,8 +34,8 @@ export function DayCell({ day, isToday, isPast, dots, availability, selected, on
     ownerMode && isToday && !selected && !myStay && !blocked && !unavailable
       ? {
           borderWidth: 2,
-          borderColor: colors.tint,
-          backgroundColor: colors.tint + '14',
+          borderColor: colors.primary,
+          backgroundColor: colors.primarySoft,
         }
       : null;
 
@@ -45,8 +44,8 @@ export function DayCell({ day, isToday, isPast, dots, availability, selected, on
     selected && !myStay && !blocked
       ? {
           borderWidth: 2,
-          borderColor: colors.tint,
-          backgroundColor: colors.tint + (ownerMode ? '26' : '1c'),
+          borderColor: colors.primary,
+          backgroundColor: colors.primarySoft,
         }
       : null;
 
@@ -67,9 +66,9 @@ export function DayCell({ day, isToday, isPast, dots, availability, selected, on
           style={[
             styles.dayText,
             ownerMode && isPast && !selected && styles.past,
-            ownerMode && isToday && !selected && { color: colors.tint, fontWeight: '700' as const },
-            ownerMode && selected && { color: colors.tint, fontWeight: '700' as const },
-            !ownerMode && selected && !myStay && !blocked && { color: colors.tint, fontWeight: '700' as const },
+            ownerMode && isToday && !selected && { color: colors.primary, fontWeight: '700' as const },
+            ownerMode && selected && { color: colors.primary, fontWeight: '700' as const },
+            !ownerMode && selected && !myStay && !blocked && { color: colors.primary, fontWeight: '700' as const },
             open && !isToday && styles.availableText,
             unavailable && styles.unavailableText,
             myStay && styles.myStayText,
@@ -124,7 +123,7 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: Fonts.headingSemiBold,
+    fontFamily: 'Manrope_600SemiBold',
   },
   past: { opacity: 0.4 },
   availableText: { color: '#15803d', fontWeight: '600' },

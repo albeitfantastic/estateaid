@@ -1,8 +1,8 @@
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
 
-import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 import { SplashScreenOverlay } from '@/components/ui/splash-screen';
+import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 
 /**
  * Root index screen — acts as the auth gate.

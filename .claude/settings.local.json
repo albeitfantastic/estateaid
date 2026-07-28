@@ -61,7 +61,16 @@
       "Bash(find /c/Users/svenk/local_projects/EstateAid -type f -name *subscription*provider* -o -name *provider*)",
       "Bash(xargs head:*)",
       "Bash(head:*)",
-      "Bash(find \"C:\\\\Users\\\\svenk\\\\local_projects\\\\EstateAid/app/\\(owner\\)\" -type f -name \"*.tsx\")"
+      "Bash(find \"C:\\\\Users\\\\svenk\\\\local_projects\\\\EstateAid/app/\\(owner\\)\" -type f -name \"*.tsx\")",
+      "Bash(find /c/Users/svenk/local_projects/EstateAid/store -type f -name *.ts -o -name *.tsx)",
+      "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/\")",
+      "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/estates/\")",
+      "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/tickets/\")",
+      "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/stays/\")",
+      "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/estates/[estateId]/\")",
+      "Bash(ls -la \"/c/Users/svenk/local_projects/EstateAid/app/\\(app\\)/estates/[estateId]/tickets/\")",
+      "Bash(grep -n \"colors\\\\.\" /c/Users/svenk/local_projects/EstateAid/app/\\\\\\(app\\\\\\)/estates/[estateId]/index.tsx)",
+      "Bash(winget upgrade:*)"
     ]
   }
 }

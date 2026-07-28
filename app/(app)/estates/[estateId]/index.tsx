@@ -1,30 +1,31 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Elevation, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useHasFullHostAccess } from '@/lib/access-tier';
+import { addDays, today } from '@/lib/date-utils';
+import { getEstateRole } from '@/lib/estate-role';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
-import { getEstateRole } from '@/lib/estate-role';
-import { addDays, today } from '@/lib/date-utils';
-import { useHasFullHostAccess } from '@/lib/access-tier';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const OWNER_ITEMS = [
-  { label: 'Guests', icon: 'person.2.fill', route: 'guests' },
-  { label: 'Stay Requests', icon: 'calendar', route: 'stays' },
-  { label: 'Availability', icon: 'calendar.badge.exclamationmark', route: 'availability' },
-  { label: 'Events', icon: 'calendar.badge.clock', route: 'events' },
-  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq' },
-  { label: 'Documents', icon: 'doc.fill', route: 'documents' },
-  { label: 'Contacts', icon: 'phone.fill', route: 'contacts' },
-  { label: 'Tickets', icon: 'exclamationmark.triangle.fill', route: 'tickets' },
+  { label: 'Guests', icon: 'person.2.fill', route: 'guests', primary: false },
+  { label: 'Stay Requests', icon: 'calendar', route: 'stays', primary: false },
+  { label: 'Availability', icon: 'calendar.badge.exclamationmark', route: 'availability', primary: false },
+  { label: 'Events', icon: 'calendar.badge.clock', route: 'events', primary: false },
+  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', primary: false },
+  { label: 'Documents', icon: 'doc.fill', route: 'documents', primary: false },
+  { label: 'Contacts', icon: 'phone.fill', route: 'contacts', primary: false },
+  { label: 'Activity', icon: 'clock.fill', route: 'activity', primary: false },
 ] as const;
 
 const GUEST_ITEMS = [
@@ -33,10 +34,12 @@ const GUEST_ITEMS = [
   { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', alwaysOn: false },
   { label: 'Documents', icon: 'doc.fill', route: 'documents', alwaysOn: false },
   { label: 'Contacts', icon: 'phone.fill', route: 'contacts', alwaysOn: false },
-  { label: 'My Tickets', icon: 'exclamationmark.triangle.fill', route: 'tickets', alwaysOn: false },
+  { label: 'Maintenance', icon: 'calendar.badge.clock', route: 'events', alwaysOn: false },
+  { label: 'Activity', icon: 'clock.fill', route: 'activity', alwaysOn: false },
 ] as const;
 
 export default function EstateHub() {
+  const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -109,12 +112,17 @@ export default function EstateHub() {
                 onPress={() => router.push(`/(app)/estates/${estateId}/${item.route}` as never)}
                 style={[
                   styles.tile,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  {
+                    backgroundColor: item.primary ? colors.tintMuted : colors.surface,
+                    borderColor: item.primary ? colors.tintMuted : colors.border,
+                  },
                   Elevation.card[scheme],
                 ]}
               >
                 <IconSymbol name={item.icon} size={28} color={colors.tint} />
-                <ThemedText type="defaultSemiBold" style={styles.tileLabel}>{item.label}</ThemedText>
+                <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
+                  {item.route === 'events' ? t('titles.events') : item.label}
+                </ThemedText>
               </HostProLockTouchable>
             ))}
           </View>
@@ -166,7 +174,7 @@ export default function EstateHub() {
               >
                 <IconSymbol name={item.icon} size={28} color={unlocked ? colors.tint : colors.icon} />
                 <ThemedText type="defaultSemiBold" style={[styles.tileLabel, !unlocked && { color: colors.icon }]}>
-                  {item.label}
+                  {item.route === 'events' ? t('titles.events') : item.label}
                 </ThemedText>
                 {!unlocked && (
                   <View style={styles.lockBadge}>
@@ -181,7 +189,7 @@ export default function EstateHub() {
           <View style={[styles.hint, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
             <IconSymbol name="lock.fill" size={13} color={colors.icon} />
             <ThemedText style={[styles.hintText, { color: colors.icon }]}>
-              FAQ, Documents, Contacts and Tickets unlock 3 days before your stay.
+              FAQ, Documents, Contacts and Maintenance unlock 3 days before your stay.
             </ThemedText>
           </View>
         )}

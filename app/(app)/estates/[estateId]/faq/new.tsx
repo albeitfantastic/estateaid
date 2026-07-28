@@ -11,12 +11,19 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFaqStore } from '@/store/faq-store';
-import { generateId } from '@/lib/id';
+import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
+
+function paramString(v: string | string[] | undefined): string | undefined {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v)) return v[0];
+  return undefined;
+}
 
 export default function NewFaq() {
   const { t } = useTranslation();
-  const { estateId } = useLocalSearchParams<{ estateId: string }>();
+  const params = useLocalSearchParams<{ estateId: string }>();
+  const estateId = paramString(params.estateId);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -25,13 +32,43 @@ export default function NewFaq() {
 
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  function submit() {
-    if (!isRequired(question)) { Alert.alert('Required', 'Please enter a question.'); return; }
-    if (!isRequired(answer)) { Alert.alert('Required', 'Please enter an answer.'); return; }
+  async function submit() {
+    if (saving) return;
+    if (!estateId) {
+      Alert.alert(t('common.error'), 'Missing property for this FAQ.');
+      return;
+    }
+    if (!isRequired(question)) {
+      Alert.alert('Required', 'Please enter a question.');
+      return;
+    }
+    if (!isRequired(answer)) {
+      Alert.alert('Required', 'Please enter an answer.');
+      return;
+    }
     const existing = getFaqsByEstate(estateId);
-    addFaq({ id: generateId(), estateId, question: question.trim(), answer: answer.trim(), order: existing.length, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-    router.back();
+    const newId = generateUuidV4();
+    setSaving(true);
+    try {
+      const { error } = await addFaq({
+        id: newId,
+        estateId,
+        question: question.trim(),
+        answer: answer.trim(),
+        order: existing.length,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      if (error) {
+        Alert.alert(t('common.error'), error);
+        return;
+      }
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -41,8 +78,17 @@ export default function NewFaq() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>{t('titles.newFaq')}</ThemedText>
-        <TouchableOpacity onPress={submit}>
-          <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+        <TouchableOpacity onPress={submit} disabled={saving} accessibilityState={{ disabled: saving }}>
+          <ThemedText
+            style={{
+              color: saving ? colors.icon : colors.tint,
+              fontWeight: '600',
+              fontSize: 16,
+              opacity: saving ? 0.5 : 1,
+            }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </ThemedText>
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">

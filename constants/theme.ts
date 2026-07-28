@@ -1,7 +1,8 @@
+import type { BlurTint } from 'expo-blur';
 import type { ViewStyle } from 'react-native';
 
 /** Canonical brand from `dsg.md` — light mode primary / interactive */
-export const BrandTint = '#234536' as const;
+export const BrandTint = '#2F5D50' as const;
 
 /**
  * App UI — forest + ink + warm stone.
@@ -9,43 +10,43 @@ export const BrandTint = '#234536' as const;
  */
 export const Colors = {
   light: {
-    background: '#F6F4EF',
-    surface: '#FFFCF9',
-    surfaceMuted: '#EFEBE3',
+    background: '#F4F2ED',
+    surface: '#FBF9F6',
+    surfaceMuted: '#F0ECE6',
     /** Icon wells — slight sage so brand green still feels native */
-    tintMuted: '#E8EBE7',
+    tintMuted: '#E4EFEA',
     /** Warm ink (not pure black, not cold blue-black) */
-    text: '#252220',
-    textSecondary: '#6E6862',
+    text: '#1F1F1B',
+    textSecondary: '#6E6A63',
     tint: BrandTint,
-    accent: '#6E6862',
-    brownMid: '#3D4A44',
-    border: '#DED9D0',
-    icon: '#6E6862',
-    tabIconDefault: '#6E6862',
+    accent: '#C9784A',
+    brownMid: '#355F53',
+    border: '#D9D0C3',
+    icon: '#355F53',
+    tabIconDefault: '#7C776F',
     tabIconSelected: BrandTint,
-    success: '#4A7C59',
-    error: '#B04A3A',
-    warning: '#B8923A',
+    success: '#5D8A6F',
+    error: '#B65C5C',
+    warning: '#B9824A',
   },
   dark: {
-    background: '#131210',
-    surface: '#1F1D1A',
-    surfaceMuted: '#262422',
-    tintMuted: '#2C302E',
+    background: '#171816',
+    surface: '#262A25',
+    surfaceMuted: '#232622',
+    tintMuted: '#22332D',
     /** Warm paper on ink */
-    text: '#F4F1EB',
-    textSecondary: '#9C9690',
-    tint: '#5CB0A0',
-    accent: '#9C9690',
-    brownMid: '#6A9086',
-    border: '#3A3632',
-    icon: '#9C9690',
-    tabIconDefault: '#9C9690',
-    tabIconSelected: '#5CB0A0',
-    success: '#4CAF7D',
-    error: '#E57373',
-    warning: '#D4A84B',
+    text: '#F2EEE8',
+    textSecondary: '#C6C0B7',
+    tint: '#6F9A89',
+    accent: '#D69469',
+    brownMid: '#8FB2A4',
+    border: '#3A3E38',
+    icon: '#8FB2A4',
+    tabIconDefault: '#A39C92',
+    tabIconSelected: '#6F9A89',
+    success: '#7DA98D',
+    error: '#D08383',
+    warning: '#D2A06A',
   },
 };
 
@@ -121,19 +122,39 @@ export function elevationStyle(
   return Elevation[level][s];
 }
 
-/** Translucent glass surfaces — tab bars, sheets */
+/** Translucent glass surfaces — tab bars, sheets, Android tab fallback */
 export const Glass = {
   light: {
-    surface: 'rgba(255, 252, 249, 0.94)',
-    border: 'rgba(37, 34, 32, 0.09)',
-    shadow: 'rgba(37, 34, 32, 0.05)',
-    tabBar: 'rgba(255, 252, 249, 0.97)',
+    surface: 'rgba(251, 249, 246, 0.94)',
+    border: 'rgba(31, 31, 27, 0.09)',
+    shadow: 'rgba(31, 31, 27, 0.05)',
+    tabBar: 'rgba(251, 249, 246, 0.97)',
   },
   dark: {
-    surface: 'rgba(31, 29, 26, 0.92)',
-    border: 'rgba(244, 241, 235, 0.10)',
+    surface: 'rgba(38, 42, 37, 0.92)',
+    border: 'rgba(242, 238, 232, 0.10)',
     shadow: 'rgba(0, 0, 0, 0.4)',
-    tabBar: 'rgba(31, 29, 26, 0.96)',
+    tabBar: 'rgba(38, 42, 37, 0.96)',
+  },
+};
+
+/**
+ * iOS tab bar: `expo-blur` system materials (Liquid Glass–style chrome).
+ * Tune `intensity` on a physical device if labels wash out. Android uses `Glass.tabBar` instead (see `TabBarGlassBackground`).
+ */
+export const TabBarBlur: Record<
+  ColorSchemeName,
+  { tint: BlurTint; intensity: number; brandWash: string }
+> = {
+  light: {
+    tint: 'systemChromeMaterialLight',
+    intensity: 82,
+    brandWash: 'rgba(47, 93, 80, 0.035)',
+  },
+  dark: {
+    tint: 'systemChromeMaterialDark',
+    intensity: 78,
+    brandWash: 'rgba(111, 154, 137, 0.045)',
   },
 };
 
@@ -171,7 +192,6 @@ export const StatusColors = {
   open: '#D97706',
   in_progress: '#1C3D5A',
   resolved: '#2D7D52',
-  closed: '#94A3B8',
 } as const;
 
 export const Fonts = {

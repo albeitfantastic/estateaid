@@ -2,8 +2,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useState } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from './icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme/useAppTheme';
 import { getDaysInRange, parseDateStr, toISODate } from '@/lib/date-utils';
 
 interface DateRangePickerProps {
@@ -21,8 +20,8 @@ function isBlocked(dateStr: string, blockedRanges: { from: string; to: string }[
 }
 
 export function DateRangePicker({ from, to, blockedRanges = [], onChange }: DateRangePickerProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const t = useAppTheme();
+  const colors = t.colors;
   const today = toISODate(new Date());
 
   const [viewYear, setViewYear] = useState(() => {
@@ -82,20 +81,20 @@ export function DateRangePicker({ from, to, blockedRanges = [], onChange }: Date
       {/* Month navigation */}
       <View style={styles.nav}>
         <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-          <IconSymbol name="arrow.left" size={18} color={colors.tint} />
+          <IconSymbol name="arrow.left" size={18} color={colors.primary} />
         </TouchableOpacity>
         <ThemedText type="defaultSemiBold" style={styles.monthLabel}>
           {MONTHS[viewMonth]} {viewYear}
         </ThemedText>
         <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-          <IconSymbol name="arrow.right" size={18} color={colors.tint} />
+          <IconSymbol name="arrow.right" size={18} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
       {/* Day headers */}
       <View style={styles.weekRow}>
         {DAYS.map((d) => (
-          <ThemedText key={d} style={[styles.dayHeader, { color: colors.icon }]}>{d}</ThemedText>
+          <ThemedText key={d} style={[styles.dayHeader, { color: colors.textMuted }]}>{d}</ThemedText>
         ))}
       </View>
 
@@ -116,8 +115,8 @@ export function DateRangePicker({ from, to, blockedRanges = [], onChange }: Date
               key={dateStr}
               style={[
                 styles.cell,
-                isMid && { backgroundColor: colors.tint + '22' },
-                isEndpoint && { backgroundColor: colors.tint },
+                isMid && { backgroundColor: colors.primarySoft },
+                isEndpoint && { backgroundColor: colors.primary },
               ]}
               onPress={() => handleDayPress(dateStr)}
               disabled={isPast || blocked}
@@ -139,7 +138,7 @@ export function DateRangePicker({ from, to, blockedRanges = [], onChange }: Date
       </View>
 
       {/* Selection hint */}
-      <ThemedText style={[styles.hint, { color: colors.icon }]}>
+      <ThemedText style={[styles.hint, { color: colors.textMuted }]}>
         {selecting === 'from' ? 'Select check-in date' : 'Select check-out date'}
       </ThemedText>
     </View>

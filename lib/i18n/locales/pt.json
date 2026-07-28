@@ -11,6 +11,7 @@
     "home": "Início",
     "properties": "Propriedades",
     "calendar": "Calendário",
+    "maintenance": "Manutenção",
     "stays": "Estadias",
     "invites": "Convites"
   },
@@ -122,7 +123,11 @@
     "youSuffix": "(você)",
     "thisMonth": "Este mês",
     "legend": "Legenda",
-    "nothingScheduled": "Nada agendado"
+    "nothingScheduled": "Nada agendado",
+    "upcomingMaintenance": "Manutenção próxima",
+    "noUpcomingMaintenanceTitle": "Sem manutenção próxima",
+    "noUpcomingMaintenanceSub": "Adicione planos recorrentes ou tarefas pontuais em Manutenção de cada propriedade.",
+    "maintenanceDueToday": "Vence hoje"
   },
   "guestStays": {
     "title": "Estadias",
@@ -181,7 +186,7 @@
     "legendUnavailableBooked": "Indisponível — reservado por outros",
     "legendToday": "Hoje",
     "legendSelectedDay": "Dia selecionado",
-    "legendPropertyEvent": "Evento na propriedade"
+    "legendPropertyEvent": "Manutenção na propriedade"
   },
   "actions": {
     "accept": "Aceitar",
@@ -223,12 +228,35 @@
     "editStay": "Editar estadia",
     "guests": "Convidados",
     "myStayStatus": "Status da minha estadia",
-    "editEvent": "Editar evento",
+    "editEvent": "Editar manutenção",
     "newTicket": "Novo chamado",
     "myTickets": "Meus chamados",
     "raiseIssue": "Reportar problema",
     "editContact": "Editar contato",
     "uploadDocument": "Enviar documento",
     "availability": "Disponibilidade"
+  },
+  "maintenanceSchedule": {
+    "emptyTitle": "Ainda sem manutenção",
+    "emptySub": "Adicione tarefas recorrentes ou pontuais para esta propriedade.",
+    "addCta": "Adicionar manutenção",
+    "deleteTitle": "Excluir manutenção",
+    "deleteMessage": "Excluir «{{title}}»?",
+    "notFound": "Item de manutenção não encontrado.",
+    "missingTitle": "Título em falta",
+    "missingTitleBody": "Introduza um título para esta manutenção.",
+    "saveFailedTitle": "Não foi possível guardar",
+    "saveButton": "Guardar manutenção",
+    "recurringSection": "Recorrente · {{count}}",
+    "tasksSection": "Tarefas · {{count}}",
+    "recurringBadge": "Plano recorrente",
+    "oneTimeTask": "Tarefa pontual",
+    "typeRecurring": "Recorrente",
+    "deleteItemCta": "Excluir manutenção",
+    "propertyMissingBody": "Propriedade em falta. Volte atrás e abra este ecrã a partir da propriedade.",
+    "noDate": "Sem data"
+  },
+  "availabilityScreen": {
+    "infoCalendar": "O calendário continua a refletir reservas reais e planos de manutenção. Aqui adiciona datas bloqueadas extra (encerramentos e épocas) e limites de reserva (noites mínimas, com que antecedência os hóspedes podem reservar)."
   }
 }

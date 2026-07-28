@@ -77,6 +77,8 @@ const MAPPING = {
   'creditcard.fill': 'credit-card',
   'key.fill': 'vpn-key',
   'square.and.arrow.up': 'share',
+  wrench: 'build',
+  'wrench.fill': 'build',
 } as IconMapping;
 
 /**
@@ -97,5 +99,6 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  const mapped = MAPPING[name];
+  return <MaterialIcons color={color} size={size} name={mapped} style={style} />;
 }

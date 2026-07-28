@@ -11,10 +11,10 @@ function fromDb(row: Record<string, unknown>): EstateContact {
     estateId: row.estate_id as string,
     name: row.name as string,
     role: (row.role ?? '') as string,
-    phone: row.phone as string | undefined,
-    email: row.email as string | undefined,
+    phone: row.phone != null && row.phone !== '' ? String(row.phone) : undefined,
+    email: row.email != null && row.email !== '' ? String(row.email) : undefined,
     category: row.category as EstateContact['category'],
-    notes: row.notes as string | undefined,
+    notes: row.notes != null && row.notes !== '' ? String(row.notes) : undefined,
     order: (row.order ?? 0) as number,
     createdAt: (row.created_at ?? '') as string,
   };
@@ -26,10 +26,10 @@ function toDb(c: EstateContact) {
     estate_id: c.estateId,
     name: c.name,
     role: c.role,
-    phone: c.phone,
-    email: c.email,
+    phone: c.phone ?? null,
+    email: c.email ?? null,
     category: c.category,
-    notes: c.notes,
+    notes: c.notes ?? null,
     order: c.order,
     created_at: c.createdAt,
   };
@@ -39,7 +39,7 @@ interface ContactState {
   contacts: EstateContact[];
   setContacts: (contacts: EstateContact[]) => void;
   fetchFromSupabase: () => Promise<void>;
-  addContact: (contact: EstateContact) => Promise<void>;
+  addContact: (contact: EstateContact) => Promise<{ error: string | null }>;
   updateContact: (id: string, patch: Partial<EstateContact>) => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
   reorderContacts: (estateId: string, orderedIds: string[]) => Promise<void>;
@@ -58,7 +58,12 @@ export const useContactStore = create<ContactState>()(
       addContact: async (contact) => {
         set((s) => ({ contacts: [...s.contacts, contact] }));
         const { error } = await supabase.from('estate_contacts').insert(toDb(contact));
-        if (error) set((s) => ({ contacts: s.contacts.filter((c) => c.id !== contact.id) }));
+        if (error) {
+          console.warn('addContact: Supabase insert failed', error.message);
+          set((s) => ({ contacts: s.contacts.filter((c) => c.id !== contact.id) }));
+          return { error: error.message };
+        }
+        return { error: null };
       },
       updateContact: async (id, patch) => {
         set((s) => ({

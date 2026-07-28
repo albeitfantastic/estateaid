@@ -1,75 +1,73 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet } from 'react-native';
+import Animated, {
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated';
+
+import { SplashScreenAnimation } from '@/components/ui/splash-screen-animation';
 
 interface Props {
   isHydrated: boolean;
   onDone: () => void;
 }
 
+/** Matches end of intro sequence in `SplashScreenAnimation`. */
+const INTRO_MS = 5500;
+/** If auth bootstrap never flips isHydrated, leave splash anyway. */
+const HYDRATION_FAILSAFE_MS = 3000;
+
 export function SplashScreenOverlay({ isHydrated, onDone }: Props) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.92)).current;
-  const hasExited = useRef(false);
+  const [introDone, setIntroDone] = useState(false);
+  const rootOpacity = useSharedValue(1);
+  const exitStarted = useRef(false);
+
+  const startExit = () => {
+    if (exitStarted.current) return;
+    exitStarted.current = true;
+    rootOpacity.value = withTiming(0, { duration: 300 }, (finished) => {
+      if (finished) {
+        runOnJS(onDone)();
+      }
+    });
+  };
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 350,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: 350,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    const t = setTimeout(() => setIntroDone(true), INTRO_MS);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    if (hasExited.current) return;
+    if (!introDone || !isHydrated) return;
+    startExit();
+  }, [introDone, isHydrated, onDone, rootOpacity]);
 
-    const delay = setTimeout(() => {
-      hasExited.current = true;
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) onDone();
-      });
-    }, 200);
+  useEffect(() => {
+    if (!introDone) return;
+    const t = setTimeout(() => {
+      if (exitStarted.current) return;
+      startExit();
+    }, HYDRATION_FAILSAFE_MS);
+    return () => clearTimeout(t);
+  }, [introDone, isHydrated, onDone, rootOpacity]);
 
-    return () => clearTimeout(delay);
-  }, [isHydrated]);
+  const rootStyle = useAnimatedStyle(() => ({
+    opacity: rootOpacity.value,
+  }));
 
   return (
-    <View style={styles.container}>
-      <Animated.View style={{ opacity, transform: [{ scale }] }}>
-        <Image
-          source={require('../../logo_1426.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </Animated.View>
-    </View>
+    <Animated.View style={[styles.container, rootStyle]} pointerEvents="auto">
+      <SplashScreenAnimation />
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FAFAF8',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
     zIndex: 999,
-  },
-  logo: {
-    width: 160,
-    height: 160,
   },
 });

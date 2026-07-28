@@ -11,6 +11,7 @@
     "home": "Главная",
     "properties": "Объекты",
     "calendar": "Календарь",
+    "maintenance": "Обслуживание",
     "stays": "Проживания",
     "invites": "Приглашения"
   },
@@ -122,7 +123,11 @@
     "youSuffix": "(вы)",
     "thisMonth": "Этот месяц",
     "legend": "Легенда",
-    "nothingScheduled": "Ничего не запланировано"
+    "nothingScheduled": "Ничего не запланировано",
+    "upcomingMaintenance": "Предстоящее обслуживание",
+    "noUpcomingMaintenanceTitle": "Нет предстоящего обслуживания",
+    "noUpcomingMaintenanceSub": "Добавьте повторяющиеся планы или разовые задачи в разделе «Обслуживание» у каждого объекта.",
+    "maintenanceDueToday": "Сегодня"
   },
   "guestStays": {
     "title": "Проживания",
@@ -181,7 +186,7 @@
     "legendUnavailableBooked": "Недоступно — занято другими",
     "legendToday": "Сегодня",
     "legendSelectedDay": "Выбранный день",
-    "legendPropertyEvent": "Событие на объекте"
+    "legendPropertyEvent": "Обслуживание на объекте"
   },
   "actions": {
     "accept": "Принять",
@@ -208,8 +213,8 @@
     "guest": "Гость",
     "editEstate": "Изменить объект",
     "newEstate": "Новый объект",
-    "events": "События",
-    "newEvent": "Новое событие",
+    "events": "Обслуживание",
+    "newEvent": "Новое обслуживание",
     "inbox": "Входящие",
     "newContact": "Новый контакт",
     "newFaq": "Новый FAQ",
@@ -223,12 +228,35 @@
     "editStay": "Изменить проживание",
     "guests": "Гости",
     "myStayStatus": "Статус моего проживания",
-    "editEvent": "Изменить событие",
+    "editEvent": "Изменить обслуживание",
     "newTicket": "Новое обращение",
     "myTickets": "Мои обращения",
     "raiseIssue": "Сообщить о проблеме",
     "editContact": "Изменить контакт",
     "uploadDocument": "Загрузить документ",
     "availability": "Доступность"
+  },
+  "maintenanceSchedule": {
+    "emptyTitle": "Пока нет записей обслуживания",
+    "emptySub": "Добавьте повторяющиеся графики или разовые задачи для этого объекта.",
+    "addCta": "Добавить обслуживание",
+    "deleteTitle": "Удалить обслуживание",
+    "deleteMessage": "Удалить «{{title}}»?",
+    "notFound": "Запись обслуживания не найдена.",
+    "missingTitle": "Нет названия",
+    "missingTitleBody": "Введите название для этой записи обслуживания.",
+    "saveFailedTitle": "Не удалось сохранить",
+    "saveButton": "Сохранить обслуживание",
+    "recurringSection": "Повторяющиеся · {{count}}",
+    "tasksSection": "Задачи · {{count}}",
+    "recurringBadge": "Повторяющийся график",
+    "oneTimeTask": "Разовая задача",
+    "typeRecurring": "Повторяющееся",
+    "deleteItemCta": "Удалить обслуживание",
+    "propertyMissingBody": "Не указан объект. Вернитесь назад и откройте этот экран из карточки объекта.",
+    "noDate": "Без даты"
+  },
+  "availabilityScreen": {
+    "infoCalendar": "Календарь по-прежнему показывает реальные бронирования и графики обслуживания. Здесь вы добавляете дополнительные заблокированные даты (блэкауты и сезонные закрытия) и правила бронирования (минимум ночей, насколько заранее гости могут бронировать)."
   }
 }

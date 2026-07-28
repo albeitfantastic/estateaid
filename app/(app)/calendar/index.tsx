@@ -1,32 +1,36 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MonthGrid, DayInfo } from '@/components/calendar/month-grid';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { DayInfo, MonthGrid } from '@/components/calendar/month-grid';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
 import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
 import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
+import { isIssueTask } from '@/lib/issue-task';
 import { useAuthStore } from '@/store/auth-store';
+import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useEventStore } from '@/store/event-store';
 import { useStayStore } from '@/store/stay-store';
-import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
-import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export default function OwnerCalendar() {
+const ISSUE_DUE_DOT = '#f59e0b';
+
+export default function CalendarScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const appTheme = useAppTheme();
+  const colors = appTheme.colors;
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allStays = useStayStore((s) => s.stays);
@@ -122,14 +126,23 @@ export default function OwnerCalendar() {
           ...existing,
           dots: [
             ...(existing.dots ?? []),
-            { color: event.color ?? colors.tint, key: event.id },
+            { color: event.color ?? colors.primary, key: event.id },
           ],
         };
       });
     });
     finalizeCalendarAvailability(map, viewYear, viewMonth);
     return map;
-  }, [estateStays, myStays, estateEvents, availabilityRules, selectedEstateId, viewYear, viewMonth, colors.tint]);
+  }, [
+    estateStays,
+    myStays,
+    estateEvents,
+    availabilityRules,
+    selectedEstateId,
+    viewYear,
+    viewMonth,
+    colors.primary,
+  ]);
 
   const selectedDayData = useMemo(() => {
     if (!selectedDay) return null;
@@ -182,8 +195,8 @@ export default function OwnerCalendar() {
                   key={estate.id}
                   style={[
                     styles.estatePill,
-                    { borderColor: colors.tint + '44' },
-                    active && { backgroundColor: colors.tint, borderColor: colors.tint },
+                    { borderColor: colors.primary + '44' },
+                    active && { backgroundColor: colors.primary, borderColor: colors.primary },
                   ]}
                   onPress={() => pickEstate(estate.id)}
                   activeOpacity={0.8}
@@ -198,13 +211,13 @@ export default function OwnerCalendar() {
 
           <View style={styles.nav}>
             <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-              <IconSymbol name="arrow.left" size={18} color={colors.tint} />
+              <IconSymbol name="arrow.left" size={18} color={colors.primary} />
             </TouchableOpacity>
             <ThemedText type="defaultSemiBold" style={styles.monthLabel}>
               {MONTHS[viewMonth]} {viewYear}
             </ThemedText>
             <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-              <IconSymbol name="arrow.right" size={18} color={colors.tint} />
+              <IconSymbol name="arrow.right" size={18} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -220,7 +233,7 @@ export default function OwnerCalendar() {
                         ? '#ef444410'
                         : selectedDayData.type === 'unavailable'
                           ? '#64748b14'
-                          : colors.tint + '0E',
+                          : colors.primarySoft,
                   borderColor:
                     selectedDayData.type === 'my-stay'
                       ? '#22c55e44'
@@ -228,7 +241,7 @@ export default function OwnerCalendar() {
                         ? '#ef444430'
                         : selectedDayData.type === 'unavailable'
                           ? '#64748b40'
-                          : colors.tint + '33',
+                          : colors.primary + '33',
                 },
               ]}
             >
@@ -279,16 +292,45 @@ export default function OwnerCalendar() {
                   )}
                   {selectedDayEvents.length > 0 && (
                     <View style={styles.eventList}>
-                      {selectedDayEvents.map((event) => (
-                        <View key={event.id} style={styles.eventRow}>
-                          <View
-                            style={[styles.eventDot, { backgroundColor: event.color ?? colors.tint }]}
-                          />
-                          <ThemedText style={[styles.eventTitle, { color: colors.text }]}>
-                            {event.title}
-                          </ThemedText>
-                        </View>
-                      ))}
+                      {selectedDayEvents.map((event) => {
+                        const dotColor =
+                          isIssueTask(event) && (event.status === 'open' || event.status === 'in_progress')
+                            ? ISSUE_DUE_DOT
+                            : event.color ?? colors.primary;
+                        const content = (
+                          <>
+                            <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
+                            <ThemedText
+                              style={[styles.eventTitle, { color: colors.text, flex: 1 }]}
+                              numberOfLines={1}
+                            >
+                              {event.title}
+                              {isIssueTask(event) ? ` · ${event.status ?? ''}` : ''}
+                            </ThemedText>
+                            {isIssueTask(event) ? (
+                              <IconSymbol name="chevron.right" size={12} color={colors.icon} />
+                            ) : null}
+                          </>
+                        );
+                        return isIssueTask(event) ? (
+                          <TouchableOpacity
+                            key={event.id}
+                            style={styles.eventRow}
+                            onPress={() =>
+                              router.push(
+                                `/(app)/estates/${event.estateId}/events/${event.id}` as never
+                              )
+                            }
+                            activeOpacity={0.7}
+                          >
+                            {content}
+                          </TouchableOpacity>
+                        ) : (
+                          <View key={event.id} style={styles.eventRow}>
+                            {content}
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                 </View>
@@ -302,7 +344,7 @@ export default function OwnerCalendar() {
           <View
             style={[
               styles.calendarWrap,
-              { backgroundColor: colors.background, borderColor: colors.icon + '22' },
+              { backgroundColor: colors.background, borderColor: colors.border },
             ]}
           >
             <MonthGrid
@@ -319,7 +361,9 @@ export default function OwnerCalendar() {
             onPress={() => setLegendOpen((o) => !o)}
             activeOpacity={0.7}
           >
-            <ThemedText style={[styles.legendToggleLabel, { color: colors.icon }]}>Legend</ThemedText>
+            <ThemedText style={[styles.legendToggleLabel, { color: colors.textMuted }]}>
+              {t('guestCalendar.legend')}
+            </ThemedText>
             <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
           </TouchableOpacity>
 
@@ -327,13 +371,13 @@ export default function OwnerCalendar() {
             <View
               style={[
                 styles.legendBox,
-                { backgroundColor: colors.background, borderColor: colors.icon + '22' },
+                { backgroundColor: colors.background, borderColor: colors.border },
               ]}
             >
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatch, { backgroundColor: '#22c55e' }]} />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Your approved stay
+                  {t('guestCalendar.legendYourStay')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
@@ -348,7 +392,7 @@ export default function OwnerCalendar() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Available — open from today onward
+                  {t('guestCalendar.legendAvailableFuture')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
@@ -363,7 +407,7 @@ export default function OwnerCalendar() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Unavailable — past dates
+                  {t('guestCalendar.legendUnavailablePast')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
@@ -378,20 +422,32 @@ export default function OwnerCalendar() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  Unavailable — booked by others
+                  {t('guestCalendar.legendUnavailableBooked')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={[styles.legendSwatchRing, { borderColor: '#0a7ea4', borderWidth: 1.5 }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Today</ThemedText>
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendToday')}
+                </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 2.5 }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Selected day</ThemedText>
+                <View style={[styles.legendSwatchRing, { borderColor: colors.primary, borderWidth: 2.5 }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendSelectedDay')}
+                </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: colors.tint }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>Property event</ThemedText>
+                <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('guestCalendar.legendPropertyEvent')}
+                </ThemedText>
+              </View>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendDot, { backgroundColor: ISSUE_DUE_DOT }]} />
+                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                  {t('ticketsHub.legendIssueDue')}
+                </ThemedText>
               </View>
             </View>
           )}

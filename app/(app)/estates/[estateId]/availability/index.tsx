@@ -209,8 +209,7 @@ export default function AvailabilityRulesScreen() {
         <View style={[styles.info, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '33' }]}>
           <IconSymbol name="info.circle.fill" size={18} color={colors.tint} />
           <ThemedText style={[styles.infoText, { color: colors.text }]}>
-            The calendar still reflects real bookings and events. Rules here add extra blocked dates (blackouts
-            and seasonal closures) and booking limits (minimum nights, how far ahead guests may book).
+            {t('availabilityScreen.infoCalendar')}
           </ThemedText>
         </View>
 

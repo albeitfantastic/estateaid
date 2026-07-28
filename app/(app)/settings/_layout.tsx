@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export default function OwnerSettingsLayout() {
+export default function SettingsLayout() {
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
   const { t, i18n } = useTranslation();

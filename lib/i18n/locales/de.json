@@ -11,6 +11,7 @@
     "home": "Start",
     "properties": "Objekte",
     "calendar": "Kalender",
+    "maintenance": "Wartung",
     "stays": "Aufenthalte",
     "invites": "Einladungen"
   },
@@ -122,7 +123,11 @@
     "youSuffix": "(du)",
     "thisMonth": "Dieser Monat",
     "legend": "Legende",
-    "nothingScheduled": "Nichts geplant"
+    "nothingScheduled": "Nichts geplant",
+    "upcomingMaintenance": "Kommende Wartung",
+    "noUpcomingMaintenanceTitle": "Keine kommende Wartung",
+    "noUpcomingMaintenanceSub": "Füge wiederkehrende Pläne oder einmalige Aufgaben unter Wartung je Objekt hinzu.",
+    "maintenanceDueToday": "Heute fällig"
   },
   "guestStays": {
     "title": "Aufenthalte",
@@ -181,7 +186,7 @@
     "legendUnavailableBooked": "Nicht verfügbar — von anderen gebucht",
     "legendToday": "Heute",
     "legendSelectedDay": "Ausgewählter Tag",
-    "legendPropertyEvent": "Termin am Objekt"
+    "legendPropertyEvent": "Wartung am Objekt"
   },
   "actions": {
     "accept": "Annehmen",
@@ -208,8 +213,8 @@
     "guest": "Gast",
     "editEstate": "Objekt bearbeiten",
     "newEstate": "Neues Objekt",
-    "events": "Termine",
-    "newEvent": "Neuer Termin",
+    "events": "Wartung",
+    "newEvent": "Neue Wartung",
     "inbox": "Posteingang",
     "newContact": "Neuer Kontakt",
     "newFaq": "Neue FAQ",
@@ -223,12 +228,35 @@
     "editStay": "Aufenthalt bearbeiten",
     "guests": "Gäste",
     "myStayStatus": "Mein Aufenthaltsstatus",
-    "editEvent": "Termin bearbeiten",
+    "editEvent": "Wartung bearbeiten",
     "newTicket": "Neues Ticket",
     "myTickets": "Meine Tickets",
     "raiseIssue": "Problem melden",
     "editContact": "Kontakt bearbeiten",
     "uploadDocument": "Dokument hochladen",
     "availability": "Verfügbarkeit"
+  },
+  "maintenanceSchedule": {
+    "emptyTitle": "Noch keine Wartungseinträge",
+    "emptySub": "Wiederkehrende Pläne oder einmalige Aufgaben für dieses Objekt hinzufügen.",
+    "addCta": "Wartung hinzufügen",
+    "deleteTitle": "Wartung löschen",
+    "deleteMessage": "„{{title}}“ löschen?",
+    "notFound": "Wartungseintrag nicht gefunden.",
+    "missingTitle": "Titel fehlt",
+    "missingTitleBody": "Bitte einen Titel für diesen Wartungseintrag eingeben.",
+    "saveFailedTitle": "Speichern nicht möglich",
+    "saveButton": "Wartung speichern",
+    "recurringSection": "Wiederkehrend · {{count}}",
+    "tasksSection": "Aufgaben · {{count}}",
+    "recurringBadge": "Wiederkehrender Plan",
+    "oneTimeTask": "Einmalige Aufgabe",
+    "typeRecurring": "Wiederkehrend",
+    "deleteItemCta": "Wartung löschen",
+    "propertyMissingBody": "Objekt fehlt. Geh zurück und öffne diesen Bildschirm wieder über das Objekt.",
+    "noDate": "Kein Datum"
+  },
+  "availabilityScreen": {
+    "infoCalendar": "Der Kalender zeigt weiterhin echte Buchungen und Wartungspläne. Hier legst du zusätzlich gesperrte Tage (Sperren und saisonale Schließungen) und Buchungsregeln fest (Mindestaufenthalt, wie weit im Voraus Gäste buchen dürfen)."
   }
 }

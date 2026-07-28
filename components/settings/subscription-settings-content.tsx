@@ -23,7 +23,6 @@ export function SubscriptionSettingsContent() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
-  const selectedTier = useAuthStore((s) => s.selectedTier);
   const accessTier = useAccessTier();
   const {
     isPro,
@@ -140,9 +139,7 @@ export function SubscriptionSettingsContent() {
                   ? t('subscriptionSettings.storeWaiting')
                   : accessTier === 'trial'
                     ? t('subscriptionSettings.trialSub', { plan })
-                    : selectedTier === 'premium'
-                      ? t('subscriptionSettings.completeCheckout', { plan })
-                      : t('subscriptionSettings.starterDefault', { plan })}
+                    : t('subscriptionSettings.starterDefault', { plan })}
             </ThemedText>
           )}
           {isPro && primaryRow?.expires_at && (

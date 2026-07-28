@@ -10,10 +10,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuthStore } from '@/store/auth-store';
 import { useEventStore } from '@/store/event-store';
-import { EventType, RecurrenceFrequency } from '@/types';
-import { today } from '@/lib/date-utils';
-import { generateUuidV4 } from '@/lib/id';
+import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
+import { EventType, IssuePriority, RecurrenceFrequency } from '@/types';
+import { formatDate, today } from '@/lib/date-utils';
+import { generateId, generateUuidV4 } from '@/lib/id';
 
 const EVENT_COLORS = ['#22c55e', '#8B5CF6', '#0a7ea4', '#f59e0b', '#ef4444', '#B5703A', '#64748B', '#2E7D91'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -24,9 +26,166 @@ const FREQ_OPTIONS: { value: RecurrenceFrequency; label: string }[] = [
   { value: 'monthly', label: 'Monthly' },
 ];
 
-export default function NewEvent() {
+const ISSUE_PRIORITIES: { value: IssuePriority; label: string; color: string }[] = [
+  { value: 'low', label: 'Low', color: '#22c55e' },
+  { value: 'normal', label: 'Normal', color: '#3b82f6' },
+  { value: 'high', label: 'High', color: '#f59e0b' },
+  { value: 'urgent', label: 'Urgent', color: '#ef4444' },
+];
+
+function paramId(v: string | string[] | undefined): string {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v[0]) return v[0];
+  return '';
+}
+
+function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
   const { t } = useTranslation();
-  const { estateId } = useLocalSearchParams<{ estateId: string }>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const addEvent = useEventStore((s) => s.addEvent);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [priority, setPriority] = useState<IssuePriority>('normal');
+  const [dueDate, setDueDate] = useState<string | null>(null);
+  const [dueModalOpen, setDueModalOpen] = useState(false);
+
+  async function submit() {
+    if (!title.trim()) {
+      Alert.alert(t('common.error'), t('ticketsHub.threadTitleRequired'));
+      return;
+    }
+    if (!currentUser?.id) {
+      Alert.alert(t('common.error'), t('maintenanceSchedule.propertyMissingBody'));
+      return;
+    }
+    const id = generateUuidV4();
+    const now = new Date().toISOString();
+    const messages = body.trim()
+      ? [
+          {
+            id: generateId(),
+            eventId: id,
+            authorId: currentUser.id,
+            body: body.trim(),
+            createdAt: now,
+          },
+        ]
+      : [];
+    const { error } = await addEvent({
+      id,
+      estateId,
+      title: title.trim(),
+      type: 'task',
+      taskKind: 'issue',
+      date: dueDate ?? undefined,
+      color: EVENT_COLORS[3],
+      createdAt: now,
+      updatedAt: now,
+      guestId: currentUser.id,
+      status: 'open',
+      priority,
+      messages,
+    });
+    if (error) {
+      Alert.alert(t('maintenanceSchedule.saveFailedTitle'), error);
+      return;
+    }
+    router.back();
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+        </TouchableOpacity>
+        <ThemedText type="title" style={styles.headerTitle}>
+          {t('maintenanceSchedule.newIssueTitle')}
+        </ThemedText>
+      </View>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + Spacing.xl * 2 }]}
+      >
+        <FocusInput label={t('ticketsHub.threadEditTitleLabel')} placeholder="" value={title} onChangeText={setTitle} />
+        <FocusInput
+          label={t('maintenanceSchedule.issueFirstMessage')}
+          placeholder={t('ticketsHub.threadReplyPlaceholder')}
+          value={body}
+          onChangeText={setBody}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          style={styles.issueMessageInput}
+        />
+        <View style={styles.issuePriorityBlock}>
+        <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ticketsHub.threadEditPriority')}</ThemedText>
+        <View style={styles.issuePriRow}>
+          {ISSUE_PRIORITIES.map((p) => {
+            const selected = p.value === priority;
+            return (
+              <TouchableOpacity
+                key={p.value}
+                style={[
+                  styles.issuePriPill,
+                  {
+                    backgroundColor: selected ? p.color + '22' : colors.tint + '08',
+                    borderColor: selected ? p.color : colors.icon + '33',
+                  },
+                ]}
+                onPress={() => setPriority(p.value)}
+              >
+                <ThemedText style={[styles.issuePriText, selected && { color: p.color, fontWeight: '700' }]}>
+                  {p.label}
+                </ThemedText>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        </View>
+        <ThemedText style={[styles.label, { color: colors.icon, marginTop: Spacing.xs }]}>
+          {t('ticketsHub.newTicketDueOptional')}
+        </ThemedText>
+        <TouchableOpacity
+          style={[styles.duePickBtn, { borderColor: colors.icon + '44' }]}
+          onPress={() => setDueModalOpen(true)}
+        >
+          <ThemedText style={{ color: colors.text }}>
+            {dueDate ? formatDate(dueDate) : t('ticketsHub.newTicketPickDue')}
+          </ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: colors.tint, opacity: title.trim() ? 1 : 0.5 }]}
+          onPress={() => void submit()}
+          disabled={!title.trim()}
+        >
+          <ThemedText style={styles.saveBtnText}>{t('maintenanceSchedule.reportIssueCta')}</ThemedText>
+        </TouchableOpacity>
+      </ScrollView>
+      <DueDatePickerModal
+        visible={dueModalOpen}
+        onClose={() => setDueModalOpen(false)}
+        onSelectDate={(d) => {
+          setDueDate(d);
+          setDueModalOpen(false);
+        }}
+        onClear={() => {
+          setDueDate(null);
+          setDueModalOpen(false);
+        }}
+        title={t('ticketsHub.newTicketPickDue')}
+        clearLabel={t('ticketsHub.newTicketClearDue')}
+      />
+    </ThemedView>
+  );
+}
+
+function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -48,11 +207,11 @@ export default function NewEvent() {
 
   async function save() {
     if (!title.trim()) {
-      Alert.alert('Missing title', 'Please enter an event title.');
+      Alert.alert(t('maintenanceSchedule.missingTitle'), t('maintenanceSchedule.missingTitleBody'));
       return;
     }
     if (!estateId) {
-      Alert.alert('Error', 'Missing property. Go back and open this screen from the estate again.');
+      Alert.alert(t('common.error'), t('maintenanceSchedule.propertyMissingBody'));
       return;
     }
 
@@ -72,6 +231,7 @@ export default function NewEvent() {
         ? await addEvent({
             ...base,
             type: 'task' as const,
+            taskKind: 'calendar',
             date: taskDate,
           })
         : await addEvent({
@@ -86,7 +246,7 @@ export default function NewEvent() {
           });
 
     if (result.error) {
-      Alert.alert('Could not save event', result.error);
+      Alert.alert(t('maintenanceSchedule.saveFailedTitle'), result.error);
       return;
     }
     router.back();
@@ -105,24 +265,24 @@ export default function NewEvent() {
         {/* Type picker */}
         <ThemedText style={[styles.label, { color: colors.icon }]}>Type</ThemedText>
         <View style={styles.typePicker}>
-          {(['recurring', 'task'] as EventType[]).map((t) => (
+          {(['recurring', 'task'] as EventType[]).map((kind) => (
             <TouchableOpacity
-              key={t}
+              key={kind}
               style={[
                 styles.typeBtn,
                 { borderColor: colors.tint + '44' },
-                type === t && { backgroundColor: colors.tint, borderColor: colors.tint },
+                type === kind && { backgroundColor: colors.tint, borderColor: colors.tint },
               ]}
-              onPress={() => setType(t)}
+              onPress={() => setType(kind)}
               activeOpacity={0.8}
             >
               <IconSymbol
-                name={t === 'recurring' ? 'arrow.triangle.2.circlepath' : 'checkmark.circle.fill'}
+                name={kind === 'recurring' ? 'arrow.triangle.2.circlepath' : 'checkmark.circle.fill'}
                 size={18}
-                color={type === t ? '#fff' : colors.tint}
+                color={type === kind ? '#fff' : colors.tint}
               />
-              <ThemedText style={[styles.typeBtnText, { color: type === t ? '#fff' : colors.text }]}>
-                {t === 'recurring' ? 'Recurring' : 'One-time Task'}
+              <ThemedText style={[styles.typeBtnText, { color: type === kind ? '#fff' : colors.text }]}>
+                {kind === 'recurring' ? t('maintenanceSchedule.typeRecurring') : t('maintenanceSchedule.oneTimeTask')}
               </ThemedText>
             </TouchableOpacity>
           ))}
@@ -135,8 +295,8 @@ export default function NewEvent() {
         <FocusInput label="Description (optional)" placeholder="Additional notes..." value={description} onChangeText={setDescription} multiline numberOfLines={3} textAlignVertical="top" style={styles.textArea} />
 
         {/* Color */}
-        <ThemedText style={[styles.label, { color: colors.icon }]}>Color</ThemedText>
-        <View style={styles.colorRow}>
+        <ThemedText style={[styles.label, { paddingTop: 24 },  { color: colors.icon }]}>Color</ThemedText>
+        <View style={[styles.colorRow, ]}>
           {EVENT_COLORS.map((c) => (
             <TouchableOpacity
               key={c}
@@ -231,7 +391,7 @@ export default function NewEvent() {
           disabled={!title.trim()}
           activeOpacity={0.8}
         >
-          <ThemedText style={styles.saveBtnText}>Save Event</ThemedText>
+          <ThemedText style={styles.saveBtnText}>{t('maintenanceSchedule.saveButton')}</ThemedText>
         </TouchableOpacity>
       </ScrollView>
     </ThemedView>
@@ -276,4 +436,28 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: Fonts.heading, letterSpacing: 0.3 },
+  issuePriRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  issuePriPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  issuePriText: { fontSize: 13, fontWeight: '600' },
+  duePickBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  issueMessageInput: { minHeight: 108 },
+  issuePriorityBlock: { marginTop: Spacing.md, gap: 8 },
 });
+
+export default function NewEvent() {
+  const params = useLocalSearchParams<{ estateId?: string | string[]; kind?: string | string[] }>();
+  const estateId = paramId(params.estateId);
+  const kindRaw = params.kind;
+  const kind =
+    typeof kindRaw === 'string' ? kindRaw : Array.isArray(kindRaw) ? kindRaw[0] : undefined;
+  if (kind === 'issue') return <NewMaintenanceIssueScreen estateId={estateId} />;
+  return <NewMaintenanceCalendarScreen estateId={estateId} />;
+}

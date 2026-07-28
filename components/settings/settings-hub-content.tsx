@@ -25,7 +25,6 @@ export function SettingsHubContent() {
   const scheme = colorScheme ?? 'light';
   const colors = Colors[scheme];
   const currentUser = useAuthStore((s) => s.currentUser);
-  const selectedTier = useAuthStore((s) => s.selectedTier);
   const themePreference = useAuthStore((s) => s.themePreference);
   const setThemePreference = useAuthStore((s) => s.setThemePreference);
   const notificationsEnabled = useAuthStore((s) => s.notificationsEnabled);
@@ -39,9 +38,7 @@ export function SettingsHubContent() {
       ? t('common.accessStandard')
       : accessTier === 'trial'
         ? t('common.accessTrial')
-        : selectedTier === 'premium'
-          ? t('common.premium')
-          : t('common.accessPro');
+        : t('common.accessPro');
   const initials =
     currentUser?.name
       .split(' ')

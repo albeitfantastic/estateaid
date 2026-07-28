@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Radius, StatusColors } from '@/constants/theme';
+import { StatusColors } from '@/constants/status-colors';
 
 type BadgeVariant = keyof typeof StatusColors | 'neutral';
 
@@ -23,23 +23,26 @@ export function Badge({ label, variant }: BadgeProps) {
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const label = status.replace(/_/g, ' ');
+  const normalized = status === 'closed' ? 'resolved' : status;
+  const label = normalized.replace(/_/g, ' ');
   const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
-  return <Badge label={capitalized} variant={status as BadgeVariant} />;
+  const variant: BadgeVariant =
+    normalized in StatusColors ? (normalized as BadgeVariant) : 'neutral';
+  return <Badge label={capitalized} variant={variant} />;
 }
 
 const styles = StyleSheet.create({
   pill: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: Radius.full,
+    borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     alignSelf: 'flex-start',
   },
   text: {
     fontSize: 11,
     fontWeight: '600',
-    fontFamily: Fonts.label,
+    fontFamily: 'Manrope_600SemiBold',
     textTransform: 'capitalize',
     letterSpacing: 0.1,
   },

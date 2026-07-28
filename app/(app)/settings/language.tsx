@@ -1,5 +1,5 @@
 import { LanguageSettingsContent } from '@/components/settings/language-settings-content';
 
-export default function OwnerLanguageSettingsScreen() {
+export default function LanguageSettingsScreen() {
   return <LanguageSettingsContent />;
 }
