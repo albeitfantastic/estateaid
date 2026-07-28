@@ -1,26 +1,25 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Elevation, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useHasFullHostAccess } from '@/lib/access-tier';
+import { addDays, today } from '@/lib/date-utils';
+import { getEstateRole } from '@/lib/estate-role';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
-import { getEstateRole } from '@/lib/estate-role';
-import { addDays, today } from '@/lib/date-utils';
-import { useHasFullHostAccess } from '@/lib/access-tier';
-import { debugLog } from '@/lib/debug-session-log';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const OWNER_ITEMS = [
-  { label: 'Guests', icon: 'person.2.fill', route: 'guests', primary: true },
-  { label: 'Stay Requests', icon: 'calendar', route: 'stays', primary: true },
+  { label: 'Guests', icon: 'person.2.fill', route: 'guests', primary: false },
+  { label: 'Stay Requests', icon: 'calendar', route: 'stays', primary: false },
   { label: 'Availability', icon: 'calendar.badge.exclamationmark', route: 'availability', primary: false },
   { label: 'Events', icon: 'calendar.badge.clock', route: 'events', primary: false },
   { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', primary: false },
@@ -55,14 +54,6 @@ export default function EstateHub() {
   const hasFullHost = useHasFullHostAccess();
 
   const isEstateOwner = estate?.ownerId === currentUser?.id;
-  // #region agent log
-  debugLog('H4', 'estates/[estateId]/index.tsx:role', 'computing estateRole', {
-    hasEstate: !!estate,
-    hasCurrentUser: !!currentUser,
-    isEstateOwner,
-    estateId,
-  });
-  // #endregion
   const estateRole = isEstateOwner
     ? 'owner'
     : getEstateRole(allInvitations, estateId, currentUser!.id, currentUser?.email);
@@ -177,16 +168,7 @@ export default function EstateHub() {
                 ]}
                 onPress={() => {
                   if (!unlocked) return;
-                  const target = `/(app)/estates/${estateId}/${item.route}`;
-                  // #region agent log
-                  debugLog('H1', 'estates/[estateId]/index.tsx:guest-nav', 'guest tile navigate', {
-                    label: item.label,
-                    route: item.route,
-                    target,
-                    estateId,
-                  });
-                  // #endregion
-                  router.push(target as never);
+                  router.push(`/(app)/estates/${estateId}/${item.route}` as never);
                 }}
                 activeOpacity={unlocked ? 0.75 : 1}
               >

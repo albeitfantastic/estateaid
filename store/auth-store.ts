@@ -1,9 +1,8 @@
+import { supabase } from '@/lib/supabase';
 import { User } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { debugLog } from '@/lib/debug-session-log';
-import { supabase } from '@/lib/supabase';
 
 export type ThemePreference = 'light' | 'dark';
 
@@ -85,55 +84,13 @@ export const useAuthStore = create<AuthState>()(
       setThemePreference: (theme) => set({ themePreference: theme }),
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       bootstrapSession: async () => {
-        // #region agent log
-        const _bootT0 = Date.now();
-        const _host = (process.env.EXPO_PUBLIC_SUPABASE_URL || '')
-          .replace(/^https?:\/\//, '')
-          .split('/')[0];
-        debugLog('B', 'store/auth-store.ts:bootstrapSession:entry', 'bootstrapSession started', {
-          supabaseUrlPresent: !!process.env.EXPO_PUBLIC_SUPABASE_URL,
-          supabaseHost: _host,
-        });
-        // Non-blocking reachability probe (must not delay hydration)
-        void (async () => {
-          const _probeUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/auth/v1/health`;
-          const _probeT0 = Date.now();
-          try {
-            const _probeRes = await fetch(_probeUrl, { method: 'GET' });
-            debugLog('A', 'store/auth-store.ts:bootstrapSession:probe', 'supabase health probe ok', {
-              status: _probeRes.status,
-              ms: Date.now() - _probeT0,
-              urlHost: _host,
-            });
-          } catch (_probeErr) {
-            debugLog('A', 'store/auth-store.ts:bootstrapSession:probe', 'supabase health probe failed', {
-              ms: Date.now() - _probeT0,
-              error: String(_probeErr),
-              name: (_probeErr as { name?: string })?.name,
-              urlHost: _host,
-            });
-          }
-        })();
-        // #endregion
         const BOOTSTRAP_MS = 4000;
         try {
-          // #region agent log
-          debugLog('B', 'store/auth-store.ts:bootstrapSession:beforeGetSession', 'calling getSession', {
-            elapsedMs: Date.now() - _bootT0,
-            timeoutMs: BOOTSTRAP_MS,
-          });
-          // #endregion
           await Promise.race([
             (async () => {
               const {
                 data: { session },
               } = await supabase.auth.getSession();
-              // #region agent log
-              debugLog('B', 'store/auth-store.ts:bootstrapSession:afterGetSession', 'getSession resolved', {
-                hasSession: !!session?.user,
-                elapsedMs: Date.now() - _bootT0,
-              });
-              // #endregion
               if (session?.user) {
                 const { data: profile } = await supabase
                   .from('profiles')
@@ -151,26 +108,10 @@ export const useAuthStore = create<AuthState>()(
               setTimeout(() => reject(new Error('bootstrap_timeout')), BOOTSTRAP_MS);
             }),
           ]);
-        } catch (e) {
-          // #region agent log
-          debugLog('C', 'store/auth-store.ts:bootstrapSession:catch', 'bootstrapSession caught error', {
-            error: String(e),
-            name: (e as { name?: string })?.name,
-            elapsedMs: Date.now() - _bootT0,
-          });
-          // #endregion
+        } catch {
           // session check failed / timed out — leave currentUser as null
         } finally {
           set({ isHydrated: true });
-          // #region agent log
-          debugLog(
-            'B',
-            'store/auth-store.ts:bootstrapSession:finally',
-            'isHydrated set true',
-            { elapsedMs: Date.now() - _bootT0 },
-            'post-fix'
-          );
-          // #endregion
         }
       },
       refreshProfileFromSupabase: async () => {

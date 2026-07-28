@@ -17,14 +17,13 @@ import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { theme } from '@/theme';
-import { debugLog } from '@/lib/debug-session-log';
 import { hydrateStoredLanguage, initI18n } from '@/lib/i18n';
 import { loadAllStores } from '@/lib/load-all-stores';
 import { clearPushToken, registerPushToken } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { SubscriptionProvider } from '@/providers/subscription-provider';
 import { useAuthStore } from '@/store/auth-store';
+import { theme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -116,25 +115,11 @@ export default function RootLayout() {
       if (user) await loadAllStores();
     }
 
-    // #region agent log
-    debugLog('C', 'app/_layout.tsx:authEffect', 'auth bootstrap effect running');
-    // #endregion
-    void bootstrapSession().then(() => {
-      // #region agent log
-      debugLog('B', 'app/_layout.tsx:bootstrapThen', 'bootstrapSession promise settled', {
-        isHydrated: useAuthStore.getState().isHydrated,
-        hasUser: !!useAuthStore.getState().currentUser,
-      });
-      // #endregion
-      return afterSession();
-    });
+    void bootstrapSession().then(() => afterSession());
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
-      // #region agent log
-      debugLog('C', 'app/_layout.tsx:onAuthStateChange', 'auth state change', { event });
-      // #endregion
       if (event === 'SIGNED_OUT') {
         clearUser();
       }

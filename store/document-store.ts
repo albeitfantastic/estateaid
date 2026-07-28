@@ -1,9 +1,9 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { EstateDocument, DocumentCategory } from '@/types';
-import { supabase } from '@/lib/supabase';
 import { dedupeById } from '@/lib/dedup-by-id';
+import { supabase } from '@/lib/supabase';
+import { DocumentCategory, EstateDocument } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 function fromDb(row: Record<string, unknown>): EstateDocument {
   return {
@@ -58,15 +58,6 @@ export const useDocumentStore = create<DocumentState>()(
       addDocument: async (document) => {
         set((s) => ({ documents: [...s.documents, document] }));
         const { error } = await supabase.from('estate_documents').insert(toDb(document));
-        // #region agent log
-        const { debugLog } = await import('@/lib/debug-session-log');
-        debugLog('H2', 'document-store.ts:addDocument', 'insert finished', {
-          documentId: document.id,
-          estateId: document.estateId,
-          hasError: !!error,
-          errorMessage: error?.message ?? null,
-        });
-        // #endregion
         if (error) set((s) => ({ documents: s.documents.filter((d) => d.id !== document.id) }));
       },
       updateDocument: async (id, patch) => {

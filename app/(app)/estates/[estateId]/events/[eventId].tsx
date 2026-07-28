@@ -1,17 +1,16 @@
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IssueThreadScreen } from '@/components/maintenance/issue-thread-screen';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { isIssueTask } from '@/lib/issue-task';
-import { debugLog } from '@/lib/debug-session-log';
 import { useEventStore } from '@/store/event-store';
 import type { EstateEvent, RecurrenceFrequency } from '@/types';
 
@@ -94,13 +93,6 @@ function EditMaintenanceForm({ event: initial }: { event: EstateEvent }) {
         dayOfMonth: frequency === 'monthly' ? dayOfMonth : undefined,
       };
     }
-    // #region agent log
-    debugLog('H5', 'events/[eventId].tsx:save', 'updateEvent fired without await then router.back', {
-      eventId,
-      awaited: false,
-      title: title.trim(),
-    });
-    // #endregion
     void updateEvent(eventId, patch);
     router.back();
   }

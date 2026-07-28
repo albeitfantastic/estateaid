@@ -1,27 +1,24 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MonthGrid, DayInfo } from '@/components/calendar/month-grid';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { DayInfo, MonthGrid } from '@/components/calendar/month-grid';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAppTheme } from '@/theme/useAppTheme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
 import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
 import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
+import { isIssueTask } from '@/lib/issue-task';
 import { useAuthStore } from '@/store/auth-store';
+import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useEventStore } from '@/store/event-store';
 import { useStayStore } from '@/store/stay-store';
-import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
-import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
-import { isIssueTask } from '@/lib/issue-task';
-import { debugLog } from '@/lib/debug-session-log';
-import { useInvitationStore } from '@/store/invitation-store';
-import { guestEmailsMatch } from '@/lib/invite-email';
+import { useAppTheme } from '@/theme/useAppTheme';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -39,33 +36,11 @@ export default function CalendarScreen() {
   const allStays = useStayStore((s) => s.stays);
   const allEvents = useEventStore((s) => s.events);
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
-  const allInvitations = useInvitationStore((s) => s.invitations);
 
   const myEstates = useMemo(
     () => allEstates.filter((e) => e.ownerId === (currentUser?.id ?? '')),
     [allEstates, currentUser?.id]
   );
-
-  // #region agent log
-  const invitedEstateCount = useMemo(() => {
-    if (!currentUser) return 0;
-    const ids = allInvitations
-      .filter(
-        (inv) =>
-          inv.status === 'accepted' &&
-          (inv.guestId === currentUser.id || guestEmailsMatch(inv.guestEmail, currentUser.email))
-      )
-      .map((inv) => inv.estateId);
-    return allEstates.filter((e) => ids.includes(e.id) && e.ownerId !== currentUser.id).length;
-  }, [allInvitations, allEstates, currentUser]);
-  useEffect(() => {
-    debugLog('H3', 'calendar/index.tsx:myEstates', 'calendar estate filter', {
-      ownedCount: myEstates.length,
-      invitedEstateCount,
-      emptyState: myEstates.length === 0,
-    });
-  }, [myEstates.length, invitedEstateCount]);
-  // #endregion
 
   const estateIds = useMemo(() => myEstates.map((e) => e.id), [myEstates]);
 

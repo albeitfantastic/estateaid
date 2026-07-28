@@ -2,7 +2,6 @@ import { Redirect } from 'expo-router';
 import { useState } from 'react';
 
 import { SplashScreenOverlay } from '@/components/ui/splash-screen';
-import { debugLog } from '@/lib/debug-session-log';
 import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 
 /**
@@ -19,15 +18,7 @@ export default function Index() {
     return (
       <SplashScreenOverlay
         isHydrated={isHydrated}
-        onDone={() => {
-          // #region agent log
-          debugLog('D', 'app/index.tsx:onDone', 'splash onDone received by Index', {
-            isHydrated,
-            hasUser: !!currentUser,
-          }, 'post-fix');
-          // #endregion
-          setSplashDone(true);
-        }}
+        onDone={() => setSplashDone(true)}
       />
     );
   }

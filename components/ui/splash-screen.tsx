@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
 } from 'react-native-reanimated';
 
 import { SplashScreenAnimation } from '@/components/ui/splash-screen-animation';
-import { debugLog } from '@/lib/debug-session-log';
 
 interface Props {
   isHydrated: boolean;
@@ -28,12 +27,6 @@ export function SplashScreenOverlay({ isHydrated, onDone }: Props) {
   const startExit = () => {
     if (exitStarted.current) return;
     exitStarted.current = true;
-    // #region agent log
-    debugLog('D', 'components/ui/splash-screen.tsx:exit', 'splash exit animation started', {
-      isHydrated,
-      introDone,
-    }, 'post-fix');
-    // #endregion
     rootOpacity.value = withTiming(0, { duration: 300 }, (finished) => {
       if (finished) {
         runOnJS(onDone)();
@@ -47,13 +40,6 @@ export function SplashScreenOverlay({ isHydrated, onDone }: Props) {
   }, []);
 
   useEffect(() => {
-    // #region agent log
-    debugLog('D', 'components/ui/splash-screen.tsx:gate', 'splash gate eval', {
-      introDone,
-      isHydrated,
-      exitStarted: exitStarted.current,
-    }, 'post-fix');
-    // #endregion
     if (!introDone || !isHydrated) return;
     startExit();
   }, [introDone, isHydrated, onDone, rootOpacity]);
@@ -62,11 +48,6 @@ export function SplashScreenOverlay({ isHydrated, onDone }: Props) {
     if (!introDone) return;
     const t = setTimeout(() => {
       if (exitStarted.current) return;
-      // #region agent log
-      debugLog('D', 'components/ui/splash-screen.tsx:failsafe', 'hydration failsafe fired', {
-        isHydrated,
-      }, 'post-fix');
-      // #endregion
       startExit();
     }, HYDRATION_FAILSAFE_MS);
     return () => clearTimeout(t);

@@ -1,17 +1,17 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type {
-  EstateEvent,
-  EstateEventMessage,
-  IssuePriority,
-  IssueStatus,
-} from '@/types';
-import { supabase } from '@/lib/supabase';
 import { dedupeById } from '@/lib/dedup-by-id';
 import { isIssueTask, messagesToDb, normalizeEventMessages } from '@/lib/issue-task';
-import { useEstateStore } from '@/store/estate-store';
 import { getPushToken, sendPush } from '@/lib/notifications';
+import { supabase } from '@/lib/supabase';
+import { useEstateStore } from '@/store/estate-store';
+import type {
+    EstateEvent,
+    EstateEventMessage,
+    IssuePriority,
+    IssueStatus,
+} from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 function statusFromDb(raw: unknown): IssueStatus | undefined {
   const s = typeof raw === 'string' ? raw : 'open';
@@ -154,15 +154,7 @@ export const useEventStore = create<EventState>()(
           dbPatch.messages = messagesToDb(patch.messages);
         dbPatch.updated_at = ev?.updatedAt ?? updatedAt;
         if (Object.keys(dbPatch).length > 0) {
-          const { error } = await supabase.from('estate_events').update(dbPatch).eq('id', id);
-          // #region agent log
-          const { debugLog } = await import('@/lib/debug-session-log');
-          debugLog('H5', 'event-store.ts:updateEvent', 'remote update finished', {
-            eventId: id,
-            hasError: !!error,
-            errorMessage: error?.message ?? null,
-          });
-          // #endregion
+          await supabase.from('estate_events').update(dbPatch).eq('id', id);
         }
       },
       deleteEvent: async (id) => {

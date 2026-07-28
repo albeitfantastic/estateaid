@@ -1,22 +1,27 @@
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import * as DocumentPicker from 'expo-document-picker';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuthStore } from '@/store/auth-store';
-import { useDocumentStore } from '@/store/document-store';
 import { uploadEstateDocumentFile } from '@/lib/estate-document-storage';
-import { debugLog } from '@/lib/debug-session-log';
 import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
+import { useAuthStore } from '@/store/auth-store';
+import { useDocumentStore } from '@/store/document-store';
 import { DocumentCategory } from '@/types';
+
+type PickedFile = {
+  uri: string;
+  name: string;
+  mimeType?: string | null;
+  size?: number | null;
+};
 
 const CATEGORIES: DocumentCategory[] = ['guide', 'manual', 'rule', 'emergency', 'other'];
 const CATEGORY_LABELS: Record<DocumentCategory, string> = { guide: 'Guide', manual: 'Manual', rule: 'House Rules', emergency: 'Emergency', other: 'Other' };
@@ -34,14 +39,26 @@ export default function UploadDocument() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<DocumentCategory>('guide');
-  const [pickedFile, setPickedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [pickedFile, setPickedFile] = useState<PickedFile | null>(null);
   const [uploading, setUploading] = useState(false);
 
   async function pickFile() {
-    const result = await DocumentPicker.getDocumentAsync({ multiple: false, copyToCacheDirectory: true });
-    if (result.canceled || result.assets.length === 0) return;
-    setPickedFile(result.assets[0]);
-    if (!title.trim()) setTitle(result.assets[0].name.replace(/\.[^./]+$/, ''));
+    try {
+      // Lazy-load so missing native module does not crash route discovery / screen mount.
+      const DocumentPicker = await import('expo-document-picker');
+      const result = await DocumentPicker.getDocumentAsync({ multiple: false, copyToCacheDirectory: true });
+      if (result.canceled || result.assets.length === 0) return;
+      setPickedFile(result.assets[0]);
+      if (!title.trim()) setTitle(result.assets[0].name.replace(/\.[^./]+$/, ''));
+    } catch (e) {
+      // #region agent log
+      fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1393f3'},body:JSON.stringify({sessionId:'1393f3',runId:'pre-fix',hypothesisId:'H1',location:'documents/upload.tsx:pickFile',message:'document picker native load failed',data:{error:String(e)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      Alert.alert(
+        'Development build required',
+        'Document picker was added after your last native build. Rebuild the Maison development client (npm run eas:dev:ios or eas:dev:android), install it, then try again.'
+      );
+    }
   }
 
   async function submit() {
@@ -57,14 +74,6 @@ export default function UploadDocument() {
       return;
     }
 
-    // #region agent log
-    debugLog('H2', 'documents/upload.tsx:submit', 'calling addDocument without await then router.back', {
-      documentId,
-      estateId,
-      storagePath: uploadResult.path,
-      awaited: false,
-    });
-    // #endregion
     addDocument({
       id: documentId,
       estateId,
