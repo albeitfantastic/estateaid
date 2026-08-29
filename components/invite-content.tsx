@@ -51,13 +51,16 @@ export function InviteContent({
     () =>
       [
         { value: 'guest' as const, label: t('ownerInvite.estateRoleGuestLabel') },
-        { value: 'owner' as const, label: t('ownerInvite.estateRoleCoOwnerLabel') },
+        { value: 'coOwner' as const, label: t('ownerInvite.estateRoleCoOwnerLabel') },
       ] as const,
     [t]
   );
 
   const estates = useMemo(
-    () => allEstates.filter((e) => e.ownerId === currentUser?.id),
+    () =>
+      allEstates.filter(
+        (e) => e.ownerId === currentUser?.id || e.sponsorUserId === currentUser?.id
+      ),
     [allEstates, currentUser?.id]
   );
 
@@ -274,7 +277,7 @@ export function InviteContent({
                 </ThemedText>
                 <View style={[styles.roleBadge, { backgroundColor: colors.tint + '15' }]}>
                   <ThemedText style={[styles.roleBadgeText, { color: colors.tint }]}>
-                    {inv.role === 'owner'
+                    {inv.role === 'coOwner'
                       ? t('ownerInvite.estateRoleCoOwnerLabel')
                       : t('ownerInvite.estateRoleGuestLabel')}
                   </ThemedText>

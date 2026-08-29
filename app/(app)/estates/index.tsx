@@ -10,14 +10,15 @@ import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useHasFullHostAccess } from '@/lib/access-tier';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { getEstateActorRole } from '@/lib/estate-role';
+import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
 import { useAppTheme } from '@/theme/useAppTheme';
 import { useAuthStore } from '@/store/auth-store';
+import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { getEstateRole } from '@/lib/estate-role';
-import { guestEmailsMatch } from '@/lib/invite-email';
-import { showMaisonProUpgradePrompt } from '@/lib/maison-pro-upgrade';
+import { acceptedInvitedEstateIds } from '@/lib/accepted-invited-estates';
 
 export default function EstatesList() {
   const { t } = useTranslation();
@@ -28,26 +29,45 @@ export default function EstatesList() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
-  const hasHostAccess = useHasFullHostAccess();
+  const coverageById = useEstateCoverageStore((s) => s.byId);
+  const can = useCan();
+  const canCreate = can('estate.create');
+  const addLocked = !canCreate;
 
-  const invitedEstateIds = useMemo(() => {
-    if (!currentUser) return [] as string[];
-    return allInvitations
-      .filter(
-        (inv) =>
-          inv.status === 'accepted' &&
-          (inv.guestId === currentUser.id || guestEmailsMatch(inv.guestEmail, currentUser.email))
-      )
-      .map((inv) => inv.estateId);
-  }, [allInvitations, currentUser]);
+  const invitedEstateIds = useMemo(
+    () => acceptedInvitedEstateIds(allInvitations, currentUser?.id, currentUser?.email),
+    [allInvitations, currentUser]
+  );
+
+  const isCoOwnerElsewhere = useMemo(() => {
+    if (!currentUser) return false;
+    return allEstates.some((e) => {
+      const role = getEstateActorRole(allEstates, allInvitations, e.id, currentUser.id, currentUser.email);
+      return role === 'coOwner';
+    });
+  }, [allEstates, allInvitations, currentUser]);
 
   const estates = useMemo(
     () =>
       allEstates.filter(
-        (e) => e.ownerId === (currentUser?.id ?? '') || invitedEstateIds.includes(e.id)
+        (e) =>
+          e.ownerId === (currentUser?.id ?? '') ||
+          e.sponsorUserId === (currentUser?.id ?? '') ||
+          invitedEstateIds.includes(e.id)
       ),
     [allEstates, currentUser?.id, invitedEstateIds]
   );
+
+  function onAdd() {
+    if (canCreate) {
+      router.push('/(app)/estates/new' as never);
+      return;
+    }
+    openEstateCreatePaywall({
+      isCoOwnerElsewhere,
+      returnTo: '/(app)/estates/new',
+    });
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -56,11 +76,13 @@ export default function EstatesList() {
           {t('titles.properties')}
         </ThemedText>
         <HostProLockTouchable
-          locked={!hasHostAccess}
+          locked={addLocked}
+          feature={isCoOwnerElsewhere ? 'estate.createAsCoOwner' : 'estate.create'}
+          returnTo="/(app)/estates/new"
           shrinkToContent
           accessibilityRole="button"
           accessibilityLabel={t('estatesList.addEstate')}
-          onPress={() => router.push('/(app)/estates/new' as never)}
+          onPress={onAdd}
           style={[styles.addBtn, { backgroundColor: colors.primary }, appTheme.shadows.md]}
           activeOpacity={0.8}
         >
@@ -72,12 +94,14 @@ export default function EstatesList() {
         <EmptyState
           icon="building.2.fill"
           title={t('estatesList.emptyTitle')}
-          subtitle={t('estatesList.emptySub')}
-          actionLabel={t('estatesList.addEstate')}
-          onAction={() =>
-            hasHostAccess
-              ? router.push('/(app)/estates/new' as never)
-              : showMaisonProUpgradePrompt(t)
+          subtitle={
+            invitedEstateIds.length === 0 && !canCreate
+              ? t('estatesList.emptyGuestSub')
+              : t('estatesList.emptySub')
+          }
+          actionLabel={canCreate ? t('estatesList.addEstate') : t('estatesList.enterCode')}
+          onAction={
+            canCreate ? onAdd : () => router.push('/(app)/stays?tab=redeem' as never)
           }
         />
       ) : (
@@ -86,26 +110,32 @@ export default function EstatesList() {
           showsVerticalScrollIndicator={false}
         >
           {estates.map((estate) => {
-            const isOwned = estate.ownerId === currentUser?.id;
-            const lockedOwned = isOwned && !hasHostAccess;
-            const invRole = isOwned
-              ? null
-              : getEstateRole(allInvitations, estate.id, currentUser!.id, currentUser?.email);
+            const role = currentUser
+              ? getEstateActorRole(allEstates, allInvitations, estate.id, currentUser.id, currentUser.email)
+              : 'none';
+            const coverage = coverageById[estate.id];
+            const uncoveredHost =
+              (role === 'sponsor' || role === 'coOwner') && coverage != null && !coverage.covered;
             return (
               <View key={estate.id} style={styles.cardWrap}>
                 <EstateCard
                   estate={estate}
                   onPress={() => router.push(`/(app)/estates/${estate.id}` as never)}
                 />
-                {lockedOwned && (
-                  <View pointerEvents="none" style={styles.cardLockBadge}>
-                    <IconSymbol name="lock.fill" size={11} color="#fff" />
+                {uncoveredHost && (
+                  <View style={[styles.downgradeBadge, { backgroundColor: colors.borderSoft }]}>
+                    <IconSymbol name="lock.fill" size={10} color={colors.textMuted} />
+                    <ThemedText style={[styles.downgradeText, { color: colors.textMuted }]}>
+                      {role === 'sponsor'
+                        ? 'Upgrade to unlock host tools'
+                        : `Paused — ${coverage?.sponsorDisplayName ?? 'sponsor'}'s plan ended`}
+                    </ThemedText>
                   </View>
                 )}
-                {invRole && (
+                {(role === 'coOwner' || role === 'guest') && (
                   <View style={[styles.roleBadge, { backgroundColor: colors.icon + '15' }]}>
                     <ThemedText style={[styles.roleBadgeText, { color: colors.icon }]}>
-                      {invRole === 'owner'
+                      {role === 'coOwner'
                         ? t('ownerInvite.estateRoleCoOwnerLabel')
                         : t('ownerInvite.estateRoleGuestLabel')}
                     </ThemedText>
@@ -134,39 +164,32 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 44,
     height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
   },
-  back: { padding: 4 },
-  list: { paddingHorizontal: 24, paddingTop: 10, gap: 4 },
-  cardWrap: { position: 'relative', borderRadius: 20, overflow: 'hidden' },
-  cardLockBadge: {
+  list: { paddingHorizontal: 20, gap: 16 },
+  cardWrap: { position: 'relative' },
+  downgradeBadge: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  downgradeText: { fontSize: 11, fontWeight: '600', flex: 1 },
+  roleBadge: {
     position: 'absolute',
     top: 12,
     right: 12,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  roleBadge: {
-    alignSelf: 'flex-start',
-    marginTop: -6,
-    marginBottom: 10,
-    marginLeft: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
   },
-  roleBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontFamily: 'Manrope_700Bold',
-  },
+  roleBadgeText: { fontSize: 11, fontWeight: '600' },
 });

@@ -29,6 +29,27 @@ export function OnboardingQuestion({
   const appTheme = useAppTheme();
   const colors = appTheme.colors;
 
+  // #region agent log
+  fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1393f3' },
+    body: JSON.stringify({
+      sessionId: '1393f3',
+      runId: 'pre-fix',
+      hypothesisId: 'A',
+      location: 'onboarding-question.tsx:colors',
+      message: 'onboarding theme color keys',
+      data: {
+        hasTextSecondary: 'textSecondary' in colors,
+        hasTextMuted: 'textMuted' in colors,
+        textMuted: colors.textMuted ?? null,
+        mutedUsedForLabels: true,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <View style={styles.progressRow}>
@@ -44,9 +65,9 @@ export function OnboardingQuestion({
       </View>
 
       <View style={styles.content}>
-        <Text style={[styles.stepLabel, { color: colors.textSecondary }]}>{t('onboardingUi.stepOf', { step, total })}</Text>
+        <Text style={[styles.stepLabel, { color: colors.textMuted }]}>{t('onboardingUi.stepOf', { step, total })}</Text>
         <Text style={[styles.question, { color: colors.text }]}>{question}</Text>
-        {hint && <Text style={[styles.hint, { color: colors.textSecondary }]}>{hint}</Text>}
+        {hint && <Text style={[styles.hint, { color: colors.textMuted }]}>{hint}</Text>}
 
         <View style={styles.options}>
           {options.map((label, i) => {
@@ -104,7 +125,7 @@ export function OnboardingQuestion({
           disabled={selectedIndex === null}
           activeOpacity={0.82}
         >
-          <Text style={[styles.btnText, selectedIndex === null && { color: colors.textSecondary }]}>
+          <Text style={[styles.btnText, selectedIndex === null && { color: colors.textMuted }]}>
             {t('onboardingUi.continue')}
           </Text>
         </TouchableOpacity>

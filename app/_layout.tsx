@@ -19,9 +19,11 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { hydrateStoredLanguage, initI18n } from '@/lib/i18n';
 import { loadAllStores } from '@/lib/load-all-stores';
-import { clearPushToken, registerPushToken } from '@/lib/notifications';
+import { clearPushToken, registerPushToken, setupNotificationDeepLinkListener } from '@/lib/notifications';
+import { maybeSendStayTomorrowReminders } from '@/lib/stay-reminders';
 import { supabase } from '@/lib/supabase';
 import { SubscriptionProvider } from '@/providers/subscription-provider';
+import { UpgradeSheetHost } from '@/lib/maison-pro-upgrade';
 import { useAuthStore } from '@/store/auth-store';
 import { theme } from '@/theme';
 
@@ -83,6 +85,15 @@ export default function RootLayout() {
   }, [currentUserId, notificationsEnabled]);
 
   useEffect(() => {
+    return setupNotificationDeepLinkListener();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    void maybeSendStayTomorrowReminders();
+  }, [currentUserId]);
+
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
@@ -141,6 +152,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(app)" />
         </Stack>
+        <UpgradeSheetHost />
         <StatusBar style="auto" />
       </SubscriptionProvider>
     </ThemeProvider>

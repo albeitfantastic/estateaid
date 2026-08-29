@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Invitation, InvitationStatus, type EstateInviteRole } from '@/types';
+import { Invitation, InvitationStatus, normalizeInviteRole, type EstateInviteRole } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useEstateStore } from '@/store/estate-store';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { dedupeById } from '@/lib/dedup-by-id';
 import { normalizeGuestEmail } from '@/lib/invite-email';
-import { getPushToken, sendPush } from '@/lib/notifications';
+import { getPushToken, maybeRequestPushAfterMeaningfulAction, sendCategorizedPush, sendPush } from '@/lib/notifications';
 
 function fromDb(row: Record<string, unknown>): Invitation {
   return {
@@ -17,7 +17,7 @@ function fromDb(row: Record<string, unknown>): Invitation {
     inviteCode: row.invite_code as string,
     guestEmail: row.guest_email as string | undefined,
     guestId: row.guest_id as string | undefined,
-    role: row.role as EstateInviteRole | undefined,
+    role: normalizeInviteRole(row.role as string | undefined),
     status: row.status as InvitationStatus,
     message: row.message as string | undefined,
     createdAt: (row.created_at ?? '') as string,
@@ -33,7 +33,7 @@ function toDb(inv: Invitation) {
     invite_code: inv.inviteCode,
     guest_email: inv.guestEmail ?? null,
     guest_id: inv.guestId ?? null,
-    role: inv.role ?? 'guest',
+    role: normalizeInviteRole(inv.role),
     status: inv.status,
     message: inv.message ?? null,
     created_at: inv.createdAt,
@@ -45,10 +45,10 @@ interface InvitationState {
   invitations: Invitation[];
   setInvitations: (invitations: Invitation[]) => void;
   fetchFromSupabase: () => Promise<void>;
-  sendInvitation: (invitation: Invitation) => Promise<{ error: string | null }>;
+  sendInvitation: (invitation: Invitation) => Promise<{ error: string | null; code?: string | null }>;
   respondToInvitation: (id: string, status: 'accepted' | 'declined', guestId?: string) => void;
   revokeInvitation: (id: string) => void;
-  updateInvitationRole: (id: string, role: EstateInviteRole) => void;
+  updateInvitationRole: (id: string, role: EstateInviteRole) => Promise<{ error: string | null; code?: string | null }>;
   redeemCode: (
     code: string,
     guestId: string
@@ -70,16 +70,34 @@ export const useInvitationStore = create<InvitationState>()(
         }
       },
       sendInvitation: async (invitation) => {
-        set((s) => ({ invitations: [...s.invitations, invitation] }));
-        const { error } = await supabase.from('invitations').insert(toDb(invitation));
+        const normalized: Invitation = {
+          ...invitation,
+          role: normalizeInviteRole(invitation.role),
+        };
+        set((s) => ({ invitations: [...s.invitations, normalized] }));
+        const { error } = await supabase.from('invitations').insert(toDb(normalized));
         if (error) {
-          set((s) => ({ invitations: s.invitations.filter((i) => i.id !== invitation.id) }));
-          return { error: error.message };
+          set((s) => ({ invitations: s.invitations.filter((i) => i.id !== normalized.id) }));
+          const detail = (error as { details?: string; hint?: string; code?: string }).details
+            ?? (error as { hint?: string }).hint
+            ?? error.message;
+          const code =
+            /co_owner_cap|cap_reached/i.test(detail) || /co_owner_cap/i.test(error.message)
+              ? 'co_owner_cap_reached'
+              : /sponsor_lapsed|not covered|estate_host/i.test(detail)
+                ? 'sponsor_lapsed'
+                : /upgrade|full_product|host_write/i.test(detail)
+                  ? 'upgrade_required'
+                  : 'error';
+          return { error: error.message, code };
         }
         useActivityLogStore
           .getState()
-          .logActivity(invitation.estateId, invitation.ownerId, 'invitation_sent');
-        return { error: null };
+          .logActivity(normalized.estateId, normalized.ownerId, 'invitation_sent');
+        void import('@/store/estate-coverage-store').then(({ useEstateCoverageStore }) =>
+          useEstateCoverageStore.getState().fetchCoverage([normalized.estateId])
+        );
+        return { error: null, code: null };
       },
       respondToInvitation: (id, status, guestId) => {
         const respondedAt = new Date().toISOString();
@@ -103,6 +121,18 @@ export const useInvitationStore = create<InvitationState>()(
             .getState()
             .logActivity(inv.estateId, actorId, status === 'accepted' ? 'invitation_accepted' : 'invitation_declined');
         }
+        if (status === 'accepted' && inv) {
+          if (actorId) void maybeRequestPushAfterMeaningfulAction(actorId);
+          void getPushToken(inv.ownerId).then((token) =>
+            sendCategorizedPush(
+              'invites',
+              token,
+              'Invite accepted',
+              'A guest accepted your invitation.',
+              { type: 'invite_accepted', estateId: inv.estateId }
+            )
+          );
+        }
       },
       revokeInvitation: (id) => {
         const inv = get().invitations.find((i) => i.id === id);
@@ -116,21 +146,36 @@ export const useInvitationStore = create<InvitationState>()(
           useActivityLogStore.getState().logActivity(inv.estateId, inv.ownerId, 'invitation_revoked');
         }
       },
-      updateInvitationRole: (id, role) => {
+      updateInvitationRole: async (id, role) => {
+        const nextRole = normalizeInviteRole(role);
+        const prev = get().invitations.find((i) => i.id === id);
         set((s) => ({
           invitations: s.invitations.map((inv) =>
-            inv.id === id ? { ...inv, role } : inv
+            inv.id === id ? { ...inv, role: nextRole } : inv
           ),
         }));
-        void supabase.from('invitations').update({ role }).eq('id', id);
-        // Notify the invitee — fire-and-forget
+        const { error } = await supabase.from('invitations').update({ role: nextRole }).eq('id', id);
+        if (error) {
+          if (prev) {
+            set((s) => ({
+              invitations: s.invitations.map((inv) => (inv.id === id ? prev : inv)),
+            }));
+          }
+          return { error: error.message, code: 'error' };
+        }
         const inv = get().invitations.find((i) => i.id === id);
         if (inv?.guestId) {
-          const roleLabel = role === 'owner' ? 'Owner' : 'Guest';
+          const roleLabel = nextRole === 'coOwner' ? 'Co-owner' : 'Guest';
           void getPushToken(inv.guestId).then((token) =>
             sendPush(token, 'Role Updated', `Your role has been updated to ${roleLabel}.`)
           );
         }
+        if (inv) {
+          void import('@/store/estate-coverage-store').then(({ useEstateCoverageStore }) =>
+            useEstateCoverageStore.getState().fetchCoverage([inv.estateId])
+          );
+        }
+        return { error: null, code: null };
       },
       redeemCode: async (code, guestId) => {
         const norm = code.toUpperCase().trim();
@@ -176,6 +221,16 @@ export const useInvitationStore = create<InvitationState>()(
               useActivityLogStore
                 .getState()
                 .logActivity(invAccepted.estateId, guestId, 'invitation_accepted');
+              void maybeRequestPushAfterMeaningfulAction(guestId);
+              void getPushToken(invAccepted.ownerId).then((token) =>
+                sendCategorizedPush(
+                  'invites',
+                  token,
+                  'Invite accepted',
+                  'A guest accepted your invitation.',
+                  { type: 'invite_accepted', estateId: invAccepted.estateId }
+                )
+              );
               return { success: true, invitation: invAccepted };
             }
             if (p.ok === false) {
@@ -237,6 +292,16 @@ export const useInvitationStore = create<InvitationState>()(
         }));
         void useEstateStore.getState().fetchFromSupabase();
         useActivityLogStore.getState().logActivity(inv.estateId, guestId, 'invitation_accepted');
+        void maybeRequestPushAfterMeaningfulAction(guestId);
+        void getPushToken(inv.ownerId).then((token) =>
+          sendCategorizedPush(
+            'invites',
+            token,
+            'Invite accepted',
+            'A guest accepted your invitation.',
+            { type: 'invite_accepted', estateId: inv.estateId }
+          )
+        );
         return { success: true, invitation: { ...inv!, status: 'accepted', guestId } };
       },
       getInvitationsByEstate: (estateId) =>

@@ -103,6 +103,7 @@ export function SettingsHubContent() {
 
         {menuRow('person.fill', t('common.profile'), () => pushSection('profile'))}
         {menuRow('globe', t('common.language'), () => pushSection('language'))}
+        {menuRow('bell.fill', t('common.notifications'), () => pushSection('notifications'))}
         {menuRow('creditcard.fill', t('settingsHub.manageSubscription'), () => pushSection('subscription'))}
         {menuRow(
           isDark ? 'moon.fill' : 'sun.max.fill',
@@ -120,7 +121,7 @@ export function SettingsHubContent() {
             <View style={[styles.rowIcon, { backgroundColor: colors.tint + '12' }]}>
               <IconSymbol name="bell.fill" size={18} color={colors.tint} />
             </View>
-            <ThemedText style={styles.rowLabel}>{t('common.notifications')}</ThemedText>
+            <ThemedText style={styles.rowLabel}>{t('common.notificationsMaster', { defaultValue: 'Enable push' })}</ThemedText>
           </View>
           <Switch
             value={notificationsEnabled}

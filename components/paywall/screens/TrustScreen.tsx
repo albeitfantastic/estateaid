@@ -13,14 +13,15 @@ import {
 
 interface TrustScreenProps {
   onContinue: () => void;
+  onClose?: () => void;
 }
 
-export function TrustScreen({ onContinue }: TrustScreenProps) {
+export function TrustScreen({ onContinue, onClose }: TrustScreenProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.root}>
-      <PaywallHeader topInset={insets.top} />
+      <PaywallHeader onClose={onClose} topInset={insets.top} />
 
       <ScrollView
         style={styles.scroll}

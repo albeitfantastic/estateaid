@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StatusBadge } from '@/components/ui/badge';
 import { SectionHeader } from '@/components/ui/section-header';
+import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -17,6 +18,8 @@ import { describeRecurrence } from '@/lib/event-utils';
 import { isIssueTask } from '@/lib/issue-task';
 import { useEventStore } from '@/store/event-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 
 const PRIORITY_COLORS: Record<string, string> = {
   low: '#94a3b8',
@@ -38,6 +41,15 @@ export default function EventsIndex() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
+  const canWrite = useCan()('events.write', { estateId });
+  const goNew = (kind?: 'issue') => {
+    if (!canWrite) {
+      openHostCapabilityDenied(estateId, 'events.write', `/(app)/estates/${estateId}/events/new`);
+      return;
+    }
+    const q = kind === 'issue' ? '?kind=issue' : '';
+    router.push(`/(app)/estates/${estateId}/events/new${q}` as never);
+  };
   const colors = Colors[colorScheme ?? 'light'];
   const { events, deleteEvent } = useEventStore();
   const profileById = useProfileStore((s) => s.byId);
@@ -66,23 +78,29 @@ export default function EventsIndex() {
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>{t('titles.events')}</ThemedText>
         <View style={styles.headerActions}>
-          <TouchableOpacity
+          <HostProLockTouchable
+            locked={!canWrite}
+            feature="events.write"
+            returnTo={`/(app)/estates/${estateId}/events`}
+            shrinkToContent
+            onPress={() => goNew('issue')}
             style={[styles.addBtn, { backgroundColor: colors.tint + '22', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.tint + '55' }]}
-            onPress={() =>
-              router.push(`/(app)/estates/${estateId}/events/new?kind=issue` as never)
-            }
             activeOpacity={0.8}
             accessibilityLabel={t('maintenanceSchedule.addIssueCta')}
           >
             <IconSymbol name="exclamationmark.triangle.fill" size={18} color={colors.tint} />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </HostProLockTouchable>
+          <HostProLockTouchable
+            locked={!canWrite}
+            feature="events.write"
+            returnTo={`/(app)/estates/${estateId}/events`}
+            shrinkToContent
+            onPress={() => goNew()}
             style={[styles.addBtn, { backgroundColor: colors.tint }]}
-            onPress={() => router.push(`/(app)/estates/${estateId}/events/new` as never)}
             activeOpacity={0.8}
           >
             <IconSymbol name="plus" size={18} color="#fff" />
-          </TouchableOpacity>
+          </HostProLockTouchable>
         </View>
       </View>
 
@@ -92,7 +110,7 @@ export default function EventsIndex() {
           title={t('maintenanceSchedule.emptyTitle')}
           subtitle={t('maintenanceSchedule.emptySub')}
           actionLabel={t('maintenanceSchedule.addCta')}
-          onAction={() => router.push(`/(app)/estates/${estateId}/events/new` as never)}
+          onAction={() => goNew()}
         />
       ) : (
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>

@@ -1,6 +1,6 @@
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState, useMemo } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, EstateColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { acceptedInvitedEstateIds } from '@/lib/accepted-invited-estates';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
@@ -22,12 +23,19 @@ import {
   violatesMinNights,
 } from '@/lib/availability-rule-blocking';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
-import { guestEmailsMatch } from '@/lib/invite-email';
 import { generateUuidV4 } from '@/lib/id';
+
+function paramString(v: string | string[] | undefined): string {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v[0]) return v[0];
+  return '';
+}
 
 export default function GuestPlanStay() {
   const { t } = useTranslation();
   const router = useRouter();
+  const params = useLocalSearchParams<{ estateId?: string | string[] }>();
+  const paramEstateId = paramString(params.estateId);
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -38,14 +46,7 @@ export default function GuestPlanStay() {
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
 
   const acceptedEstateIds = useMemo(
-    () =>
-      allInvitations
-        .filter(
-          (inv) =>
-            (guestEmailsMatch(inv.guestEmail, currentUser?.email) || inv.guestId === currentUser?.id) &&
-            inv.status === 'accepted'
-        )
-        .map((inv) => inv.estateId),
+    () => acceptedInvitedEstateIds(allInvitations, currentUser?.id, currentUser?.email),
     [allInvitations, currentUser?.email, currentUser?.id]
   );
 
@@ -54,12 +55,28 @@ export default function GuestPlanStay() {
     [allEstates, acceptedEstateIds]
   );
 
-  const [selectedEstateId, setSelectedEstateId] = useState<string | null>(
-    acceptedEstates.length === 1 ? acceptedEstates[0].id : null
-  );
+  const paramLocked =
+    !!paramEstateId && acceptedEstateIds.includes(paramEstateId);
+
+  const [selectedEstateId, setSelectedEstateId] = useState<string | null>(() => {
+    if (paramEstateId && acceptedEstateIds.includes(paramEstateId)) return paramEstateId;
+    return acceptedEstates.length === 1 ? acceptedEstates[0].id : null;
+  });
   const [from, setFrom] = useState<string | null>(null);
-  const [to, setTo]     = useState<string | null>(null);
+  const [to, setTo] = useState<string | null>(null);
   const [note, setNote] = useState('');
+
+  useEffect(() => {
+    if (paramLocked) {
+      setSelectedEstateId(paramEstateId);
+      return;
+    }
+    if (selectedEstateId && !acceptedEstateIds.includes(selectedEstateId)) {
+      setSelectedEstateId(acceptedEstates.length === 1 ? acceptedEstates[0].id : null);
+    } else if (!selectedEstateId && acceptedEstates.length === 1) {
+      setSelectedEstateId(acceptedEstates[0].id);
+    }
+  }, [paramLocked, paramEstateId, acceptedEstateIds, acceptedEstates, selectedEstateId]);
 
   const blockedRanges = selectedEstateId ? getBlockedRanges(selectedEstateId) : [];
   const nights = from && to ? nightCount(from, to) : 0;
@@ -138,7 +155,7 @@ export default function GuestPlanStay() {
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.planStay')}</ThemedText>
+        <ThemedText type="title" style={styles.title}>{t('titles.requestDates')}</ThemedText>
       </View>
 
       <ScrollView
@@ -148,7 +165,10 @@ export default function GuestPlanStay() {
         <View style={styles.section}>
           <ThemedText style={[styles.label, { color: colors.icon }]}>Property</ThemedText>
           <View style={styles.pillRow}>
-            {acceptedEstates.map((e, i) => {
+            {(paramLocked
+              ? acceptedEstates.filter((e) => e.id === paramEstateId)
+              : acceptedEstates
+            ).map((e, i) => {
               const selected = e.id === selectedEstateId;
               const dotColor = EstateColors[i % EstateColors.length];
               return (
@@ -161,8 +181,11 @@ export default function GuestPlanStay() {
                       borderColor: selected ? dotColor : colors.icon + '33',
                     },
                   ]}
-                  onPress={() => pickEstate(e.id)}
-                  activeOpacity={0.75}
+                  onPress={() => {
+                    if (paramLocked) return;
+                    pickEstate(e.id);
+                  }}
+                  activeOpacity={paramLocked ? 1 : 0.75}
                 >
                   <View style={[styles.dot, { backgroundColor: dotColor }]} />
                   <ThemedText style={[styles.pillText, selected && { color: dotColor, fontWeight: '600' }]}>

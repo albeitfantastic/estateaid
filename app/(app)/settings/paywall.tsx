@@ -1,21 +1,68 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PaywallScreen } from '@/components/paywall/paywall-screen';
+import { resolveReturnTo, withPaywallQuery } from '@/lib/paywall-nav';
+import { useAuthStore } from '@/store/auth-store';
+import { supabase } from '@/lib/supabase';
 
 /**
- * Route wrapper for the RevenueCat paywall.
- *
- * When navigated to with `?fromFlow=true` (from the paywall flow's OutcomeScreen),
- * dismissing routes to the exit offer instead of going home.
- * This ensures the exit offer is shown exactly once per flow session.
+ * RevenueCat paywall route.
+ * fromFlow dismiss → exit; success → rating (once) then returnTo.
  */
 export default function PaywallRoute() {
   const router = useRouter();
-  const { fromFlow } = useLocalSearchParams<{ fromFlow?: string }>();
+  const currentUserId = useAuthStore((s) => s.currentUser?.id);
+  const { fromFlow, offering, plan, askRating, returnTo, source } = useLocalSearchParams<{
+    fromFlow?: string;
+    offering?: string;
+    plan?: string;
+    askRating?: string;
+    returnTo?: string;
+    source?: string;
+  }>();
+
+  const planId = plan === 'monthly' || plan === 'yearly' ? plan : undefined;
+  const offeringId = typeof offering === 'string' && offering.length > 0 ? offering : undefined;
+  const back = resolveReturnTo(returnTo);
+  const src = typeof source === 'string' ? source : undefined;
+  const goToRating = fromFlow === 'true' || askRating === 'true';
 
   const handleDismiss =
     fromFlow === 'true'
-      ? () => router.replace('/(app)/settings/paywall-exit' as never)
+      ? () =>
+          router.replace(
+            withPaywallQuery('/(app)/settings/paywall-exit', {
+              plan: planId,
+              source: src,
+              returnTo: back,
+            }) as never
+          )
       : undefined;
 
-  return <PaywallScreen onDismiss={handleDismiss} />;
+  const handleSuccess = async () => {
+    if (!goToRating) {
+      router.replace(back as never);
+      return;
+    }
+    const { data } = currentUserId
+      ? await supabase
+          .from('profiles')
+          .select('rating_prompt_shown_at')
+          .eq('id', currentUserId)
+          .maybeSingle()
+      : { data: null };
+    if (data?.rating_prompt_shown_at) {
+      router.replace(back as never);
+      return;
+    }
+    router.replace(withPaywallQuery('/(onboarding)/rating', { returnTo: back }) as never);
+  };
+
+  return (
+    <PaywallScreen
+      onDismiss={handleDismiss}
+      onSuccess={() => void handleSuccess()}
+      offeringIdentifier={offeringId}
+      preferredPlanId={planId}
+    />
+  );
 }

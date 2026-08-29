@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,12 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SurfaceCard } from '@/components/ui/surface-card';
 import { Colors, EstateColors, Layout, Radius, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAccessTier, useHasFullHostAccess } from '@/lib/access-tier';
+import { useAccessTier } from '@/lib/access-tier';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { getEstateActorRole } from '@/lib/estate-role';
+import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
+import { homeEmphasisFor, type OnboardingUseCase } from '@/lib/onboarding-starters';
+import { fetchProfileUseCase } from '@/lib/use-case-profile';
 import { addDays, formatDate, formatDateRange, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
@@ -118,13 +123,85 @@ export default function HomeDashboard() {
   const todayStr = today();
   const profileById = useProfileStore((s) => s.byId);
   const accessTier = useAccessTier();
-  const hasHost = useHasFullHostAccess();
+  const can = useCan();
+  const hostEstateIds = useMemo(() => {
+    if (!currentUser) return [] as string[];
+    return allEstates
+      .filter((e) => {
+        const role = getEstateActorRole(
+          allEstates,
+          allInvitations,
+          e.id,
+          currentUser.id,
+          currentUser.email
+        );
+        return role === 'sponsor' || role === 'coOwner';
+      })
+      .map((e) => e.id);
+  }, [allEstates, allInvitations, currentUser]);
+
+  const canInvite = hostEstateIds.some((id) => can('guests.invite', id));
+  const canApprove = hostEstateIds.some((id) => can('stays.approve', id));
+  const canWriteEvents = hostEstateIds.some((id) => can('events.write', id));
+  const canAddEstate = can('estate.create');
+  const isCoOwnerElsewhere = useMemo(() => {
+    if (!currentUser) return false;
+    return allEstates.some((e) => {
+      const role = getEstateActorRole(allEstates, allInvitations, e.id, currentUser.id, currentUser.email);
+      return role === 'coOwner';
+    });
+  }, [allEstates, allInvitations, currentUser]);
+  const [useCase, setUseCase] = useState<OnboardingUseCase | null>(null);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    void fetchProfileUseCase(currentUser.id).then(setUseCase);
+  }, [currentUser?.id]);
+
+  const useCaseTip = homeEmphasisFor(useCase);
 
   const estates = useMemo(
-    () => allEstates.filter((e) => e.ownerId === currentUser?.id),
-    [allEstates, currentUser?.id]
+    () =>
+      allEstates.filter((e) => {
+        if (!currentUser) return false;
+        const role = getEstateActorRole(
+          allEstates,
+          allInvitations,
+          e.id,
+          currentUser.id,
+          currentUser.email
+        );
+        return role === 'sponsor' || role === 'coOwner';
+      }),
+    [allEstates, allInvitations, currentUser]
   );
   const estateIds = useMemo(() => estates.map((e) => e.id), [estates]);
+
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1393f3' },
+      body: JSON.stringify({
+        sessionId: '1393f3',
+        runId: 'pre-fix',
+        hypothesisId: 'B',
+        location: 'home/index.tsx:caps',
+        message: 'home capability snapshot',
+        data: {
+          accessTier,
+          canInvite,
+          canApprove,
+          canWriteEvents,
+          canAddEstate,
+          ownedCount: estates.length,
+          useCase,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, [accessTier, canInvite, canApprove, canWriteEvents, canAddEstate, estates.length, useCase]);
+  // #endregion
 
   const estateColorMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -399,7 +476,8 @@ export default function HomeDashboard() {
             <View style={[styles.overviewDivider, { backgroundColor: colors.border }]} />
 
             <HostProLockTouchable
-              locked={!hasHost}
+              locked={!canInvite}
+              feature="guests.invite"
               onPress={() => router.push('/(app)/guests' as never)}
               style={styles.overviewStatWrap}
             >
@@ -417,7 +495,9 @@ export default function HomeDashboard() {
             <View style={[styles.overviewDivider, { backgroundColor: colors.border }]} />
 
             <HostProLockTouchable
-              locked={!hasHost}
+              locked={false}
+              showLock={!canApprove}
+              feature="stays.approve"
               onPress={() => router.push('/(app)/stays' as never)}
               style={styles.overviewStatWrap}
             >
@@ -453,7 +533,7 @@ export default function HomeDashboard() {
         {/* ── Quick Actions ──────────────────────────────────────── */}
         <View style={styles.quickActionRow}>
           <HostProLockTouchable
-            locked={!hasHost}
+            locked={false}
             onPress={() => router.push('/(app)/plan-stay' as never)}
             style={styles.quickActionTouchable}
           >
@@ -461,13 +541,19 @@ export default function HomeDashboard() {
               <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
                 <IconSymbol name="calendar.badge.plus" size={18} color="#fff" />
               </View>
-              <ThemedText style={styles.quickActionTitle}>{t('ownerHome.planStay')}</ThemedText>
-              <ThemedText style={styles.quickActionSub}>{t('ownerHome.planStaySub')}</ThemedText>
+              <ThemedText style={styles.quickActionTitle} numberOfLines={1}>
+                {t('ownerHome.planStay')}
+              </ThemedText>
+              <ThemedText style={styles.quickActionSub} numberOfLines={2}>
+                {t('ownerHome.planStaySub')}
+              </ThemedText>
             </View>
           </HostProLockTouchable>
 
           <HostProLockTouchable
-            locked={!hasHost}
+            locked={false}
+            showLock={!canWriteEvents}
+            feature="events.write"
             onPress={() => router.push('/(app)/maintenance' as never)}
             style={styles.quickActionTouchable}
           >
@@ -475,8 +561,12 @@ export default function HomeDashboard() {
               <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
                 <IconSymbol name="wrench.fill" size={18} color="#fff" />
               </View>
-              <ThemedText style={styles.quickActionTitle}>{t('maintenanceOverview.screenTitle')}</ThemedText>
-              <ThemedText style={styles.quickActionSub}>{t('ownerHome.maintenanceQuickSub')}</ThemedText>
+              <ThemedText style={styles.quickActionTitle} numberOfLines={1}>
+                {t('maintenanceOverview.screenTitle')}
+              </ThemedText>
+              <ThemedText style={styles.quickActionSub} numberOfLines={2}>
+                {t('ownerHome.maintenanceQuickSub')}
+              </ThemedText>
             </View>
           </HostProLockTouchable>
         </View>
@@ -486,10 +576,34 @@ export default function HomeDashboard() {
           title={t('ownerHome.upcoming')}
           actionLabel={t('ownerHome.seeAll')}
           onAction={() => router.push('/(app)/calendar' as never)}
-          actionHostLocked={!hasHost}
+          actionHostLocked={false}
         />
 
-        {upcomingItems.length === 0 ? (
+        {estates.length === 0 ? (
+          <EmptyState
+            icon="building.2.fill"
+            title={useCaseTip.tipTitle}
+            subtitle={useCaseTip.tipBody}
+            onAction={() => {
+              if (canAddEstate) {
+                router.push('/(app)/estates/new' as never);
+                return;
+              }
+              if (isCoOwnerElsewhere) {
+                openEstateCreatePaywall({ isCoOwnerElsewhere: true, returnTo: '/(app)/estates/new' });
+                return;
+              }
+              router.push('/(app)/stays?tab=redeem' as never);
+            }}
+            actionLabel={
+              canAddEstate
+                ? t('estatesList.addEstate')
+                : isCoOwnerElsewhere
+                  ? t('access.upgradeCta', { defaultValue: 'Upgrade to Maison Pro' })
+                  : t('estatesList.enterCode')
+            }
+          />
+        ) : upcomingItems.length === 0 ? (
           <EmptyState
             icon="calendar"
             title={t('ownerHome.noUpcomingTitle')}
@@ -505,7 +619,7 @@ export default function HomeDashboard() {
                 return (
                   <HostProLockTouchable
                     key={item.stay.id}
-                    locked={!hasHost}
+                    locked={false}
                     onPress={() => router.push('/(app)/stays' as never)}
                     style={styles.upcomingRowOuter}
                   >
@@ -554,7 +668,7 @@ export default function HomeDashboard() {
               return (
                 <HostProLockTouchable
                   key={`${item.event.id}-${item.nextDate}`}
-                  locked={!hasHost}
+                  locked={false}
                   onPress={() =>
                     router.push(
                       `/(app)/estates/${item.event.estateId}/events/${item.event.id}` as never
@@ -783,14 +897,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Quick actions
-  quickActionRow: { flexDirection: 'row', gap: 10, marginBottom: Layout.sectionGap },
-  quickActionTouchable: { flex: 1 },
+  // Quick actions — equal width/height tiles
+  quickActionRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+    marginBottom: Layout.sectionGap,
+  },
+  quickActionTouchable: { flex: 1, alignSelf: 'stretch' },
   quickActionCard: {
+    flex: 1,
+    minHeight: 118,
     borderRadius: Radius.lg,
     paddingVertical: 13,
     paddingHorizontal: 12,
     gap: 6,
+    justifyContent: 'flex-start',
   },
   quickActionIconWrap: {
     width: 36,
@@ -808,6 +930,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,255,255,0.68)',
     lineHeight: 16,
+    minHeight: 32,
   },
 
   // Upcoming

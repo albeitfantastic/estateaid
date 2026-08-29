@@ -13,10 +13,12 @@ import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
 import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
 import { isIssueTask } from '@/lib/issue-task';
+import { acceptedInvitedEstateIds } from '@/lib/accepted-invited-estates';
 import { useAuthStore } from '@/store/auth-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useEventStore } from '@/store/event-store';
+import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -36,11 +38,20 @@ export default function CalendarScreen() {
   const allStays = useStayStore((s) => s.stays);
   const allEvents = useEventStore((s) => s.events);
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
+  const allInvitations = useInvitationStore((s) => s.invitations);
 
-  const myEstates = useMemo(
-    () => allEstates.filter((e) => e.ownerId === (currentUser?.id ?? '')),
-    [allEstates, currentUser?.id]
+  const invitedEstateIds = useMemo(
+    () => acceptedInvitedEstateIds(allInvitations, currentUser?.id, currentUser?.email),
+    [allInvitations, currentUser?.id, currentUser?.email]
   );
+
+  const myEstates = useMemo(() => {
+    const owned = allEstates.filter((e) => e.ownerId === (currentUser?.id ?? ''));
+    const invited = allEstates.filter(
+      (e) => e.ownerId !== currentUser?.id && invitedEstateIds.includes(e.id)
+    );
+    return [...owned, ...invited];
+  }, [allEstates, currentUser?.id, invitedEstateIds]);
 
   const estateIds = useMemo(() => myEstates.map((e) => e.id), [myEstates]);
 

@@ -3,9 +3,15 @@ import type { EstateInviteRole } from '@/types';
 export const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
 export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
 
+/** App-scheme invite deep link (HTTPS universal links deferred). */
+export function inviteDeepLink(code: string): string {
+  return `estateaid://i/${encodeURIComponent(code.trim().toUpperCase())}`;
+}
+
 /** Default English suffix for open (non-email-bound) invites; override via i18n in UI when building messages. */
 export const DEFAULT_OPEN_INVITE_SUFFIX =
-  'Each code is single-use. Sign in to Maison and redeem it from the Invitations tab (or when prompted).';
+  'Each code is single-use. Open the link on your phone, or sign in to Maison and redeem the code from Stays → Redeem.';
+
 
 function inviteEmailLine(inviteeEmail?: string): string {
   const e = inviteeEmail?.trim();
@@ -19,8 +25,8 @@ export type InviteMessageLine = {
   role?: EstateInviteRole;
 };
 
-function roleLabel(role?: EstateInviteRole): string {
-  if (role === 'owner') return 'Co-owner';
+function roleLabel(role?: EstateInviteRole | string): string {
+  if (role === 'coOwner' || role === 'owner') return 'Co-owner';
   return 'Guest on property';
 }
 
@@ -28,9 +34,9 @@ function formatInviteLines(items: InviteMessageLine[]): string {
   return items
     .map(
       (i) =>
-        `• ${i.estateName} — code ${i.inviteCode} (${roleLabel(i.role)})`
+        `• ${i.estateName}\n  Link: ${inviteDeepLink(i.inviteCode)}\n  Code: ${i.inviteCode} (${roleLabel(i.role)})`
     )
-    .join('\n');
+    .join('\n\n');
 }
 
 export type MultiInviteMessageOpts = {

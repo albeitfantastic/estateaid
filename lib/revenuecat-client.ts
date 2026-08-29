@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL, type CustomerInfo } from 'react-native-purchases';
 
-import { getRevenueCatApiKey } from '@/lib/subscription-config';
+import { getRevenueCatApiKey, entitlementIdsToMatch } from '@/lib/subscription-config';
 
 let configured = false;
 
@@ -61,7 +61,11 @@ export function isEntitlementActiveInCustomerInfo(
   info: CustomerInfo,
   entitlementId: string
 ): boolean {
-  return info.entitlements.active[entitlementId] != null;
+  if (info.entitlements.active[entitlementId] != null) return true;
+  // Also accept configured aliases when checking the primary Maison Pro entitlement.
+  return entitlementIdsToMatch().some(
+    (id) => id !== entitlementId && info.entitlements.active[id] != null
+  );
 }
 
 /** Refresh with Apple/Google then return latest CustomerInfo, or null on failure. */

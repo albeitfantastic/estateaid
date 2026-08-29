@@ -1,6 +1,6 @@
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter, Redirect } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -16,6 +16,9 @@ import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
 import { EventType, IssuePriority, RecurrenceFrequency } from '@/types';
 import { formatDate, today } from '@/lib/date-utils';
 import { generateId, generateUuidV4 } from '@/lib/id';
+import { MAINTENANCE_TEMPLATES } from '@/lib/onboarding-starters';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 
 const EVENT_COLORS = ['#22c55e', '#8B5CF6', '#0a7ea4', '#f59e0b', '#ef4444', '#B5703A', '#64748B', '#2E7D91'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -205,6 +208,16 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
   const [dayOfWeek, setDayOfWeek] = useState(1);
   const [dayOfMonth, setDayOfMonth] = useState(1);
 
+  function applyTemplate(id: string) {
+    const tpl = MAINTENANCE_TEMPLATES.find((x) => x.id === id);
+    if (!tpl) return;
+    setTitle(tpl.title);
+    setDescription(tpl.body);
+    setType('recurring');
+    setFrequency('monthly');
+    setDayOfMonth(1);
+  }
+
   async function save() {
     if (!title.trim()) {
       Alert.alert(t('maintenanceSchedule.missingTitle'), t('maintenanceSchedule.missingTitleBody'));
@@ -262,6 +275,20 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
       </View>
 
       <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + Spacing.xl }]}>
+        <ThemedText style={[styles.label, { color: colors.icon }]}>Templates</ThemedText>
+        <View style={styles.issuePriRow}>
+          {MAINTENANCE_TEMPLATES.map((tpl) => (
+            <TouchableOpacity
+              key={tpl.id}
+              style={[styles.issuePriPill, { borderColor: colors.border }]}
+              onPress={() => applyTemplate(tpl.id)}
+              activeOpacity={0.75}
+            >
+              <ThemedText style={styles.issuePriText}>{tpl.title}</ThemedText>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* Type picker */}
         <ThemedText style={[styles.label, { color: colors.icon }]}>Type</ThemedText>
         <View style={styles.typePicker}>
@@ -455,6 +482,15 @@ const styles = StyleSheet.create({
 export default function NewEvent() {
   const params = useLocalSearchParams<{ estateId?: string | string[]; kind?: string | string[] }>();
   const estateId = paramId(params.estateId);
+  const canWrite = useCan()('events.write', { estateId });
+  useEffect(() => {
+    if (!canWrite) {
+      openHostCapabilityDenied(estateId, 'events.write', `/(app)/estates/${estateId}/events`);
+    }
+  }, [canWrite, estateId]);
+  if (!canWrite) {
+    return <Redirect href={`/(app)/estates/${estateId}/events` as never} />;
+  }
   const kindRaw = params.kind;
   const kind =
     typeof kindRaw === 'string' ? kindRaw : Array.isArray(kindRaw) ? kindRaw[0] : undefined;

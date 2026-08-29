@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 import { uploadEstateDocumentFile } from '@/lib/estate-document-storage';
 import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
@@ -30,17 +32,30 @@ export default function UploadDocument() {
   const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
+  const can = useCan();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
   const addDocument = useDocumentStore((s) => s.addDocument);
+  const docsPath = `/(app)/estates/${estateId}/documents`;
+  const allowed = can('documents.upload', { estateId });
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<DocumentCategory>('guide');
   const [pickedFile, setPickedFile] = useState<PickedFile | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (allowed) return;
+    openHostCapabilityDenied(estateId, 'documents.upload', docsPath);
+    router.replace(docsPath as never);
+  }, [allowed, docsPath, router]);
+
+  if (!allowed) {
+    return <ThemedView style={{ flex: 1 }} />;
+  }
 
   async function pickFile() {
     try {
@@ -51,9 +66,6 @@ export default function UploadDocument() {
       setPickedFile(result.assets[0]);
       if (!title.trim()) setTitle(result.assets[0].name.replace(/\.[^./]+$/, ''));
     } catch (e) {
-      // #region agent log
-      fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1393f3'},body:JSON.stringify({sessionId:'1393f3',runId:'pre-fix',hypothesisId:'H1',location:'documents/upload.tsx:pickFile',message:'document picker native load failed',data:{error:String(e)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       Alert.alert(
         'Development build required',
         'Document picker was added after your last native build. Rebuild the Maison development client (npm run eas:dev:ios or eas:dev:android), install it, then try again.'

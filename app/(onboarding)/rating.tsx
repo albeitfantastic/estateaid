@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { APP_STORE_URL } from '@/lib/invite-messages';
-import { deriveAccessTier } from '@/lib/access-tier';
+import { resolveReturnTo } from '@/lib/paywall-nav';
 import { useAuthStore } from '@/store/auth-store';
-import { useSubscription } from '@/providers/subscription-provider';
+import { supabase } from '@/lib/supabase';
 
 const C = {
   bg: '#F4F4F2',
@@ -16,30 +16,29 @@ const C = {
   text: '#1A2B28',
   muted: '#607D8B',
   border: '#DDE1E0',
-  surface: '#FFFFFF',
 };
 
 export default function RatingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
-  const trialEndsAt = useAuthStore((s) => s.currentUser?.trialEndsAt);
-  const { isPro } = useSubscription();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const currentUserId = useAuthStore((s) => s.currentUser?.id);
   const [selected, setSelected] = useState<number | null>(null);
+  const back = resolveReturnTo(returnTo);
 
   const ratingLabels = useMemo(
     () => ['', t('rating.poor'), t('rating.fair'), t('rating.good'), t('rating.great'), t('rating.excellent')],
     [t]
   );
 
-  function proceed() {
-    completeOnboarding();
-    const tier = deriveAccessTier({ trialEndsAt, isProEntitlement: isPro });
-    if (tier === 'standard') {
-      router.replace('/(app)/settings/paywall-trust' as never);
-      return;
+  async function proceed() {
+    if (currentUserId) {
+      await supabase
+        .from('profiles')
+        .update({ rating_prompt_shown_at: new Date().toISOString() })
+        .eq('id', currentUserId);
     }
-    router.replace('/(app)/home' as never);
+    router.replace(back as never);
   }
 
   return (
@@ -71,7 +70,7 @@ export default function RatingScreen() {
             style={styles.appStoreBtn}
             onPress={() => {
               Linking.openURL(APP_STORE_URL);
-              proceed();
+              void proceed();
             }}
             activeOpacity={0.85}
           >
@@ -89,7 +88,7 @@ export default function RatingScreen() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.btn, selected === null && styles.btnDisabled]}
-          onPress={proceed}
+          onPress={() => void proceed()}
           disabled={selected === null}
           activeOpacity={0.85}
         >
@@ -97,7 +96,7 @@ export default function RatingScreen() {
             {selected !== null && selected >= 4 ? t('rating.continue') : t('rating.continueAnyway')}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={proceed} style={styles.skipLink}>
+        <TouchableOpacity onPress={() => void proceed()} style={styles.skipLink}>
           <Text style={styles.skipText}>{t('rating.skip')}</Text>
         </TouchableOpacity>
       </View>
@@ -152,11 +151,7 @@ const styles = StyleSheet.create({
   appStoreBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   feedbackNote: { paddingHorizontal: 16, marginTop: 8 },
   feedbackNoteText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    gap: 8,
-  },
+  footer: { paddingHorizontal: 24, paddingBottom: 16, gap: 8 },
   btn: {
     backgroundColor: C.navy,
     borderRadius: 10,

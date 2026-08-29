@@ -12,9 +12,15 @@ import { EXIT_BODY, EXIT_OFFER, EXIT_TITLE } from '../paywall-mock-data';
 interface ExitOfferScreenProps {
   onClaimOffer: () => void;
   onContinueRegular: () => void;
+  /** Soft lock escape — leave acquisition without purchasing. */
+  onSkip: () => void;
 }
 
-export function ExitOfferScreen({ onClaimOffer, onContinueRegular }: ExitOfferScreenProps) {
+export function ExitOfferScreen({
+  onClaimOffer,
+  onContinueRegular,
+  onSkip,
+}: ExitOfferScreenProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -24,13 +30,13 @@ export function ExitOfferScreen({ onClaimOffer, onContinueRegular }: ExitOfferSc
       <View style={styles.body}>
         <Text style={styles.title}>{EXIT_TITLE}</Text>
         <Text style={styles.subtitle}>{EXIT_BODY}</Text>
-
-        <ExitOfferCard badge={EXIT_OFFER.badge} price={EXIT_OFFER.price} />
+        <PrimaryButton label="Start Free Trial" onPress={onClaimOffer} />
+        
       </View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <PrimaryButton label="Claim this offer" onPress={onClaimOffer} />
-        <SecondaryButton label="Continue with regular pricing" onPress={onContinueRegular} />
+        
+        <SecondaryButton label="Skip for now" onPress={onSkip} />
         <LegalLinks />
       </View>
     </View>

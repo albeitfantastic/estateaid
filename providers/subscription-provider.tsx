@@ -19,7 +19,7 @@ import {
   presentManageSubscriptions,
   Purchases,
 } from '@/lib/revenuecat-client';
-import { PRIMARY_ENTITLEMENT_ID } from '@/lib/subscription-config';
+import { PRIMARY_ENTITLEMENT_ID, isPrimaryEntitlementId } from '@/lib/subscription-config';
 import { fetchSubscriptionEntitlements, rowGrantsAccess } from '@/lib/subscription-access';
 import { useAuthStore } from '@/store/auth-store';
 import type { SubscriptionEntitlementRow } from '@/types/subscription';
@@ -71,7 +71,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const syncPurchasesAndRefetch = useCallback(async () => {
     if (Platform.OS !== 'web' && isRevenueCatConfigured()) {
-      await fetchCustomerInfoSafe();
+      const info = await fetchCustomerInfoSafe();
+      if (info) {
+        setSdkMaisonProActive(isEntitlementActiveInCustomerInfo(info, PRIMARY_ENTITLEMENT_ID));
+      }
     }
     await refetch();
   }, [refetch]);
@@ -141,7 +144,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [currentUserId, refetch]);
 
   const primaryRow = useMemo(
-    () => rows.find((r) => r.entitlement_id === PRIMARY_ENTITLEMENT_ID) ?? null,
+    () => rows.find((r) => isPrimaryEntitlementId(r.entitlement_id)) ?? null,
     [rows]
   );
 

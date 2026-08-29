@@ -71,15 +71,16 @@ export default function GuestDetail() {
   }
 
   function promptChangeRole(invId: string, currentRole: string) {
-    const ROLES = ['guest', 'owner'] as const;
-    const others = ROLES.filter((r) => r !== currentRole);
+    const ROLES = ['guest', 'coOwner'] as const;
+    const normalized = currentRole === 'owner' ? 'coOwner' : currentRole;
+    const others = ROLES.filter((r) => r !== normalized);
     Alert.alert(
       'Change Role',
-      `Current role: ${currentRole.charAt(0).toUpperCase() + currentRole.slice(1)}`,
+      `Current role: ${normalized === 'coOwner' ? 'Co-owner' : 'Guest'}`,
       [
         ...others.map((r) => ({
-          text: r.charAt(0).toUpperCase() + r.slice(1),
-          onPress: () => updateInvitationRole(invId, r),
+          text: r === 'coOwner' ? 'Co-owner' : 'Guest',
+          onPress: () => void updateInvitationRole(invId, r),
         })),
         { text: 'Cancel', style: 'cancel' as const },
       ]
@@ -153,7 +154,7 @@ export default function GuestDetail() {
                       activeOpacity={0.7}
                     >
                       <ThemedText style={[styles.roleBadgeText, { color: dotColor }]}>
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                        {role === 'coOwner' || role === 'owner' ? 'Co-owner' : 'Guest'}
                       </ThemedText>
                       <IconSymbol name="chevron.up.chevron.down" size={9} color={dotColor} />
                     </TouchableOpacity>

@@ -1,6 +1,6 @@
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+﻿import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -10,9 +10,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { CO_OWNER_CAP, useCan } from '@/lib/entitlements/capabilities';
+import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 import { useAuthStore } from '@/store/auth-store';
+import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
+import type { EstateInviteRole } from '@/types';
 import { generateInviteCode, generateUuidV4 } from '@/lib/id';
 import {
   buildMultiInviteShareMessage,
@@ -24,6 +28,7 @@ export default function InviteGuest() {
   const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
+  const can = useCan();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -31,44 +36,98 @@ export default function InviteGuest() {
   const { sendInvitation } = useInvitationStore();
   const { getEstateById } = useEstateStore();
   const estate = getEstateById(estateId);
+  const coverage = useEstateCoverageStore((s) => s.byId[estateId]);
+  const fetchCoverage = useEstateCoverageStore((s) => s.fetchCoverage);
 
   const [note, setNote] = useState('');
+  const [role, setRole] = useState<EstateInviteRole>('guest');
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
+
+  const canInviteGuest = can('guests.invite', { estateId });
+  const canInviteCoOwner = can('coOwners.invite', { estateId });
+  const allowed = canInviteGuest || canInviteCoOwner;
+  const guestsListPath = `/(app)/estates/${estateId}/guests`;
+  const atCap = (coverage?.coOwnerCount ?? 0) >= CO_OWNER_CAP;
+  const uncovered = coverage != null && !coverage.covered;
+
+  useEffect(() => {
+    if (estateId) void fetchCoverage([estateId]);
+  }, [estateId, fetchCoverage]);
+
+  useEffect(() => {
+    if (allowed) return;
+    openHostCapabilityDenied(estateId, 'guests.invite', guestsListPath);
+    router.replace(guestsListPath as never);
+  }, [allowed, estateId, guestsListPath, router]);
+
+  useEffect(() => {
+    if (role === 'coOwner' && !canInviteCoOwner) setRole('guest');
+  }, [role, canInviteCoOwner]);
 
   const openSuffix = t('ownerInvite.openInviteSuffix');
   const sharePayload = useMemo(() => {
     if (!createdCode || !estate) {
       return { shareBody: '', waBody: '', subject: '' };
     }
-    const items = [{ estateName: estate.name, inviteCode: createdCode, role: 'guest' as const }];
+    const items = [{ estateName: estate.name, inviteCode: createdCode, role }];
     const noteOpt = note.trim() || undefined;
     return {
       shareBody: buildMultiInviteShareMessage(items, { note: noteOpt, openInviteSuffix: openSuffix }),
       waBody: buildWhatsAppMultiInviteMessage(items, { note: noteOpt, openInviteSuffix: openSuffix }),
       subject: inviteEmailSubject([estate.name]),
     };
-  }, [createdCode, estate, note, openSuffix]);
+  }, [createdCode, estate, note, openSuffix, role]);
 
   async function createInvite() {
     if (!estate) return;
+    if (role === 'coOwner' && !canInviteCoOwner) {
+      Alert.alert(
+        t('ownerInvite.saveFailedTitle'),
+        uncovered
+          ? 'Co-owner invites need an active subscription on this property.'
+          : atCap
+            ? `This property already has ${CO_OWNER_CAP} co-owners.`
+            : 'Co-owner invites are not available.'
+      );
+      return;
+    }
     const code = generateInviteCode();
-    const { error } = await sendInvitation({
+    const { error, code: errCode } = await sendInvitation({
       id: generateUuidV4(),
       estateId,
       ownerId: currentUser!.id,
       inviteCode: code,
-      role: 'guest',
+      role,
       message: note.trim() || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
     });
     if (error) {
+      if (errCode === 'co_owner_cap_reached') {
+        Alert.alert(t('ownerInvite.saveFailedTitle'), `Co-owner limit reached (${CO_OWNER_CAP}).`);
+        return;
+      }
       Alert.alert(t('ownerInvite.saveFailedTitle'), error);
       return;
     }
     setCreatedCode(code);
     setShareModalVisible(true);
+  }
+
+  if (!allowed) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity onPress={() => router.replace(guestsListPath as never)} style={styles.back}>
+            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+          </TouchableOpacity>
+          <ThemedText type="title" style={styles.title}>
+            {t('titles.invite')}
+          </ThemedText>
+        </View>
+      </ThemedView>
+    );
   }
 
   if (!estate) {
@@ -86,6 +145,12 @@ export default function InviteGuest() {
       </ThemedView>
     );
   }
+
+  const coOwnerDisabledReason = uncovered
+    ? 'Needs an active subscription on this property'
+    : atCap
+      ? `Limit reached (${CO_OWNER_CAP} co-owners)`
+      : null;
 
   return (
     <ThemedView style={styles.container}>
@@ -123,6 +188,52 @@ export default function InviteGuest() {
             <View style={[styles.infoBox, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}>
               <IconSymbol name="info.circle.fill" size={18} color={colors.tint} />
               <ThemedText style={[styles.infoText, { color: colors.tint }]}>{t('ownerInvite.openHint')}</ThemedText>
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText style={[styles.label, { color: colors.icon }]}>Role</ThemedText>
+              <View style={styles.roleRow}>
+                {([
+                  { value: 'guest' as const, label: t('ownerInvite.estateRoleGuestLabel'), disabled: false },
+                  {
+                    value: 'coOwner' as const,
+                    label: t('ownerInvite.estateRoleCoOwnerLabel'),
+                    disabled: !canInviteCoOwner,
+                  },
+                ]).map((opt) => {
+                  const selected = role === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      disabled={opt.disabled}
+                      onPress={() => setRole(opt.value)}
+                      style={[
+                        styles.rolePill,
+                        {
+                          borderColor: selected ? colors.tint : colors.icon + '44',
+                          backgroundColor: selected ? colors.tint + '18' : 'transparent',
+                          opacity: opt.disabled ? 0.45 : 1,
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        style={{
+                          color: selected ? colors.tint : colors.text,
+                          fontWeight: selected ? '700' : '500',
+                          fontSize: 14,
+                        }}
+                      >
+                        {opt.label}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {coOwnerDisabledReason ? (
+                <ThemedText style={[styles.capHint, { color: colors.icon }]}>
+                  Co-owner: {coOwnerDisabledReason}
+                </ThemedText>
+              ) : null}
             </View>
 
             <View style={styles.field}>
@@ -198,6 +309,14 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
   multiline: { height: 100, paddingTop: 12 },
+  roleRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  rolePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  capHint: { fontSize: 12, marginTop: 4 },
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',

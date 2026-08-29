@@ -7,9 +7,11 @@ import { dedupeById } from '@/lib/dedup-by-id';
 import { useActivityLogStore } from '@/store/activity-log-store';
 
 function fromDb(row: Record<string, unknown>): Estate {
+  const ownerId = row.owner_id as string;
   return {
     id: row.id as string,
-    ownerId: row.owner_id as string,
+    ownerId,
+    sponsorUserId: (row.sponsor_user_id as string | undefined) ?? ownerId,
     name: row.name as string,
     location: (row.location ?? '') as string,
     coverImageUrl: row.cover_image_url as string | undefined,
@@ -29,6 +31,7 @@ function toDb(estate: Estate) {
   return {
     id: estate.id,
     owner_id: estate.ownerId,
+    sponsor_user_id: estate.sponsorUserId,
     name: estate.name,
     location: estate.location,
     cover_image_url: remoteImageUrlOnly(estate.coverImageUrl),
@@ -42,9 +45,10 @@ interface EstateState {
   estates: Estate[];
   setEstates: (estates: Estate[]) => void;
   fetchFromSupabase: () => Promise<void>;
-  addEstate: (estate: Estate) => Promise<{ error: string | null }>;
+  addEstate: (estate: Estate) => Promise<{ error: string | null; code?: string | null }>;
   updateEstate: (id: string, patch: Partial<Estate>) => Promise<void>;
   deleteEstate: (id: string) => Promise<{ error: string | null }>;
+  transferSponsor: (estateId: string) => Promise<{ error: string | null; code?: string | null }>;
   getEstateById: (id: string) => Estate | undefined;
   getEstatesByOwner: (ownerId: string) => Estate[];
 }
@@ -56,17 +60,78 @@ export const useEstateStore = create<EstateState>()(
       setEstates: (estates) => set({ estates }),
       fetchFromSupabase: async () => {
         const { data } = await supabase.from('estates').select('*');
-        if (data) set({ estates: dedupeById(data).map(fromDb) });
+        if (data) {
+          const estates = dedupeById(data).map(fromDb);
+          set({ estates });
+          void import('@/store/estate-coverage-store').then(({ useEstateCoverageStore }) =>
+            useEstateCoverageStore.getState().fetchCoverage(estates.map((e) => e.id))
+          );
+        }
       },
       addEstate: async (estate) => {
-        set((s) => ({ estates: [...s.estates, estate] }));
-        const { error } = await supabase.from('estates').insert(toDb(estate));
+        const withSponsor: Estate = {
+          ...estate,
+          sponsorUserId: estate.sponsorUserId || estate.ownerId,
+        };
+        set((s) => ({ estates: [...s.estates, withSponsor] }));
+        const { data, error } = await supabase.rpc('create_estate', {
+          p_id: withSponsor.id,
+          p_name: withSponsor.name,
+          p_location: withSponsor.location,
+          p_description: withSponsor.description ?? null,
+          p_cover_image_url: remoteImageUrlOnly(withSponsor.coverImageUrl),
+          p_time_zone: withSponsor.timeZone,
+        });
         if (error) {
-          set((s) => ({ estates: s.estates.filter((e) => e.id !== estate.id) }));
-          return { error: error.message };
+          set((s) => ({ estates: s.estates.filter((e) => e.id !== withSponsor.id) }));
+          return { error: error.message, code: 'error' as const };
         }
-        useActivityLogStore.getState().logActivity(estate.id, estate.ownerId, 'estate_created');
-        return { error: null };
+        const result = data as { ok?: boolean; code?: string; message?: string } | null;
+        if (!result?.ok) {
+          set((s) => ({ estates: s.estates.filter((e) => e.id !== withSponsor.id) }));
+          return {
+            error: result?.message ?? result?.code ?? 'Could not create estate',
+            code: (result?.code as 'upgrade_required' | 'error') ?? 'error',
+          };
+        }
+        useActivityLogStore.getState().logActivity(withSponsor.id, withSponsor.ownerId, 'estate_created');
+        void import('@/lib/use-case-profile').then(({ seedStarterFaqsIfEmpty }) =>
+          seedStarterFaqsIfEmpty(withSponsor.id)
+        );
+        void import('@/lib/notifications').then(({ maybeRequestPushAfterMeaningfulAction }) =>
+          maybeRequestPushAfterMeaningfulAction(withSponsor.ownerId)
+        );
+        void import('@/store/estate-coverage-store').then(({ useEstateCoverageStore }) =>
+          useEstateCoverageStore.getState().fetchCoverage([withSponsor.id])
+        );
+        return { error: null, code: null };
+      },
+      transferSponsor: async (estateId) => {
+        const { data, error } = await supabase.rpc('transfer_estate_sponsor', {
+          p_estate_id: estateId,
+        });
+        if (error) return { error: error.message, code: 'error' };
+        const result = data as { ok?: boolean; code?: string } | null;
+        if (!result?.ok) {
+          return {
+            error: result?.code ?? 'transfer_failed',
+            code: result?.code ?? 'error',
+          };
+        }
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.id) {
+          set((s) => ({
+            estates: s.estates.map((e) =>
+              e.id === estateId ? { ...e, sponsorUserId: user.id } : e
+            ),
+          }));
+        }
+        void import('@/store/estate-coverage-store').then(({ useEstateCoverageStore }) =>
+          useEstateCoverageStore.getState().fetchCoverage([estateId])
+        );
+        return { error: null, code: null };
       },
       updateEstate: async (id, patch) => {
         set((s) => ({
@@ -102,6 +167,14 @@ export const useEstateStore = create<EstateState>()(
     {
       name: '@estateaid/estates',
       storage: createJSONStorage(() => AsyncStorage),
+      merge: (persisted, current) => {
+        const p = persisted as { estates?: Estate[] } | undefined;
+        const estates = (p?.estates ?? current.estates).map((e) => ({
+          ...e,
+          sponsorUserId: e.sponsorUserId || e.ownerId,
+        }));
+        return { ...current, ...p, estates };
+      },
     }
   )
 );

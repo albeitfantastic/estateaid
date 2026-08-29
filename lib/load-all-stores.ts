@@ -21,4 +21,9 @@ export async function loadAllStores(): Promise<void> {
     useFaqStore.getState().fetchFromSupabase(),
     useActivityLogStore.getState().fetchFromSupabase(),
   ]);
+  const ids = useEstateStore.getState().estates.map((e) => e.id);
+  if (ids.length > 0) {
+    const { useEstateCoverageStore } = await import('@/store/estate-coverage-store');
+    await useEstateCoverageStore.getState().fetchCoverage(ids);
+  }
 }

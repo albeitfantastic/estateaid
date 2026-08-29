@@ -1,4 +1,5 @@
 import type { Benefit, Plan, Reassurance, Testimonial, TimelineItem } from './paywall-types';
+import { STORE_TRIAL_DAYS } from '@/lib/subscription-config';
 
 // ─── Screen 1 — Trust ────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ export const PLANS: Plan[] = [
 
 export const DEFAULT_PLAN_ID: Plan['id'] = 'yearly';
 
-export const TRUST_LINE = 'No payment due today';
+export const TRUST_LINE = 'No payment due today — start with a free trial';
 
 // ─── Screen 3 — Trial Clarity ─────────────────────────────────────────────────
 
@@ -53,15 +54,15 @@ export const TRIAL_TITLE = 'How your free trial works';
 export const TIMELINE_STEPS: TimelineItem[] = [
   {
     heading: 'Today',
-    body: 'Set up your property and add your key information.',
+    body: 'Start your free trial in the App Store or Play Store. Set up your property and add key information.',
   },
   {
     heading: 'Before your trial ends',
     body: 'We\'ll remind you so there are no surprises.',
   },
   {
-    heading: 'After 7 days',
-    body: 'You\'ll only be charged if you decide to continue.',
+    heading: `After ${STORE_TRIAL_DAYS} days`,
+    body: 'You\'ll only be charged if you decide to continue. Cancel anytime in your store subscriptions.',
   },
 ];
 
@@ -80,11 +81,12 @@ export const OUTCOME_BODY =
 
 // ─── Screen 5 — Exit Offer ───────────────────────────────────────────────────
 
-export const EXIT_TITLE = 'A quieter way to get started';
+export const EXIT_TITLE = 'Ready when you are';
 
-export const EXIT_BODY = 'Try Maison with 30% off the yearly plan.';
+export const EXIT_BODY =
+  'Start Maison Pro with a free store trial, or continue exploring on the free plan. Special pricing appears in the store when an exit offer is available.';
 
 export const EXIT_OFFER = {
-  badge: '30% off yearly',
-  price: '€69/year',
+  badge: 'Free trial available',
+  price: 'Start in the App Store',
 };

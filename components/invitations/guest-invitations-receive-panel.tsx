@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -13,7 +13,7 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 
 /** Redeem invite code + pending invitations to accept/decline (guest side). */
-export function GuestInvitationsReceivePanel() {
+export function GuestInvitationsReceivePanel({ initialCode }: { initialCode?: string } = {}) {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -24,8 +24,12 @@ export function GuestInvitationsReceivePanel() {
   const getEstateById = useEstateStore((s) => s.getEstateById);
   const allInvitations = useInvitationStore((s) => s.invitations);
 
-  const [codeInput, setCodeInput] = useState('');
+  const [codeInput, setCodeInput] = useState(initialCode?.trim().toUpperCase() ?? '');
   const [redeemError, setRedeemError] = useState('');
+
+  useEffect(() => {
+    if (initialCode?.trim()) setCodeInput(initialCode.trim().toUpperCase());
+  }, [initialCode]);
 
   const invitations = useMemo(
     () => getPendingInvitationsForGuest(currentUser?.id ?? '', currentUser?.email),

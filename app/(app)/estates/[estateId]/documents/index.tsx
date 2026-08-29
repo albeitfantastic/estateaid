@@ -4,12 +4,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
+import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 import { useDocumentStore } from '@/store/document-store';
 import { DocumentCategory } from '@/types';
 
@@ -26,6 +29,7 @@ export default function DocumentsScreen() {
   const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
+  const canUpload = useCan()('documents.upload', { estateId });
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -36,6 +40,14 @@ export default function DocumentsScreen() {
     cat,
     docs: docs.filter((d) => d.category === cat),
   })).filter((g) => g.docs.length > 0);
+
+  function goUpload() {
+    if (!canUpload) {
+      openHostCapabilityDenied(estateId, 'documents.upload', `/(app)/estates/${estateId}/documents`);
+      return;
+    }
+    router.push(`/(app)/estates/${estateId}/documents/upload` as never);
+  }
 
   function confirmDelete(id: string, title: string) {
     Alert.alert('Delete Document', `Remove "${title}"?`, [
@@ -51,16 +63,26 @@ export default function DocumentsScreen() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>{t('titles.documents')}</ThemedText>
-        <TouchableOpacity
+        <HostProLockTouchable
+          locked={!canUpload}
+          feature="documents.upload"
+          returnTo={`/(app)/estates/${estateId}/documents`}
+          shrinkToContent
+          onPress={goUpload}
           style={[styles.addBtn, { backgroundColor: colors.tint }]}
-          onPress={() => router.push(`/(app)/estates/${estateId}/documents/upload` as never)}
         >
           <IconSymbol name="plus" size={20} color="#fff" />
-        </TouchableOpacity>
+        </HostProLockTouchable>
       </View>
 
       {docs.length === 0 ? (
-        <EmptyState icon="doc.fill" title="No documents yet" subtitle="Upload guides, manuals, and rules for your guests." actionLabel="Upload" onAction={() => router.push(`/(app)/estates/${estateId}/documents/upload` as never)} />
+        <EmptyState
+          icon="doc.fill"
+          title="No documents yet"
+          subtitle="Upload guides, manuals, and rules for your guests."
+          actionLabel="Upload"
+          onAction={goUpload}
+        />
       ) : (
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
           {grouped.map(({ cat, docs: catDocs }) => (

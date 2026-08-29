@@ -4,39 +4,74 @@ import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Elevation, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useHasFullHostAccess } from '@/lib/access-tier';
+import { SponsorCoverageBanner } from '@/components/ui/sponsor-coverage-banner';
+import { useCan, type Capability } from '@/lib/entitlements/capabilities';
+import type { UpgradeFeature } from '@/lib/maison-pro-upgrade';
 import { addDays, today } from '@/lib/date-utils';
-import { getEstateRole } from '@/lib/estate-role';
+import { getEstateActorRole } from '@/lib/estate-role';
 import { useAuthStore } from '@/store/auth-store';
+import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const OWNER_ITEMS = [
-  { label: 'Guests', icon: 'person.2.fill', route: 'guests', primary: false },
-  { label: 'Stay Requests', icon: 'calendar', route: 'stays', primary: false },
-  { label: 'Availability', icon: 'calendar.badge.exclamationmark', route: 'availability', primary: false },
-  { label: 'Events', icon: 'calendar.badge.clock', route: 'events', primary: false },
-  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', primary: false },
-  { label: 'Documents', icon: 'doc.fill', route: 'documents', primary: false },
-  { label: 'Contacts', icon: 'phone.fill', route: 'contacts', primary: false },
-  { label: 'Activity', icon: 'clock.fill', route: 'activity', primary: false },
-] as const;
+/** Pro capability implied by upgrade feature (for lock badge on read-open tiles). */
+function proCapForFeature(feature: UpgradeFeature): Capability | null {
+  switch (feature) {
+    case 'guests.invite':
+      return 'guests.invite';
+    case 'stays.approve':
+      return 'stays.approve';
+    case 'availability.write':
+      return 'availability.write';
+    case 'events.write':
+      return 'events.write';
+    case 'documents.upload':
+      return 'documents.upload';
+    default:
+      return null;
+  }
+}
 
-const GUEST_ITEMS = [
-  { label: 'Plan a Stay', icon: 'calendar', route: 'request-stay', alwaysOn: true },
-  { label: 'My Stays', icon: 'checkmark.circle.fill', route: 'my-stays', alwaysOn: true },
+const OWNER_ITEMS: {
+  label: string;
+  icon: string;
+  route: string;
+  primary: boolean;
+  cap: Capability;
+  feature: UpgradeFeature;
+}[] = [
+  { label: 'Guests', icon: 'person.2.fill', route: 'guests', primary: false, cap: 'activity.view', feature: 'guests.invite' },
+  { label: 'Stay Requests', icon: 'calendar', route: 'stays', primary: false, cap: 'activity.view', feature: 'stays.approve' },
+  { label: 'Availability', icon: 'calendar.badge.exclamationmark', route: 'availability', primary: false, cap: 'availability.read', feature: 'availability.write' },
+  { label: 'Events', icon: 'calendar.badge.clock', route: 'events', primary: false, cap: 'events.read', feature: 'events.write' },
+  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', primary: false, cap: 'faq.read', feature: 'generic' },
+  { label: 'Documents', icon: 'doc.fill', route: 'documents', primary: false, cap: 'documents.read', feature: 'documents.upload' },
+  { label: 'Contacts', icon: 'phone.fill', route: 'contacts', primary: false, cap: 'contacts.read', feature: 'generic' },
+  { label: 'Activity', icon: 'clock.fill', route: 'activity', primary: false, cap: 'activity.view', feature: 'generic' },
+  { label: 'Handover', icon: 'checkmark.circle.fill', route: 'handover', primary: false, cap: 'estate.edit', feature: 'generic' },
+  { label: 'Expenses', icon: 'creditcard.fill', route: 'expenses', primary: false, cap: 'estate.edit', feature: 'generic' },
+];
+
+type GuestHubItem =
+  | { label: string; icon: string; href: 'plan' | 'my-stays'; alwaysOn: true }
+  | { label: string; icon: string; route: string; alwaysOn: boolean };
+
+const GUEST_ITEMS: GuestHubItem[] = [
+  { label: 'Request dates', icon: 'calendar', href: 'plan', alwaysOn: true },
+  { label: 'My Stays', icon: 'checkmark.circle.fill', href: 'my-stays', alwaysOn: true },
   { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', alwaysOn: false },
   { label: 'Documents', icon: 'doc.fill', route: 'documents', alwaysOn: false },
   { label: 'Contacts', icon: 'phone.fill', route: 'contacts', alwaysOn: false },
   { label: 'Maintenance', icon: 'calendar.badge.clock', route: 'events', alwaysOn: false },
+  { label: 'Handover', icon: 'checkmark.circle.fill', route: 'handover', alwaysOn: false },
   { label: 'Activity', icon: 'clock.fill', route: 'activity', alwaysOn: false },
-] as const;
+];
 
 export default function EstateHub() {
   const { t } = useTranslation();
@@ -46,28 +81,54 @@ export default function EstateHub() {
   const colorScheme = useColorScheme();
   const scheme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
-  const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
+  const estates = useEstateStore((s) => s.estates);
+  const estate = estates.find((e) => e.id === estateId);
   const currentUser = useAuthStore((s) => s.currentUser);
   const allInvitations = useInvitationStore((s) => s.invitations);
   const allStays = useStayStore((s) => s.stays);
   const todayStr = today();
-  const hasFullHost = useHasFullHostAccess();
+  const can = useCan();
+  const estateCtx = { estateId: estateId as string };
+  const coverage = useEstateCoverageStore((s) => s.byId[estateId as string]);
+  const fetchCoverage = useEstateCoverageStore((s) => s.fetchCoverage);
 
-  const isEstateOwner = estate?.ownerId === currentUser?.id;
-  const estateRole = isEstateOwner
-    ? 'owner'
-    : getEstateRole(allInvitations, estateId, currentUser!.id, currentUser?.email);
+  useEffect(() => {
+    if (estateId) void fetchCoverage([estateId]);
+  }, [estateId, fetchCoverage]);
+
+  const actorRole = useMemo(() => {
+    if (!estate || !currentUser) return 'none' as const;
+    return getEstateActorRole(estates, allInvitations, estateId, currentUser.id, currentUser.email);
+  }, [estate, currentUser, estates, allInvitations, estateId]);
+
+  const isHost = actorRole === 'sponsor' || actorRole === 'coOwner';
+  const uncovered = coverage != null && !coverage.covered;
 
   const hasContextAccess = useMemo(() => {
-    if (estateRole === 'owner') return true;
+    if (isHost) return true;
+    if (!currentUser) return false;
     return allStays.some(
       (s) =>
         s.estateId === estateId &&
-        s.guestId === currentUser?.id &&
+        s.guestId === currentUser.id &&
         todayStr >= addDays(s.from, -3) &&
         todayStr <= addDays(s.to, 1)
     );
-  }, [allStays, estateId, currentUser?.id, todayStr, estateRole]);
+  }, [allStays, estateId, currentUser, todayStr, isHost]);
+
+  const contextUnlockLabel = useMemo(() => {
+    if (hasContextAccess || !currentUser) return null;
+    const upcoming = allStays
+      .filter((s) => s.estateId === estateId && s.guestId === currentUser.id && todayStr < addDays(s.from, -3))
+      .sort((a, b) => a.from.localeCompare(b.from))[0];
+    if (!upcoming) return 'Available during your stay';
+    const unlockDay = addDays(upcoming.from, -3);
+    const days = Math.ceil(
+      (new Date(unlockDay).getTime() - new Date(todayStr).getTime()) / 86400000
+    );
+    if (days > 0) return `Unlocks in ${days} day${days === 1 ? '' : 's'}`;
+    return 'Unlocks 3 days before your stay';
+  }, [allStays, estateId, currentUser, todayStr, hasContextAccess]);
 
   if (!estate) {
     return (
@@ -77,8 +138,23 @@ export default function EstateHub() {
     );
   }
 
-  // Owner: full hub (Standard tier: host tiles show lock until Maison Pro / trial)
-  if (estateRole === 'owner') {
+  if (!currentUser) {
+    return (
+      <ThemedView style={styles.center}>
+        <ThemedText>Loading…</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (isHost) {
+    const canEdit = can('estate.edit', estateCtx);
+    const lockHint = uncovered
+      ? isHost && actorRole === 'coOwner'
+        ? 'Management paused — sponsorship ended'
+        : 'Upgrade to unlock host tools'
+      : !canEdit
+        ? 'Locked — upgrade to manage'
+        : null;
     return (
       <ThemedView style={styles.container}>
         <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
@@ -86,14 +162,19 @@ export default function EstateHub() {
             <IconSymbol name="arrow.left" size={22} color={colors.tint} />
           </TouchableOpacity>
           <View style={styles.headerText}>
-            <ThemedText type="title" style={styles.name} numberOfLines={1}>{estate.name}</ThemedText>
+            <ThemedText type="title" style={styles.name} numberOfLines={1}>
+              {estate.name}
+            </ThemedText>
             <View style={styles.locationRow}>
               <IconSymbol name="map.fill" size={13} color={colors.icon} />
               <ThemedText style={[styles.location, { color: colors.icon }]}>{estate.location}</ThemedText>
             </View>
+            {lockHint ? <Text style={styles.readOnlyHint}>{lockHint}</Text> : null}
           </View>
           <HostProLockTouchable
-            locked={!hasFullHost}
+            locked={!canEdit}
+            feature="generic"
+            estateId={estateId}
             onPress={() => router.push(`/(app)/estates/${estateId}/edit` as never)}
             style={styles.editBtn}
           >
@@ -101,37 +182,48 @@ export default function EstateHub() {
           </HostProLockTouchable>
         </View>
         <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + Spacing.xl }]}>
-          {estate.description && (
+          <SponsorCoverageBanner estateId={estateId as string} />
+          {estate.description ? (
             <ThemedText style={[styles.description, { color: colors.icon }]}>{estate.description}</ThemedText>
-          )}
+          ) : null}
           <View style={styles.tiles}>
-            {OWNER_ITEMS.map((item) => (
-              <HostProLockTouchable
-                key={item.route}
-                locked={!hasFullHost}
-                onPress={() => router.push(`/(app)/estates/${estateId}/${item.route}` as never)}
-                style={[
-                  styles.tile,
-                  {
-                    backgroundColor: item.primary ? colors.tintMuted : colors.surface,
-                    borderColor: item.primary ? colors.tintMuted : colors.border,
-                  },
-                  Elevation.card[scheme],
-                ]}
-              >
-                <IconSymbol name={item.icon} size={28} color={colors.tint} />
-                <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
-                  {item.route === 'events' ? t('titles.events') : item.label}
-                </ThemedText>
-              </HostProLockTouchable>
-            ))}
+            {OWNER_ITEMS.map((item) => {
+              const canOpen = can(item.cap, estateCtx);
+              const proCap = proCapForFeature(item.feature);
+              const hasProFeature = proCap == null ? true : can(proCap, estateCtx);
+              const locked = !canOpen;
+              const showLock = locked || !hasProFeature;
+              return (
+                <HostProLockTouchable
+                  key={item.route}
+                  locked={locked}
+                  showLock={showLock}
+                  feature={item.feature}
+                  estateId={estateId}
+                  returnTo={`/(app)/estates/${estateId}/${item.route}`}
+                  onPress={() => router.push(`/(app)/estates/${estateId}/${item.route}` as never)}
+                  style={[
+                    styles.tile,
+                    {
+                      backgroundColor: item.primary ? colors.tintMuted : colors.surface,
+                      borderColor: item.primary ? colors.tintMuted : colors.border,
+                    },
+                    Elevation.card[scheme],
+                  ]}
+                >
+                  <IconSymbol name={item.icon as never} size={28} color={colors.tint} />
+                  <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
+                    {item.route === 'events' ? t('titles.events') : item.label}
+                  </ThemedText>
+                </HostProLockTouchable>
+              );
+            })}
           </View>
         </ScrollView>
       </ThemedView>
     );
   }
 
-  // Guest (owner invited to another owner's estate): time-gated tiles
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
@@ -140,9 +232,11 @@ export default function EstateHub() {
         </TouchableOpacity>
         <View style={styles.headerText}>
           <View style={styles.nameRow}>
-            <ThemedText type="title" style={styles.name} numberOfLines={1}>{estate.name}</ThemedText>
-            <View style={[styles.adminBadge, { backgroundColor: colors.icon + '15' }]}>
-              <ThemedText style={[styles.adminBadgeText, { color: colors.icon }]}>Guest</ThemedText>
+            <ThemedText type="title" style={styles.name} numberOfLines={1}>
+              {estate.name}
+            </ThemedText>
+            <View style={[styles.guestBadge, { backgroundColor: colors.tintMuted }]}>
+              <ThemedText style={[styles.guestBadgeText, { color: colors.tint }]}>Guest</ThemedText>
             </View>
           </View>
           <View style={styles.locationRow}>
@@ -152,47 +246,49 @@ export default function EstateHub() {
         </View>
       </View>
       <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + Spacing.xl }]}>
-        {estate.description && (
-          <ThemedText style={[styles.description, { color: colors.icon }]}>{estate.description}</ThemedText>
-        )}
         <View style={styles.tiles}>
           {GUEST_ITEMS.map((item) => {
+            const key = 'href' in item ? item.href : item.route;
             const unlocked = item.alwaysOn || hasContextAccess;
             return (
               <TouchableOpacity
-                key={item.route}
-                style={[
-                  styles.tile,
-                  { backgroundColor: colors.tint + '11', borderColor: colors.tint + '22' },
-                  !unlocked && styles.tileLocked,
-                ]}
+                key={key}
+                disabled={!unlocked}
                 onPress={() => {
-                  if (!unlocked) return;
+                  if ('href' in item) {
+                    if (item.href === 'plan') {
+                      router.push(`/(app)/stays/plan?estateId=${estateId}` as never);
+                    } else {
+                      router.push(`/(app)/stays?estateId=${estateId}` as never);
+                    }
+                    return;
+                  }
                   router.push(`/(app)/estates/${estateId}/${item.route}` as never);
                 }}
-                activeOpacity={unlocked ? 0.75 : 1}
+                style={[
+                  styles.tile,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: unlocked ? 1 : 0.55,
+                  },
+                  Elevation.card[scheme],
+                ]}
+                activeOpacity={0.75}
               >
-                <IconSymbol name={item.icon} size={28} color={unlocked ? colors.tint : colors.icon} />
-                <ThemedText type="defaultSemiBold" style={[styles.tileLabel, !unlocked && { color: colors.icon }]}>
-                  {item.route === 'events' ? t('titles.events') : item.label}
+                <IconSymbol name={item.icon} size={28} color={colors.tint} />
+                <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
+                  {item.label}
                 </ThemedText>
-                {!unlocked && (
-                  <View style={styles.lockBadge}>
-                    <IconSymbol name="lock.fill" size={10} color={colors.icon} />
-                  </View>
-                )}
+                {!unlocked ? (
+                  <ThemedText style={[styles.contextHint, { color: colors.icon }]}>
+                    {contextUnlockLabel ?? 'Unlocks 3 days before your stay'}
+                  </ThemedText>
+                ) : null}
               </TouchableOpacity>
             );
           })}
         </View>
-        {!hasContextAccess && (
-          <View style={[styles.hint, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
-            <IconSymbol name="lock.fill" size={13} color={colors.icon} />
-            <ThemedText style={[styles.hintText, { color: colors.icon }]}>
-              FAQ, Documents, Contacts and Maintenance unlock 3 days before your stay.
-            </ThemedText>
-          </View>
-        )}
       </ScrollView>
     </ThemedView>
   );
@@ -205,41 +301,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: Layout.sectionGap,
-    gap: 12,
+    paddingBottom: Layout.sectionGap - 8,
+    gap: 8,
   },
   back: { padding: 4 },
-  editBtn: { padding: 8, minWidth: 40, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
-  headerText: { flex: 1, gap: 2 },
+  headerText: { flex: 1, minWidth: 0 },
+  name: { fontSize: 22, fontFamily: Fonts.heading },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  name: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
-  adminBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  adminBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  guestBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.sm },
+  guestBadgeText: { fontSize: 11, fontWeight: '700' },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   location: { fontSize: 13 },
-  grid: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 10 },
-  description: { fontSize: 14, lineHeight: 20, marginBottom: Layout.sectionGap },
+  readOnlyHint: { fontSize: 12, color: '#6E6862', marginTop: 4, fontFamily: 'Manrope_400Regular' },
+  editBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  grid: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 8 },
+  description: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: {
     width: '47%',
-    paddingVertical: 18,
-    paddingHorizontal: 12,
+    flexGrow: 1,
+    minHeight: 100,
     borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
+    padding: 16,
     gap: 10,
   },
-  tileLabel: { fontSize: 14, textAlign: 'center', fontFamily: Fonts.label, fontWeight: '500' },
-  tileLocked: { opacity: 0.38 },
-  lockBadge: { position: 'absolute', bottom: 8, right: 8 },
-  hint: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    padding: 14,
-    borderRadius: Radius.lg,
-    marginTop: Layout.sectionGap,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  hintText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: Fonts.body },
+  tileLabel: { fontSize: 15 },
+  contextHint: { fontSize: 11, lineHeight: 14, marginTop: 2 },
 });

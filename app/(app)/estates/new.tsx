@@ -1,8 +1,8 @@
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Redirect, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -14,8 +14,12 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { getEstateActorRole } from '@/lib/estate-role';
+import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
 import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
+import { useInvitationStore } from '@/store/invitation-store';
 
 export default function NewEstate() {
   const { t } = useTranslation();
@@ -25,6 +29,16 @@ export default function NewEstate() {
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
   const addEstate = useEstateStore((s) => s.addEstate);
+  const allEstates = useEstateStore((s) => s.estates);
+  const allInvitations = useInvitationStore((s) => s.invitations);
+  const can = useCan();
+  const allowed = can('estate.create');
+  const isCoOwnerElsewhere =
+    !!currentUser &&
+    allEstates.some((e) => {
+      const role = getEstateActorRole(allEstates, allInvitations, e.id, currentUser.id, currentUser.email);
+      return role === 'coOwner';
+    });
 
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
@@ -32,6 +46,19 @@ export default function NewEstate() {
   const [timeZone, setTimeZone] = useState('Europe/London');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (allowed) return;
+    openEstateCreatePaywall({
+      isCoOwnerElsewhere,
+      returnTo: '/(app)/estates',
+    });
+    router.replace('/(app)/estates' as never);
+  }, [allowed, isCoOwnerElsewhere, router]);
+
+  if (!allowed) {
+    return <ThemedView style={{ flex: 1 }} />;
+  }
 
   async function pickPhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -55,9 +82,10 @@ export default function NewEstate() {
 
     setSaving(true);
     try {
-      const { error } = await addEstate({
+      const { error, code } = await addEstate({
         id: generateUuidV4(),
         ownerId: currentUser.id,
+        sponsorUserId: currentUser.id,
         name: name.trim(),
         location: location.trim(),
         description: description.trim() || undefined,
@@ -66,6 +94,13 @@ export default function NewEstate() {
         createdAt: new Date().toISOString(),
       });
 
+      if (code === 'upgrade_required') {
+        openEstateCreatePaywall({
+          isCoOwnerElsewhere,
+          returnTo: '/(app)/estates/new',
+        });
+        return;
+      }
       if (error) {
         Alert.alert('Could not save property', error);
         return;

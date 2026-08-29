@@ -6,7 +6,7 @@
 - **Trusted entitlement state:** `public.subscription_entitlements` is written **only** by the `revenuecat-webhook` Edge Function (service role). The mobile app reads via RLS (own rows only).
 - **Client SDK:** Public RevenueCat API keys only. Used for purchases, restore, and store management UI — **not** as the sole authority for premium access.
 - **UX gating:** `useSubscription()` reads the mirrored table (`isPro`). `sdkMaisonProActive` reflects the SDK for diagnostics / “pending sync” only. **Backend enforcement** for paid APIs/data should use `user_has_active_entitlement(entitlement_id)` (RPC) or equivalent server checks.
-- **Maison Pro:** Default entitlement id is `maison_pro` (override with `EXPO_PUBLIC_RC_ENTITLEMENT_ID`). Products on the **current offering** should use store ids `monthly` and `yearly` (see `lib/subscription-config.ts`).
+- **Maison Pro:** Default entitlement id is `Maison Pro` (must match the RevenueCat dashboard Identifier; override with `EXPO_PUBLIC_RC_ENTITLEMENT_ID`). Legacy `maison_pro` is still accepted as an alias. Products on the **current offering** should use store ids `monthly` and `yearly` (see `lib/subscription-config.ts`).
 - **Paywalls UI:** `react-native-purchases-ui` — embedded `RevenueCatUI.Paywall` on the paywall route; **Customer Center** at Settings → Customer Center. Optional modals: `presentRevenueCatPaywallModal`, `presentRevenueCatCustomerCenter` in `lib/revenuecat-ui.ts`.
 - **API keys:** Set platform-specific keys **or** a single `EXPO_PUBLIC_REVENUECAT_API_KEY` (e.g. Test Store / unified test key). Never commit secret keys; public SDK keys only.
 

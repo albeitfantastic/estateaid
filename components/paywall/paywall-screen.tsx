@@ -1,19 +1,31 @@
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import type { PurchasesOffering } from 'react-native-purchases';
 
+import { MC } from '@/components/paywall/paywall-tokens';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, Layout, Radius } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { isRevenueCatConfigured } from '@/lib/revenuecat-client';
-import { MAISON_PRO_DISPLAY_NAME, PRIMARY_ENTITLEMENT_ID, RC_PRODUCT_IDS } from '@/lib/subscription-config';
+import { Purchases, isRevenueCatConfigured, isEntitlementActiveInCustomerInfo } from '@/lib/revenuecat-client';
+import {
+  EXIT_OFFERING_ID,
+  MAISON_PRO_DISPLAY_NAME,
+  PRIMARY_ENTITLEMENT_ID,
+  RC_PRODUCT_IDS,
+  isPrimaryEntitlementId,
+} from '@/lib/subscription-config';
 import { fetchSubscriptionEntitlements, rowGrantsAccess } from '@/lib/subscription-access';
 import { isEmbeddedRevenueCatPaywallAvailable, RevenueCatUI } from '@/lib/revenuecat-ui';
 import { useSubscription } from '@/providers/subscription-provider';
+import { useAuthStore } from '@/store/auth-store';
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -25,26 +37,42 @@ interface PaywallScreenProps {
    * Used by the paywall flow to intercept dismiss → show the exit offer screen.
    */
   onDismiss?: () => void;
+  /** After purchase/restore with active entitlement — prefer home from onboarding. */
+  onSuccess?: () => void;
+  /** RevenueCat offering identifier (e.g. exit_offer). Falls back to current. */
+  offeringIdentifier?: string;
+  /** Preferred store product package (monthly / yearly) — reserved for future default package. */
+  preferredPlanId?: 'monthly' | 'yearly';
 }
 
 /**
- * RevenueCat Paywall (dashboard-designed UI via react-native-purchases-ui).
+ * RevenueCat Paywall framed in Maison acquisition (`MC`) chrome.
  * Products `monthly` / `yearly` should be on the current offering in RevenueCat.
  * Trusted unlock still follows Supabase mirror after webhook; we poll after purchase/restore.
  */
-export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
+export function PaywallScreen({
+  onDismiss,
+  onSuccess,
+  offeringIdentifier,
+  preferredPlanId: _preferredPlanId,
+}: PaywallScreenProps = {}) {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const { refetch, isPro, loading: subLoading } = useSubscription();
+  const refreshProfile = useAuthStore((s) => s.refreshProfileFromSupabase);
+  const { refetch, syncPurchasesAndRefetch, isPro, loading: subLoading } = useSubscription();
   const plan = MAISON_PRO_DISPLAY_NAME;
 
   const [confirming, setConfirming] = useState(false);
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [offeringReady, setOfferingReady] = useState(false);
+  /** RC often fires onDismiss after a successful purchase — ignore so we don't jump to Exit. */
+  const suppressDismissRef = useRef(false);
 
-  /** After `replace` from onboarding there is no stack to pop — go to the correct home tab. */
-  const leavePaywall = useCallback(() => {
+  void _preferredPlanId; // threaded for future package default; RC UI selects via template today
+
+  const leaveOnDismiss = useCallback(() => {
+    if (suppressDismissRef.current) return;
     if (onDismiss) {
       onDismiss();
       return;
@@ -56,6 +84,49 @@ export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
     router.replace('/(app)/home' as never);
   }, [onDismiss, router]);
 
+  const leaveOnSuccess = useCallback(() => {
+    suppressDismissRef.current = true;
+    if (onSuccess) {
+      onSuccess();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/(app)/home' as never);
+  }, [onSuccess, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOffering() {
+      if (!isRevenueCatConfigured()) {
+        if (!cancelled) setOfferingReady(true);
+        return;
+      }
+      try {
+        const offerings = await Purchases.getOfferings();
+        const id = offeringIdentifier?.trim();
+        const selected =
+          (id ? offerings.all[id] : undefined) ?? offerings.current ?? null;
+        if (!cancelled) setOffering(selected);
+        if (__DEV__ && id && !offerings.all[id]) {
+          console.warn(
+            `[Paywall] Offering "${id}" not found; using current. Create "${EXIT_OFFERING_ID}" in RevenueCat for exit promo.`
+          );
+        }
+      } catch {
+        if (!cancelled) setOffering(null);
+      } finally {
+        if (!cancelled) setOfferingReady(true);
+      }
+    }
+    void loadOffering();
+    return () => {
+      cancelled = true;
+    };
+  }, [offeringIdentifier]);
+
   const pollMirrorUntilActive = useCallback(async (maxAttempts = 8) => {
     setConfirming(true);
     try {
@@ -63,7 +134,7 @@ export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
         await refetch();
         await sleep(1500);
         const { data } = await fetchSubscriptionEntitlements();
-        const row = data?.find((r) => r.entitlement_id === PRIMARY_ENTITLEMENT_ID);
+        const row = data?.find((r) => isPrimaryEntitlementId(r.entitlement_id));
         if (row && rowGrantsAccess(row)) return true;
       }
     } finally {
@@ -73,133 +144,204 @@ export function PaywallScreen({ onDismiss }: PaywallScreenProps = {}) {
   }, [refetch]);
 
   const onCompletedFlow = useCallback(async () => {
+    suppressDismissRef.current = true;
     const ok = await pollMirrorUntilActive();
+    await syncPurchasesAndRefetch().catch(() => undefined);
+    await refreshProfile().catch(() => undefined);
+    let sdkActive = false;
+    try {
+      if (isRevenueCatConfigured()) {
+        const info = await Purchases.getCustomerInfo();
+        sdkActive = isEntitlementActiveInCustomerInfo(info, PRIMARY_ENTITLEMENT_ID);
+      }
+    } catch {
+      sdkActive = false;
+    }
     if (ok) {
       Alert.alert(t('paywall.welcomeTitle', { plan }), t('paywall.welcomeBody'), [
-        { text: t('common.ok'), onPress: () => leavePaywall() },
+        { text: t('common.ok'), onPress: () => leaveOnSuccess() },
+      ]);
+    } else if (sdkActive) {
+      Alert.alert(t('paywall.welcomeTitle', { plan }), t('paywall.welcomeBody'), [
+        { text: t('common.ok'), onPress: () => leaveOnSuccess() },
       ]);
     } else {
-      Alert.alert(t('paywall.processingTitle'), t('paywall.processingBody'));
+      Alert.alert(t('paywall.processingTitle'), t('paywall.processingBody'), [
+        { text: t('common.ok'), onPress: () => leaveOnSuccess() },
+      ]);
     }
-  }, [leavePaywall, pollMirrorUntilActive, t, plan]);
+  }, [leaveOnSuccess, pollMirrorUntilActive, refreshProfile, syncPurchasesAndRefetch, t, plan]);
 
   const disabled = confirming || subLoading;
 
   const rcConfigured = isRevenueCatConfigured();
   const embeddedPaywall = isEmbeddedRevenueCatPaywallAvailable();
 
+  const paywallOptions = useMemo(
+    () => (offering ? { offering } : {}),
+    [offering]
+  );
+
+  const chromeHeader = (
+    <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <TouchableOpacity onPress={() => leaveOnDismiss()} style={styles.back} disabled={disabled}>
+        <IconSymbol name="arrow.left" size={22} color={MC.brand} />
+      </TouchableOpacity>
+      <Text style={styles.title}>{MAISON_PRO_DISPLAY_NAME}</Text>
+      <View style={{ width: 44 }} />
+    </View>
+  );
+
   if (!rcConfigured) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity onPress={() => leavePaywall()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>
-            {MAISON_PRO_DISPLAY_NAME}
-          </ThemedText>
-          <View style={{ width: Layout.touchMin }} />
-        </View>
+      <View style={styles.container}>
+        {chromeHeader}
         <View style={styles.fallback}>
-          <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>
+          <Text style={styles.fallbackText}>
             {t('paywall.envHint', {
               monthly: RC_PRODUCT_IDS.monthly,
               yearly: RC_PRODUCT_IDS.yearly,
               entitlement: PRIMARY_ENTITLEMENT_ID,
             })}
-          </ThemedText>
+          </Text>
         </View>
-      </ThemedView>
+      </View>
     );
   }
 
   if (!embeddedPaywall) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity onPress={() => leavePaywall()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>
-            {MAISON_PRO_DISPLAY_NAME}
-          </ThemedText>
-          <View style={{ width: Layout.touchMin }} />
-        </View>
+      <View style={styles.container}>
+        {chromeHeader}
         <View style={styles.fallback}>
-          <ThemedText style={{ color: colors.icon, lineHeight: 22 }}>{t('paywall.nativeOnlyHint')}</ThemedText>
+          <Text style={styles.fallbackText}>{t('paywall.nativeOnlyHint')}</Text>
         </View>
-      </ThemedView>
+      </View>
+    );
+  }
+
+  if (!offeringReady) {
+    return (
+      <View style={styles.container}>
+        {chromeHeader}
+        <View style={styles.fallback}>
+          <ActivityIndicator color={MC.brand} />
+        </View>
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => leavePaywall()} style={styles.back} disabled={disabled}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>
-          {MAISON_PRO_DISPLAY_NAME}
-        </ThemedText>
-        <View style={{ width: Layout.touchMin }} />
-      </View>
+    <View style={styles.container}>
+      {chromeHeader}
 
       {isPro && (
-        <View style={[styles.banner, { backgroundColor: colors.tint + '18', borderColor: colors.tint + '44' }]}>
-          <ThemedText type="defaultSemiBold" style={{ color: colors.tint }}>
-            {t('paywall.alreadyHave', { plan })}
-          </ThemedText>
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>{t('paywall.alreadyHave', { plan })}</Text>
         </View>
       )}
 
       {confirming && (
-        <View style={[styles.confirmRow, { backgroundColor: colors.surface }]}>
-          <ActivityIndicator color={colors.tint} />
-          <ThemedText style={{ color: colors.icon, marginLeft: 10 }}>{t('paywall.syncing')}</ThemedText>
+        <View style={styles.confirmRow}>
+          <ActivityIndicator color={MC.brand} />
+          <Text style={styles.confirmText}>{t('paywall.syncing')}</Text>
         </View>
       )}
 
       <RevenueCatUI.Paywall
         style={styles.paywall}
-        options={{}}
-        onPurchaseCompleted={() => void onCompletedFlow()}
-        onRestoreCompleted={() => void onCompletedFlow()}
+        options={paywallOptions}
+        onPurchaseStarted={() => {
+          suppressDismissRef.current = true;
+                  }}
+        onRestoreStarted={() => {
+          suppressDismissRef.current = true;
+                  }}
+        onPurchaseCompleted={() => {
+                    void onCompletedFlow();
+        }}
+        onRestoreCompleted={() => {
+                    void onCompletedFlow();
+        }}
+        onPurchaseCancelled={() => {
+          suppressDismissRef.current = false;
+                  }}
         onPurchaseError={({ error }) => {
-          Alert.alert(t('paywall.purchaseErrorTitle'), error.message ?? t('paywall.purchaseErrorFallback'));
+          suppressDismissRef.current = false;
+                    Alert.alert(t('paywall.purchaseErrorTitle'), error.message ?? t('paywall.purchaseErrorFallback'));
         }}
         onRestoreError={({ error }) => {
-          Alert.alert(t('paywall.restoreErrorTitle'), error.message ?? t('paywall.restoreErrorBody'));
+          suppressDismissRef.current = false;
+                    Alert.alert(t('paywall.restoreErrorTitle'), error.message ?? t('paywall.restoreErrorBody'));
         }}
-        onDismiss={() => leavePaywall()}
+        onDismiss={() => {
+                    leaveOnDismiss();
+        }}
       />
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: MC.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: Layout.sectionGap - 12,
+    paddingHorizontal: MC.hPad,
+    paddingBottom: 12,
     gap: 8,
+    backgroundColor: MC.bg,
   },
-  back: { minWidth: Layout.touchMin, minHeight: Layout.touchMin, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, fontSize: 20, fontWeight: '700' },
+  back: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: MC.text,
+    fontFamily: 'Manrope_700Bold',
+    textAlign: 'center',
+  },
   banner: {
-    marginHorizontal: Layout.screenPaddingX,
-    marginBottom: Layout.sectionGap - 12,
-    padding: Layout.sectionGap - 8,
-    borderRadius: Radius.lg,
+    marginHorizontal: MC.hPad,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: MC.cardRadius,
     borderWidth: StyleSheet.hairlineWidth,
+    borderColor: MC.brand + '44',
+    backgroundColor: MC.tint,
+  },
+  bannerText: {
+    color: MC.brand,
+    fontWeight: '600',
+    fontFamily: 'Manrope_600SemiBold',
   },
   confirmRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: Layout.screenPaddingX,
+    paddingHorizontal: MC.hPad,
+    backgroundColor: MC.surface,
+  },
+  confirmText: {
+    color: MC.textSecondary,
+    marginLeft: 10,
+    fontFamily: 'Manrope_400Regular',
   },
   paywall: { flex: 1 },
-  fallback: { flex: 1, paddingHorizontal: Layout.screenPaddingX, paddingVertical: Layout.sectionGap },
+  fallback: {
+    flex: 1,
+    paddingHorizontal: MC.hPad,
+    paddingVertical: MC.sectionGap,
+    justifyContent: 'center',
+  },
+  fallbackText: {
+    color: MC.textSecondary,
+    lineHeight: 22,
+    fontFamily: 'Manrope_400Regular',
+  },
 });

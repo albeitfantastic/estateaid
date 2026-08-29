@@ -8,7 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { AccessTier } from '@/lib/access-tier';
 import { supportMailto } from '@/lib/support';
 
-export type SettingsDestination = 'profile' | 'language' | 'subscription' | 'account';
+export type SettingsDestination = 'profile' | 'language' | 'subscription' | 'account' | 'notifications';
 
 export interface SettingsSheetProps {
   visible: boolean;

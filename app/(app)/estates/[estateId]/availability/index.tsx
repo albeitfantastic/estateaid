@@ -15,6 +15,8 @@ import { generateUuidV4 } from '@/lib/id';
 import { formatDateRange } from '@/lib/date-utils';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import type { AvailabilityRuleKind, EstateAvailabilityRule } from '@/types/availability-rule';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MM_DD = /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
@@ -57,6 +59,7 @@ export default function AvailabilityRulesScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { rules, addRule, updateRule, deleteRule, fetchFromSupabase } = useAvailabilityRuleStore();
+  const canWrite = useCan()('availability.write', { estateId });
 
   const [addingKind, setAddingKind] = useState<AvailabilityRuleKind | null>(null);
   const [title, setTitle] = useState('');
@@ -91,6 +94,10 @@ export default function AvailabilityRulesScreen() {
   }
 
   function startAdd(kind: AvailabilityRuleKind) {
+    if (!canWrite) {
+      openHostCapabilityDenied(estateId, 'availability.write', `/(app)/estates/${estateId}/availability`);
+      return;
+    }
     setAddingKind(kind);
     setTitle('');
     setFrom('');

@@ -25,12 +25,11 @@ export default function SettingsLayout() {
       <Stack.Screen name="subscription" options={{ title: 'Manage subscription' }} />
       <Stack.Screen name="account" options={{ title: 'Account' }} />
       <Stack.Screen name="language" options={{ title: t('settingsScreens.languageTitle') }} />
+      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="paywall" options={{ headerShown: false }} />
       <Stack.Screen name="customer-center" options={{ headerShown: false }} />
-      {/* Maison paywall flow — 5 screens, all manage their own header */}
+      {/* Maison paywall flow */}
       <Stack.Screen name="paywall-trust" options={{ headerShown: false }} />
-      <Stack.Screen name="paywall-main" options={{ headerShown: false }} />
-      <Stack.Screen name="paywall-trial" options={{ headerShown: false }} />
       <Stack.Screen name="paywall-outcome" options={{ headerShown: false }} />
       <Stack.Screen name="paywall-exit" options={{ headerShown: false }} />
     </Stack>

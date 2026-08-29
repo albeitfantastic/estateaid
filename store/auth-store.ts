@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
       onboardingCompletedForUserId: null,
       pendingInviteCode: null,
       themePreference: 'light',
-      notificationsEnabled: true,
+      notificationsEnabled: false,
       setUser: (user) => set({ currentUser: user }),
       patchUser: (partial) =>
         set((s) => {

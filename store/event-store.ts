@@ -1,6 +1,6 @@
 import { dedupeById } from '@/lib/dedup-by-id';
 import { isIssueTask, messagesToDb, normalizeEventMessages } from '@/lib/issue-task';
-import { getPushToken, sendPush } from '@/lib/notifications';
+import { getPushToken, sendCategorizedPush, sendPush } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { useEstateStore } from '@/store/estate-store';
 import type {
@@ -127,6 +127,24 @@ export const useEventStore = create<EventState>()(
         if (error) {
           set((s) => ({ events: s.events.filter((e) => e.id !== event.id) }));
           return { error: error.message };
+        }
+        if (isIssueTask(normalized)) {
+          const estate = useEstateStore.getState().getEstateById(normalized.estateId);
+          if (estate?.ownerId) {
+            void getPushToken(estate.ownerId).then((token) =>
+              sendCategorizedPush(
+                'maintenance',
+                token,
+                'New maintenance issue',
+                normalized.title,
+                {
+                  type: 'maintenance',
+                  estateId: normalized.estateId,
+                  eventId: normalized.id,
+                }
+              )
+            );
+          }
         }
         return { error: null };
       },

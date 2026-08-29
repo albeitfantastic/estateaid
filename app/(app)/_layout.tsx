@@ -1,4 +1,4 @@
-import { router, Tabs } from 'expo-router';
+import { router, Tabs, useSegments } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -7,9 +7,17 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TabBarGlassBackground } from '@/components/ui/tab-bar-glass-background';
 import { useAppTheme } from '@/theme/useAppTheme';
 
+function shouldHideTabBar(segments: string[]): boolean {
+  return segments.some(
+    (s) => s === 'customer-center' || s === 'paywall' || s.startsWith('paywall-')
+  );
+}
+
 export default function AppTabLayout() {
   const appTheme = useAppTheme();
   const { t, i18n } = useTranslation();
+  const segments = useSegments();
+  const hideTabBar = shouldHideTabBar(segments as string[]);
 
   return (
     <Tabs
@@ -20,22 +28,24 @@ export default function AppTabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: () => <TabBarGlassBackground />,
-        tabBarStyle: {
-          position: 'absolute',
-          backgroundColor: 'transparent',
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: appTheme.colors.border,
-          ...Platform.select({
-            ios: {
-              shadowColor: '#252220',
-              shadowOffset: { width: 0, height: -6 },
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
+        tabBarStyle: hideTabBar
+          ? { display: 'none' }
+          : {
+              position: 'absolute',
+              backgroundColor: 'transparent',
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: appTheme.colors.border,
+              ...Platform.select({
+                ios: {
+                  shadowColor: '#252220',
+                  shadowOffset: { width: 0, height: -6 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 12,
+                },
+                android: { elevation: 12 },
+                default: {},
+              }),
             },
-            android: { elevation: 12 },
-            default: {},
-          }),
-        },
         tabBarLabelStyle: {
           fontFamily: appTheme.typography.fontFamily.medium,
           fontSize: 10,

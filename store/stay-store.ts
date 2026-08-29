@@ -10,6 +10,8 @@ import { supabase } from '@/lib/supabase';
 import { dedupeById } from '@/lib/dedup-by-id';
 import { useAuthStore } from '@/store/auth-store';
 import { useActivityLogStore } from '@/store/activity-log-store';
+import { useEstateStore } from '@/store/estate-store';
+import { getPushToken, sendCategorizedPush } from '@/lib/notifications';
 
 function requestFromDb(row: Record<string, unknown>): StayRequest {
   return {
@@ -152,6 +154,22 @@ export const useStayStore = create<StayState>()(
         if (error) {
           set((s) => ({ stayRequests: s.stayRequests.filter((r) => r.id !== request.id) }));
           return { error: error.message };
+        }
+        const estate = useEstateStore.getState().getEstateById(request.estateId);
+        if (estate?.ownerId) {
+          void getPushToken(estate.ownerId).then((token) =>
+            sendCategorizedPush(
+              'stay_requests',
+              token,
+              'New stay request',
+              'A guest requested dates at your property.',
+              {
+                type: 'stay_request',
+                estateId: request.estateId,
+                requestId: request.id,
+              }
+            )
+          );
         }
         return { error: null };
       },

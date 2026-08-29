@@ -7,16 +7,18 @@ import { MC } from '../paywall-tokens';
 interface ExitOfferCardProps {
   badge: string;
   price: string;
+  /** Optional helper under the price; omit when copy is not a price. */
+  period?: string;
 }
 
-export function ExitOfferCard({ badge, price }: ExitOfferCardProps) {
+export function ExitOfferCard({ badge, price, period }: ExitOfferCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.badge}>
         <Text style={styles.badgeText}>{badge}</Text>
       </View>
       <Text style={styles.price}>{price}</Text>
-      <Text style={styles.period}>billed annually</Text>
+      {period ? <Text style={styles.period}>{period}</Text> : null}
     </View>
   );
 }

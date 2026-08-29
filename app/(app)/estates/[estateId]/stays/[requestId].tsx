@@ -16,8 +16,10 @@ import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
-import { getPushToken, sendPush } from '@/lib/notifications';
+import { getPushToken, sendCategorizedPush } from '@/lib/notifications';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 
 export default function ReviewStayRequest() {
   const { t } = useTranslation();
@@ -30,6 +32,8 @@ export default function ReviewStayRequest() {
   const profileById = useProfileStore((s) => s.byId);
   const currentUser = useAuthStore((s) => s.currentUser);
   const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
+  const can = useCan();
+  const canApprove = can('stays.approve', { estateId });
   const isReadOnly = !estate || estate.ownerId !== currentUser?.id;
   const estateName = estate?.name ?? 'the estate';
   const ownerName = currentUser?.name ?? 'The owner';
@@ -55,11 +59,19 @@ export default function ReviewStayRequest() {
   function notifyGuest(title: string, body: string) {
     if (!req) return;
     void getPushToken(req.guestId).then((token) =>
-      sendPush(token, title, body, { estateId, requestId })
+      sendCategorizedPush('stay_decisions', token, title, body, {
+        type: 'stay_decision',
+        estateId,
+        requestId,
+      })
     );
   }
 
   function onApprove() {
+    if (!canApprove) {
+      openHostCapabilityDenied(estateId, 'stays.approve', `/(app)/estates/${estateId}/stays/${requestId}`);
+      return;
+    }
     const result = approveStay(requestId, ownerNote || undefined);
     if (!result.success) {
       Alert.alert('Cannot Approve', 'These dates conflict with an existing approved stay. Please decline or propose alternative dates.');
@@ -70,6 +82,10 @@ export default function ReviewStayRequest() {
   }
 
   function onDecline() {
+    if (!canApprove) {
+      openHostCapabilityDenied(estateId, 'stays.approve', `/(app)/estates/${estateId}/stays/${requestId}`);
+      return;
+    }
     Alert.alert('Decline Request', 'Decline this stay request?', [
       { text: 'Cancel', style: 'cancel' },
       {

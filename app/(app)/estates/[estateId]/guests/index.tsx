@@ -5,12 +5,15 @@ import { useTranslation } from 'react-i18next';
 
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { buildFullInviteMessage } from '@/lib/invite-messages';
@@ -19,6 +22,8 @@ export default function GuestsList() {
   const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
+  const can = useCan();
+  const canInvite = can('guests.invite', { estateId });
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -26,6 +31,14 @@ export default function GuestsList() {
   const { getEstateById } = useEstateStore();
   const estate = getEstateById(estateId);
   const invitations = getInvitationsByEstate(estateId).filter((i) => i.status !== 'revoked');
+
+  function goInvite() {
+    if (!canInvite) {
+      openHostCapabilityDenied(estateId, 'guests.invite', `/(app)/estates/${estateId}/guests`);
+      return;
+    }
+    router.push(`/(app)/estates/${estateId}/guests/invite` as never);
+  }
 
   function confirmRevoke(id: string, label: string) {
     Alert.alert('Revoke Invitation', `Remove access for "${label}"?`, [
@@ -53,13 +66,17 @@ export default function GuestsList() {
           <IconSymbol name="arrow.left" size={22} color={colors.tint} />
         </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>{t('titles.guests')}</ThemedText>
-        <TouchableOpacity
+        <HostProLockTouchable
+          locked={!canInvite}
+          feature="guests.invite"
+          returnTo={`/(app)/estates/${estateId}/guests`}
+          shrinkToContent
+          onPress={goInvite}
           style={[styles.addBtn, { backgroundColor: colors.tint }]}
-          onPress={() => router.push(`/(app)/estates/${estateId}/guests/invite` as never)}
           activeOpacity={0.8}
         >
           <IconSymbol name="plus" size={20} color="#fff" />
-        </TouchableOpacity>
+        </HostProLockTouchable>
       </View>
 
       {invitations.length === 0 ? (
@@ -68,7 +85,7 @@ export default function GuestsList() {
           title="No guests yet"
           subtitle="Invite guests to give them access to this estate."
           actionLabel="Invite Guest"
-          onAction={() => router.push(`/(app)/estates/${estateId}/guests/invite` as never)}
+          onAction={goInvite}
         />
       ) : (
         <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 20 }]}>
