@@ -104,7 +104,7 @@ export default function GuestEditStay() {
       }
       Alert.alert(
         'Request Sent',
-        'A new request has been sent to the owner. Your current confirmed stay remains active until the new request is approved.',
+        'A new request has been sent to the host. Your current confirmed stay remains active until the new request is approved.',
         [{ text: 'OK', onPress: () => router.back() }]
       );
     }

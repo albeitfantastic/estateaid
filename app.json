@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.estateaid.app",
       "associatedDomains": ["applinks:estateaid.app"],
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["whatsapp", "tg", "sms"]
       }
     },
     "android": {
@@ -26,6 +27,11 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "queries": [
+        { "scheme": "whatsapp" },
+        { "scheme": "tg" },
+        { "scheme": "sms" }
       ],
       "intentFilters": [
         {

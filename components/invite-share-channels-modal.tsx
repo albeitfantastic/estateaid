@@ -1,29 +1,41 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Linking, Modal, Pressable, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { APP_STORE_URL } from '@/lib/invite-messages';
+import { openInviteShareChannel } from '@/lib/invite-share-channels';
+import { inviteHttpsLink } from '@/lib/invite-messages';
+
+export type InviteSharePreviewItem = {
+  estateName: string;
+  inviteCode: string;
+};
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   shareBody: string;
-  waBody: string;
+  /** Compact body for WhatsApp, SMS, Telegram, system share (note + code + one link). */
+  messengerBody: string;
   emailSubject: string;
   shareTitle: string;
+  /** Shown above channel picker so note and code are visible before sending. */
+  previewNote?: string;
+  previewItems?: InviteSharePreviewItem[];
 };
 
 export function InviteShareChannelsModal({
   visible,
   onClose,
   shareBody,
-  waBody,
+  messengerBody,
   emailSubject,
   shareTitle,
+  previewNote,
+  previewItems = [],
 }: Props) {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
@@ -34,22 +46,20 @@ export function InviteShareChannelsModal({
     void Linking.openURL(url);
   }
 
-  function openSms() {
-    void Linking.openURL(`sms:?body=${encodeURIComponent(shareBody)}`);
+  async function openSms() {
+    await openInviteShareChannel('sms', messengerBody, shareTitle);
   }
 
-  function openWhatsApp() {
-    void Linking.openURL(`https://wa.me/?text=${encodeURIComponent(waBody)}`);
+  async function openWhatsApp() {
+    await openInviteShareChannel('whatsapp', messengerBody, shareTitle);
   }
 
-  function openTelegram() {
-    void Linking.openURL(
-      `https://t.me/share/url?url=${encodeURIComponent(APP_STORE_URL)}&text=${encodeURIComponent(shareBody)}`
-    );
+  async function openTelegram() {
+    await openInviteShareChannel('telegram', messengerBody, shareTitle);
   }
 
   async function openNativeShare() {
-    await Share.share({ message: shareBody, title: shareTitle });
+    await Share.share({ message: messengerBody, title: shareTitle });
   }
 
   return (
@@ -57,12 +67,47 @@ export function InviteShareChannelsModal({
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={[styles.card, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}>
-          <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
-            {t('ownerInvite.shareTitle')}
-          </ThemedText>
-          <ThemedText style={[styles.cardSub, { color: colors.icon }]}>{t('ownerInvite.shareSub')}</ThemedText>
+          <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.cardScroll}>
+            <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+              {shareTitle}
+            </ThemedText>
+            <ThemedText style={[styles.cardSub, { color: colors.icon }]}>{t('ownerInvite.shareSub')}</ThemedText>
 
-          <View style={styles.grid}>
+            {(previewNote?.trim() || previewItems.length > 0) && (
+              <View style={[styles.preview, { borderColor: colors.icon + '28', backgroundColor: colors.tint + '08' }]}>
+                {previewNote?.trim() ? (
+                  <View style={styles.previewBlock}>
+                    <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                      {t('ownerInvite.sharePreviewNote')}
+                    </ThemedText>
+                    <ThemedText style={styles.previewNoteText}>{previewNote.trim()}</ThemedText>
+                  </View>
+                ) : null}
+                {previewItems.map((item) => (
+                  <View key={item.inviteCode} style={styles.previewBlock}>
+                    {previewItems.length > 1 ? (
+                      <ThemedText type="defaultSemiBold" style={styles.previewEstate}>
+                        {item.estateName}
+                      </ThemedText>
+                    ) : null}
+                    <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                      {t('ownerInvite.sharePreviewLink')}
+                    </ThemedText>
+                    <ThemedText style={[styles.previewLink, { color: colors.tint }]} selectable>
+                      {inviteHttpsLink(item.inviteCode)}
+                    </ThemedText>
+                    <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                      {t('ownerInvite.sharePreviewCode')}
+                    </ThemedText>
+                    <ThemedText style={[styles.previewCode, { color: colors.tint }]} selectable>
+                      {item.inviteCode}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.grid}>
             <TouchableOpacity
               style={[styles.cell, { backgroundColor: colors.tint + '12' }]}
               onPress={openEmail}
@@ -73,7 +118,7 @@ export function InviteShareChannelsModal({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.cell, { backgroundColor: colors.tint + '12' }]}
-              onPress={openSms}
+              onPress={() => void openSms()}
               activeOpacity={0.8}
             >
               <IconSymbol name="phone.fill" size={26} color={colors.tint} />
@@ -81,7 +126,7 @@ export function InviteShareChannelsModal({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.cell, { backgroundColor: '#25D36618' }]}
-              onPress={openWhatsApp}
+              onPress={() => void openWhatsApp()}
               activeOpacity={0.8}
             >
               <Ionicons name="logo-whatsapp" size={28} color="#25D366" />
@@ -91,7 +136,7 @@ export function InviteShareChannelsModal({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.cell, { backgroundColor: '#0088CC18' }]}
-              onPress={openTelegram}
+              onPress={() => void openTelegram()}
               activeOpacity={0.8}
             >
               <Ionicons name="send" size={26} color="#0088CC" />
@@ -118,6 +163,7 @@ export function InviteShareChannelsModal({
           <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: colors.tint }]}>
             <ThemedText style={styles.doneBtnText}>{t('ownerInvite.done')}</ThemedText>
           </TouchableOpacity>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -134,11 +180,31 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
     borderWidth: 1,
+    maxHeight: '85%',
+  },
+  cardScroll: {
     padding: 20,
     gap: 12,
   },
   cardTitle: { fontSize: 18, textAlign: 'center' },
   cardSub: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  preview: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 14,
+  },
+  previewBlock: { gap: 6 },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  previewNoteText: { fontSize: 15, lineHeight: 21 },
+  previewEstate: { fontSize: 14, marginBottom: 2 },
+  previewLink: { fontSize: 13, lineHeight: 18 },
+  previewCode: { fontSize: 26, fontWeight: '800', letterSpacing: 4 },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

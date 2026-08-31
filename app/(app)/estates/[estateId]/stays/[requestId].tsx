@@ -36,7 +36,7 @@ export default function ReviewStayRequest() {
   const canApprove = can('stays.approve', { estateId });
   const isReadOnly = !estate || estate.ownerId !== currentUser?.id;
   const estateName = estate?.name ?? 'the estate';
-  const ownerName = currentUser?.name ?? 'The owner';
+  const ownerName = currentUser?.name ?? 'The host';
 
   const req = stayRequests.find((r) => r.id === requestId);
   const guestName = req ? resolveUserDisplayName(req.guestId, profileById) : '';
@@ -108,7 +108,7 @@ export default function ReviewStayRequest() {
   function onAskQuestion() {
     if (!ownerNote.trim()) { Alert.alert('Required', 'Please enter your question.'); return; }
     askQuestion(requestId, ownerNote.trim());
-    notifyGuest('Question from Owner', `${ownerName} has a question about your stay at ${estateName}.`);
+    notifyGuest('Question from Host', `${ownerName} has a question about your stay at ${estateName}.`);
     router.back();
   }
 
@@ -126,7 +126,7 @@ export default function ReviewStayRequest() {
           <View style={[styles.readOnlyBanner, { backgroundColor: colors.icon + '12', borderColor: colors.icon + '30' }]}>
             <IconSymbol name="info.circle.fill" size={15} color={colors.icon} />
             <ThemedText style={[styles.readOnlyText, { color: colors.icon }]}>
-              Admin view — contact the estate owner to manage this request.
+              Admin view — contact the estate host to manage this request.
             </ThemedText>
           </View>
         )}

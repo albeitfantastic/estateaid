@@ -142,7 +142,7 @@ export default function GuestPlanStay() {
       Alert.alert('Could not send request', error);
       return;
     }
-    Alert.alert('Request Sent', 'Your stay request has been sent to the owner.');
+    Alert.alert('Request Sent', 'Your stay request has been sent to the host.');
     router.back();
   }
 
@@ -217,7 +217,7 @@ export default function GuestPlanStay() {
             {conflictWarning && (
               <View style={[styles.warnBanner, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
                 <ThemedText style={[styles.warnText, { color: '#f59e0b' }]}>
-                  These dates overlap another stay or a closed period. You can still send a request for the owner to review.
+                  These dates overlap another stay or a closed period. You can still send a request for the host to review.
                 </ThemedText>
               </View>
             )}
@@ -231,7 +231,7 @@ export default function GuestPlanStay() {
 
         {selectedEstateId && (
           <View style={styles.section}>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>Message to Owner</ThemedText>
+            <ThemedText style={[styles.label, { color: colors.icon }]}>Message to Host</ThemedText>
             <TextInput
               style={[styles.noteInput, { color: colors.text, borderColor: colors.icon + '44' }]}
               placeholder="Optional — reason for your stay, number of guests, etc."

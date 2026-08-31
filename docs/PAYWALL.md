@@ -29,7 +29,7 @@ Everything else is **coverage** on the property (reads stay open; writes lock wh
 
 Onboarding does **not** open the paywall. Soft pitch screens (`paywall-trust` → `paywall-outcome`) are reached only from the create-estate path (`openEstateCreatePaywall` / upgrade sheet → Choose a plan).
 
-**Estate-scoped coverage:** host tools follow the estate’s **sponsor** slot, not each owner’s personal purchases. Never open the upgrade sheet when an owner hits a lapsed sponsor — show the named lapse + transfer UI instead (`SponsorCoverageBanner`).
+**Estate-scoped coverage:** host tools follow the estate’s **sponsor** slot, not each host’s personal purchases. Never open the upgrade sheet when a host hits a lapsed sponsor — show the named lapse + transfer UI instead (`SponsorCoverageBanner`).
 
 ---
 
@@ -52,7 +52,7 @@ Create property, no free slot, trial already used
   ↓ Continue
 /(app)/settings/paywall-outcome → RC packages (Home/Family/Portfolio)
 
-Sponsor lapsed (you are owner, not sponsor)
+Sponsor lapsed (you are host, not sponsor; invite role `owner`)
   → SponsorCoverageBanner → Take over sponsorship | Upgrade to take over
   (no generic pitch for the lapse itself)
 ```
@@ -65,7 +65,7 @@ Sponsor lapsed (you are owner, not sponsor)
 - [ ] Invite redeem → no trial, lands in property
 - [ ] Trial used, no free slot → create shows paywall with three packs
 - [ ] Delete property → slot frees for reuse (no second trial)
-- [ ] Owner on covered estate: full write; cannot invite owners / delete / transfer
+- [ ] Host on covered estate: full write; cannot invite hosts / delete / transfer
 - [ ] Sponsor lapse: all sponsored properties read-only; named message + transfer
 - [ ] Downgrade Family → Home with 3 properties: all locked until sponsor chooses 1
 

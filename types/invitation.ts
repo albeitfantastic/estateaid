@@ -13,6 +13,8 @@ export interface Invitation {
    * If omitted or blank, invite is open: any signed-in user may redeem once (single-use code).
    */
   guestEmail?: string;
+  /** Optional label for who the invite was sent to (display only). */
+  inviteeLabel?: string;
   guestId?: string;
   /** Owner vs guest on this property only. */
   role?: EstateInviteRole;

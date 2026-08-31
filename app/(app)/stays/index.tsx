@@ -170,7 +170,7 @@ export default function StaysIndex() {
             <ThemedText type="defaultSemiBold" style={styles.guestName}>{guestLabel}</ThemedText>
             {isOwner && (
               <View style={[styles.ownerBadge, { backgroundColor: colors.tint + '18' }]}>
-                <ThemedText style={[styles.ownerBadgeText, { color: colors.tint }]}>owner</ThemedText>
+                <ThemedText style={[styles.ownerBadgeText, { color: colors.tint }]}>Host</ThemedText>
               </View>
             )}
           </View>

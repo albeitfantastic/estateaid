@@ -64,7 +64,7 @@ export function starterFaqsFor(useCase: OnboardingUseCase | null | undefined): {
     case 'managing_for_other':
       return [
         ...common,
-        { question: 'Who is the owner contact?', answer: 'Name and preferred way to reach them.' },
+        { question: 'Who is the host contact?', answer: 'Name and preferred way to reach them.' },
       ];
     default:
       return common;

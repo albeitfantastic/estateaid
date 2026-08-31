@@ -16,6 +16,7 @@ import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { buildFullInviteMessage } from '@/lib/invite-messages';
+import { pendingInviteRecipient } from '@/lib/pending-invite-recipient';
 
 export default function GuestsIndex() {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ export default function GuestsIndex() {
   const colors = appTheme.colors;
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
-  const { invitations, revokeInvitation } = useInvitationStore();
+  const { invitations, deleteInvitation } = useInvitationStore();
   const profileById = useProfileStore((s) => s.byId);
 
   const estates = useMemo(
@@ -60,10 +61,18 @@ export default function GuestsIndex() {
     [invitations, estateIds]
   );
 
-  function confirmRevokePending(invId: string, code: string) {
-    Alert.alert('Revoke Invite', `Revoke code ${code}?`, [
+  function confirmDeletePending(invId: string, code: string) {
+    Alert.alert('Delete invitation', `Delete code ${code}? This cannot be undone.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Revoke', style: 'destructive', onPress: () => revokeInvitation(invId) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void deleteInvitation(invId).then(({ error }) => {
+            if (error) Alert.alert('Could not delete', error);
+          });
+        },
+      },
     ]);
   }
 
@@ -169,6 +178,7 @@ export default function GuestsIndex() {
                 const estate = estates.find((e) => e.id === inv.estateId);
                 const dotColor = estateColorMap[inv.estateId] ?? colors.primary;
                 const role = inv.role ?? 'guest';
+                const recipient = pendingInviteRecipient(inv);
                 return (
                   <View
                     key={inv.id}
@@ -178,9 +188,10 @@ export default function GuestsIndex() {
                       <IconSymbol name="key.fill" size={18} color={colors.icon} />
                     </View>
                     <View style={styles.rowInfo}>
-                      <ThemedText type="defaultSemiBold" style={[styles.code, { color: colors.text }]}>
-                        {inv.inviteCode}
+                      <ThemedText type="defaultSemiBold" style={styles.guestName}>
+                        {recipient ?? t('ownerInvite.inviteeUnset')}
                       </ThemedText>
+                      <ThemedText style={[styles.code, { color: colors.textMuted }]}>{inv.inviteCode}</ThemedText>
                       <View style={styles.accessPills}>
                         <View style={[styles.accessPill, { backgroundColor: dotColor + '18', borderColor: dotColor + '44' }]}>
                           <View style={[styles.pillDot, { backgroundColor: dotColor }]} />
@@ -200,10 +211,11 @@ export default function GuestsIndex() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.iconBtn, { backgroundColor: '#ef444415' }]}
-                        onPress={() => confirmRevokePending(inv.id, inv.inviteCode)}
+                        onPress={() => confirmDeletePending(inv.id, inv.inviteCode)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityLabel="Delete invitation"
                       >
-                        <IconSymbol name="xmark" size={15} color="#ef4444" />
+                        <IconSymbol name="trash" size={15} color="#ef4444" />
                       </TouchableOpacity>
                     </View>
                   </View>

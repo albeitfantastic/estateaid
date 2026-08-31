@@ -31,17 +31,53 @@ export type InviteMessageLine = {
 };
 
 function roleLabel(role?: EstateInviteRole | string): string {
-  if (role === 'coOwner' || role === 'owner') return 'Owner';
-  return 'Guest on property';
+  if (role === 'coOwner' || role === 'owner') return 'Host';
+  return 'Guest';
+}
+
+function formatPersonalNoteSection(note?: string): string {
+  const trimmed = note?.trim();
+  if (!trimmed) return '';
+  return `\n\nPersonal note:\n"${trimmed}"`;
 }
 
 function formatInviteLines(items: InviteMessageLine[]): string {
   return items
     .map(
       (i) =>
-        `• ${i.estateName}\n  Link: ${inviteHttpsLink(i.inviteCode)}\n  Code: ${i.inviteCode} (${roleLabel(i.role)})`
+        `• ${i.estateName} (${roleLabel(i.role)})\n` +
+        `One-time code: ${i.inviteCode}\n` +
+        `Invite link: ${inviteHttpsLink(i.inviteCode)}`
     )
     .join('\n\n');
+}
+
+/** Compact lines for messengers: note + code + single link on separate lines; no App Store URLs. */
+function formatMessengerInviteLines(items: InviteMessageLine[]): string {
+  return items
+    .map(
+      (i) =>
+        `• ${i.estateName} (${roleLabel(i.role)})\n\n` +
+        `One-time code:\n${i.inviteCode}\n\n` +
+        `Invite link:\n${inviteHttpsLink(i.inviteCode)}`
+    )
+    .join('\n\n');
+}
+
+/**
+ * Short share body for WhatsApp, SMS, Telegram, and system share.
+ * Omits App Store links so wa.me / sms: URLs stay under platform length limits.
+ */
+export function buildMessengerInviteShareMessage(
+  items: InviteMessageLine[],
+  opts?: MultiInviteMessageOpts
+): string {
+  if (items.length === 0) return '';
+  const noteSection = formatPersonalNoteSection(opts?.note);
+  const lines = formatMessengerInviteLines(items);
+  const footer =
+    opts?.inviteeEmail?.trim() ? '' : `\n\n${opts?.openInviteSuffix ?? DEFAULT_OPEN_INVITE_SUFFIX}`;
+  return `You're invited to Maison!${noteSection}\n\n${lines}${footer}${inviteEmailLine(opts?.inviteeEmail)}`;
 }
 
 export type MultiInviteMessageOpts = {
@@ -61,7 +97,7 @@ export function buildMultiInviteShareMessage(
   opts?: MultiInviteMessageOpts
 ): string {
   if (items.length === 0) return '';
-  const noteSection = opts?.note?.trim() ? `\n\n"${opts.note.trim()}"` : '';
+  const noteSection = formatPersonalNoteSection(opts?.note);
   const lines = formatInviteLines(items);
   const footer =
     opts?.inviteeEmail?.trim() ? '' : `\n\n${opts?.openInviteSuffix ?? DEFAULT_OPEN_INVITE_SUFFIX}`;
@@ -75,15 +111,12 @@ export function buildMultiInviteShareMessage(
   );
 }
 
-/** WhatsApp: lead with HTTPS invite link when a single code is present. */
+/** WhatsApp / SMS: compact body (one HTTPS URL) to avoid wa.me / Linking URL truncation. */
 export function buildWhatsAppMultiInviteMessage(
   items: InviteMessageLine[],
   opts?: MultiInviteMessageOpts
 ): string {
-  const body = buildMultiInviteShareMessage(items, opts);
-  const lead =
-    items.length === 1 ? `${inviteHttpsLink(items[0].inviteCode)}\n\n` : `${APP_STORE_URL}\n\n`;
-  return `${lead}${body}`;
+  return buildMessengerInviteShareMessage(items, opts);
 }
 
 /**
@@ -97,13 +130,12 @@ export function buildWhatsAppInviteMessage(opts: {
   inviteeEmail?: string;
 }): string {
   const { estateName, inviteCode, role, note, inviteeEmail } = opts;
-  const noteSection = note ? `\n\n"${note}"` : '';
+  const noteSection = formatPersonalNoteSection(note);
   const roleSection = role ? ` as ${roleLabel(role)}` : '';
-  const link = inviteHttpsLink(inviteCode);
   return (
-    `${link}\n\n` +
-    `You're invited to ${estateName} on Maison${roleSection}.${noteSection}\n\n` +
-    `Code: ${inviteCode}` +
+    `You're invited to ${estateName} on Maison${roleSection}!${noteSection}\n\n` +
+    `One-time code: ${inviteCode}\n` +
+    `Invite link: ${inviteHttpsLink(inviteCode)}` +
     inviteEmailLine(inviteeEmail)
   );
 }
@@ -121,21 +153,21 @@ export function buildFullInviteMessage(opts: {
   openInviteSuffix?: string;
 }): string {
   const { estateName, inviteCode, role, note, footerLine, inviteeEmail, openInvite, openInviteSuffix } = opts;
-  const noteSection = note ? `\n\n"${note}"` : '';
+  const noteSection = formatPersonalNoteSection(note);
   const roleSection = role ? ` as ${roleLabel(role)}` : '';
   const footer =
     footerLine ??
     (role === 'guest' || role === undefined
       ? 'Open the link on your phone, or enter your code after signing up.'
-      : 'Open the link on your phone, or enter your code after signing up. Owner invites work the same way.');
+      : 'Open the link on your phone, or enter your code after signing up. Host invites work the same way.');
   const openSuffix =
     openInvite && !inviteeEmail?.trim()
       ? `\n\n${openInviteSuffix ?? DEFAULT_OPEN_INVITE_SUFFIX}`
       : '';
   return (
     `You're invited to ${estateName} on Maison${roleSection}!${noteSection}\n\n` +
-    `Link: ${inviteHttpsLink(inviteCode)}\n` +
-    `Code: ${inviteCode}\n\n` +
+    `One-time code: ${inviteCode}\n` +
+    `Invite link: ${inviteHttpsLink(inviteCode)}\n\n` +
     `Download the app:\n` +
     `iOS: ${APP_STORE_URL}\n` +
     `Android: ${PLAY_STORE_URL}\n\n` +
@@ -143,6 +175,14 @@ export function buildFullInviteMessage(opts: {
     openSuffix +
     inviteEmailLine(inviteeEmail)
   );
+}
+
+/** Full Telegram share text: note + code + link in message (not link-only t.me preview). */
+export function buildTelegramInviteShareMessage(
+  items: InviteMessageLine[],
+  opts?: MultiInviteMessageOpts
+): string {
+  return buildMessengerInviteShareMessage(items, opts);
 }
 
 export function inviteEmailSubject(estateNames: string[]): string {

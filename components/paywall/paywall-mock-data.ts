@@ -6,7 +6,7 @@ import { STORE_TRIAL_DAYS } from '@/lib/subscription-config';
 export const TRUST_TITLE = 'Designed for people who value a well-run home';
 
 export const TRUST_BODY =
-  'Maison helps property owners keep everything organised, reduce guest friction, and stay in control from anywhere.';
+  'Maison helps hosts keep everything organised, reduce guest friction, and stay in control from anywhere.';
 
 export const TESTIMONIALS: Testimonial[] = [
   { quote: 'It replaced messages, notes, and spreadsheets for us.' },

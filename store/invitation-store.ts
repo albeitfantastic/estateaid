@@ -16,6 +16,7 @@ function fromDb(row: Record<string, unknown>): Invitation {
     ownerId: row.owner_id as string,
     inviteCode: row.invite_code as string,
     guestEmail: row.guest_email as string | undefined,
+    inviteeLabel: row.invitee_label as string | undefined,
     guestId: row.guest_id as string | undefined,
     role: normalizeInviteRole(row.role as string | undefined),
     status: row.status as InvitationStatus,
@@ -32,6 +33,7 @@ function toDb(inv: Invitation) {
     owner_id: inv.ownerId,
     invite_code: inv.inviteCode,
     guest_email: inv.guestEmail ?? null,
+    invitee_label: inv.inviteeLabel ?? null,
     guest_id: inv.guestId ?? null,
     role: normalizeInviteRole(inv.role),
     status: inv.status,
@@ -48,6 +50,7 @@ interface InvitationState {
   sendInvitation: (invitation: Invitation) => Promise<{ error: string | null; code?: string | null }>;
   respondToInvitation: (id: string, status: 'accepted' | 'declined', guestId?: string) => void;
   revokeInvitation: (id: string) => void;
+  deleteInvitation: (id: string) => Promise<{ error: string | null }>;
   updateInvitationRole: (id: string, role: EstateInviteRole) => Promise<{ error: string | null; code?: string | null }>;
   redeemCode: (
     code: string,
@@ -146,6 +149,46 @@ export const useInvitationStore = create<InvitationState>()(
           useActivityLogStore.getState().logActivity(inv.estateId, inv.ownerId, 'invitation_revoked');
         }
       },
+      deleteInvitation: async (id) => {
+        const inv = get().invitations.find((i) => i.id === id);
+        if (!inv) return { error: 'Invitation not found.' };
+        const prev = get().invitations;
+        set({ invitations: prev.filter((i) => i.id !== id) });
+        const { error } = await supabase.from('invitations').delete().eq('id', id);
+        // #region agent log
+        console.warn(
+          '[debug-1393f3]',
+          JSON.stringify({
+            hypothesisId: 'A',
+            location: 'invitation-store:deleteInvitation',
+            id,
+            deleteOk: !error,
+            errorMessage: error?.message ?? null,
+            remainingCount: get().invitations.length,
+          })
+        );
+        fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1393f3' },
+          body: JSON.stringify({
+            sessionId: '1393f3',
+            hypothesisId: 'A',
+            location: 'invitation-store:deleteInvitation',
+            message: 'delete invitation result',
+            data: { id, deleteOk: !error, errorMessage: error?.message ?? null },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        if (error) {
+          set({ invitations: prev });
+          return { error: error.message };
+        }
+        void import('@/store/estate-coverage-store').then(({ useEstateCoverageStore }) =>
+          useEstateCoverageStore.getState().fetchCoverage([inv.estateId])
+        );
+        return { error: null };
+      },
       updateInvitationRole: async (id, role) => {
         const nextRole = normalizeInviteRole(role);
         const prev = get().invitations.find((i) => i.id === id);
@@ -165,7 +208,7 @@ export const useInvitationStore = create<InvitationState>()(
         }
         const inv = get().invitations.find((i) => i.id === id);
         if (inv?.guestId) {
-          const roleLabel = nextRole === 'owner' ? 'Owner' : 'Guest';
+          const roleLabel = nextRole === 'owner' ? 'Host' : 'Guest';
           void getPushToken(inv.guestId).then((token) =>
             sendPush(token, 'Role Updated', `Your role has been updated to ${roleLabel}.`)
           );

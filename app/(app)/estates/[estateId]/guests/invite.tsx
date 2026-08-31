@@ -20,9 +20,10 @@ import { useInvitationStore } from '@/store/invitation-store';
 import type { EstateInviteRole } from '@/types';
 import { generateInviteCode, generateUuidV4 } from '@/lib/id';
 import {
+  buildMessengerInviteShareMessage,
   buildMultiInviteShareMessage,
-  buildWhatsAppMultiInviteMessage,
   inviteEmailSubject,
+  inviteHttpsLink,
 } from '@/lib/invite-messages';
 
 export default function InviteGuest() {
@@ -41,6 +42,7 @@ export default function InviteGuest() {
   const fetchCoverage = useEstateCoverageStore((s) => s.fetchCoverage);
 
   const [note, setNote] = useState('');
+  const [sendTo, setSendTo] = useState('');
   const [role, setRole] = useState<EstateInviteRole>('guest');
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -69,13 +71,15 @@ export default function InviteGuest() {
   const openSuffix = t('ownerInvite.openInviteSuffix');
   const sharePayload = useMemo(() => {
     if (!createdCode || !estate) {
-      return { shareBody: '', waBody: '', subject: '' };
+      return { shareBody: '', messengerBody: '', subject: '' };
     }
     const items = [{ estateName: estate.name, inviteCode: createdCode, role }];
     const noteOpt = note.trim() || undefined;
+    const shareBody = buildMultiInviteShareMessage(items, { note: noteOpt, openInviteSuffix: openSuffix });
+    const messengerBody = buildMessengerInviteShareMessage(items, { note: noteOpt, openInviteSuffix: openSuffix });
     return {
-      shareBody: buildMultiInviteShareMessage(items, { note: noteOpt, openInviteSuffix: openSuffix }),
-      waBody: buildWhatsAppMultiInviteMessage(items, { note: noteOpt, openInviteSuffix: openSuffix }),
+      shareBody,
+      messengerBody,
       subject: inviteEmailSubject([estate.name]),
     };
   }, [createdCode, estate, note, openSuffix, role]);
@@ -86,10 +90,10 @@ export default function InviteGuest() {
       Alert.alert(
         t('ownerInvite.saveFailedTitle'),
         uncovered
-          ? 'Owner invites need an active subscription on this property.'
+          ? 'Host invites need an active subscription on this property.'
           : atCap
-            ? `This property already has ${OWNER_CAP} owners (including sponsor; max ${OWNER_INVITE_CAP} invited).`
-            : 'Owner invites are not available.'
+            ? `This property already has ${OWNER_CAP} hosts (including sponsor; max ${OWNER_INVITE_CAP} invited).`
+            : 'Host invites are not available.'
       );
       return;
     }
@@ -101,6 +105,7 @@ export default function InviteGuest() {
       inviteCode: code,
       role,
       message: note.trim() || undefined,
+      inviteeLabel: sendTo.trim() || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
     });
@@ -108,7 +113,7 @@ export default function InviteGuest() {
       if (errCode === 'co_owner_cap_reached') {
         Alert.alert(
           t('ownerInvite.saveFailedTitle'),
-          `Owner limit reached (${OWNER_CAP} including sponsor).`
+          `Host limit reached (${OWNER_CAP} including sponsor).`
         );
         return;
       }
@@ -153,7 +158,7 @@ export default function InviteGuest() {
   const ownerDisabledReason = uncovered
     ? 'Needs an active subscription on this property'
     : atCap
-      ? `Limit reached (${OWNER_CAP} owners including sponsor; max ${OWNER_INVITE_CAP} invited)`
+      ? `Limit reached (${OWNER_CAP} hosts including sponsor; max ${OWNER_INVITE_CAP} invited)`
       : null;
 
   return (
@@ -162,9 +167,11 @@ export default function InviteGuest() {
         visible={shareModalVisible}
         onClose={() => setShareModalVisible(false)}
         shareBody={sharePayload.shareBody}
-        waBody={sharePayload.waBody}
+        messengerBody={sharePayload.messengerBody}
         emailSubject={sharePayload.subject}
         shareTitle={t('ownerInvite.shareTitle')}
+        previewNote={note.trim() || undefined}
+        previewItems={createdCode && estate ? [{ estateName: estate.name, inviteCode: createdCode }] : []}
       />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -235,9 +242,22 @@ export default function InviteGuest() {
               </View>
               {ownerDisabledReason ? (
                 <ThemedText style={[styles.capHint, { color: colors.icon }]}>
-                  Owner: {ownerDisabledReason}
+                  Host: {ownerDisabledReason}
                 </ThemedText>
               ) : null}
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ownerInvite.inviteeLabel')}</ThemedText>
+              <TextInput
+                style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
+                placeholder={t('ownerInvite.inviteePlaceholder')}
+                placeholderTextColor={colors.icon}
+                value={sendTo}
+                onChangeText={setSendTo}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
             </View>
 
             <View style={styles.field}>
@@ -265,9 +285,31 @@ export default function InviteGuest() {
           </>
         ) : (
           <>
+            {note.trim() ? (
+              <View style={[styles.noteCard, { borderColor: colors.icon + '28', backgroundColor: colors.background }]}>
+                <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                  {t('ownerInvite.sharePreviewNote')}
+                </ThemedText>
+                <ThemedText style={styles.noteText}>{note.trim()}</ThemedText>
+              </View>
+            ) : null}
+
+            <View style={[styles.linkCard, { borderColor: colors.tint + '40', backgroundColor: colors.tint + '08' }]}>
+              <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                {t('ownerInvite.sharePreviewLink')}
+              </ThemedText>
+              <ThemedText style={[styles.linkText, { color: colors.tint }]} selectable>
+                {inviteHttpsLink(createdCode!)}
+              </ThemedText>
+            </View>
+
             <View style={[styles.codeCard, { backgroundColor: colors.tint + '08', borderColor: colors.tint + '40' }]}>
-              <ThemedText style={[styles.codeLabel, { color: colors.icon }]}>INVITE CODE</ThemedText>
-              <ThemedText style={[styles.code, { color: colors.tint }]}>{createdCode}</ThemedText>
+              <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                {t('ownerInvite.sharePreviewCode')}
+              </ThemedText>
+              <ThemedText style={[styles.code, { color: colors.tint }]} selectable>
+                {createdCode}
+              </ThemedText>
               <ThemedText style={[styles.codeHint, { color: colors.icon }]}>{t('ownerInvite.codeHint')}</ThemedText>
             </View>
 
@@ -285,6 +327,7 @@ export default function InviteGuest() {
               onPress={() => {
                 setCreatedCode(null);
                 setNote('');
+                setSendTo('');
                 setShareModalVisible(false);
               }}
               activeOpacity={0.75}
@@ -331,8 +374,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   createBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  noteCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 8 },
+  noteText: { fontSize: 15, lineHeight: 21 },
+  linkCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 8 },
+  linkText: { fontSize: 14, lineHeight: 20 },
   codeCard: { borderRadius: 20, borderWidth: 1.5, padding: 24, alignItems: 'center', gap: 8 },
-  codeLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
   code: { fontSize: 36, fontWeight: '800', letterSpacing: 8 },
   codeHint: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
   secondaryBtn: {

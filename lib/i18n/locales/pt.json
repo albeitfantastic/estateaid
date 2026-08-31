@@ -94,7 +94,7 @@
   "guestEstates": {
     "title": "Propriedades",
     "emptyTitle": "Ainda sem propriedades",
-    "emptySub": "Aceite um convite do proprietário para acessar."
+    "emptySub": "Aceite um convite do anfitrião para acessar."
   },
   "guestRequests": {
     "title": "Meus pedidos",
@@ -162,8 +162,8 @@
     "accessGrantedBody": "Agora você tem acesso a {{name}}.",
     "defaultAccessName": "a propriedade",
     "emptyTitle": "Sem convites pendentes",
-    "emptySub": "Quando um proprietário convidar você, aparecerá aqui.",
-    "emptySubOwner": "Quando outro proprietário convidar você, aparecerá aqui.",
+    "emptySub": "Quando um anfitrião convidar você, aparecerá aqui.",
+    "emptySubOwner": "Quando outro anfitrião convidar você, aparecerá aqui.",
     "fromHost": "De {{name}}",
     "errFetch": "Não foi possível verificar o código. Verifique a conexão.",
     "errUpdate": "Não foi possível aplicar o código. Talvez tenha sido usado — tente de novo.",

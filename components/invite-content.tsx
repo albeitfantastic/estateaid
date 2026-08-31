@@ -16,9 +16,10 @@ import { useInvitationStore } from '@/store/invitation-store';
 import type { EstateInviteRole } from '@/types';
 import { generateInviteCode, generateUuidV4 } from '@/lib/id';
 import {
+  buildMessengerInviteShareMessage,
   buildMultiInviteShareMessage,
-  buildWhatsAppMultiInviteMessage,
   inviteEmailSubject,
+  inviteHttpsLink,
 } from '@/lib/invite-messages';
 
 interface GeneratedInvite {
@@ -65,6 +66,7 @@ export function InviteContent({
   );
 
   const [estateRoles, setEstateRoles] = useState<Record<string, EstateInviteRole>>({});
+  const [sendTo, setSendTo] = useState('');
   const [note, setNote] = useState('');
   const [createdInvites, setCreatedInvites] = useState<GeneratedInvite[]>([]);
   const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -77,9 +79,11 @@ export function InviteContent({
       role: inv.role,
     }));
     const noteOpt = showPersonalNote ? note.trim() || undefined : undefined;
+    const shareBody = buildMultiInviteShareMessage(items, { note: noteOpt, openInviteSuffix: openSuffix });
+    const messengerBody = buildMessengerInviteShareMessage(items, { note: noteOpt, openInviteSuffix: openSuffix });
     return {
-      shareBody: buildMultiInviteShareMessage(items, { note: noteOpt, openInviteSuffix: openSuffix }),
-      waBody: buildWhatsAppMultiInviteMessage(items, { note: noteOpt, openInviteSuffix: openSuffix }),
+      shareBody,
+      messengerBody,
       subject: inviteEmailSubject(createdInvites.map((i) => i.estateName)),
     };
   }, [createdInvites, note, openSuffix, showPersonalNote]);
@@ -116,6 +120,7 @@ export function InviteContent({
         inviteCode: code,
         role,
         message: showPersonalNote ? note.trim() || undefined : undefined,
+        inviteeLabel: sendTo.trim() || undefined,
         status: 'pending',
         createdAt: now,
       });
@@ -218,6 +223,19 @@ export function InviteContent({
             </View>
           </View>
 
+          <View style={styles.section}>
+            <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ownerInvite.inviteeLabel')}</ThemedText>
+            <TextInput
+              style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
+              placeholder={t('ownerInvite.inviteePlaceholder')}
+              placeholderTextColor={colors.icon}
+              value={sendTo}
+              onChangeText={setSendTo}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
+          </View>
+
           {showPersonalNote ? (
             <View style={styles.section}>
               <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ownerInvite.noteLabel')}</ThemedText>
@@ -266,6 +284,15 @@ export function InviteContent({
             </ThemedText>
           </View>
 
+          {showPersonalNote && note.trim() ? (
+            <View style={[styles.noteCard, { borderColor: colors.icon + '28', backgroundColor: colors.background }]}>
+              <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                {t('ownerInvite.sharePreviewNote')}
+              </ThemedText>
+              <ThemedText style={styles.noteText}>{note.trim()}</ThemedText>
+            </View>
+          ) : null}
+
           {createdInvites.map((inv) => (
             <View
               key={inv.code}
@@ -283,7 +310,18 @@ export function InviteContent({
                   </ThemedText>
                 </View>
               </View>
-              <ThemedText style={[styles.code, { color: colors.tint }]}>{inv.code}</ThemedText>
+              <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                {t('ownerInvite.sharePreviewLink')}
+              </ThemedText>
+              <ThemedText style={[styles.linkText, { color: colors.tint }]} selectable>
+                {inviteHttpsLink(inv.code)}
+              </ThemedText>
+              <ThemedText style={[styles.previewLabel, { color: colors.icon }]}>
+                {t('ownerInvite.sharePreviewCode')}
+              </ThemedText>
+              <ThemedText style={[styles.code, { color: colors.tint }]} selectable>
+                {inv.code}
+              </ThemedText>
               <ThemedText style={[styles.codeHint, { color: colors.icon }]}>{t('ownerInvite.codeHint')}</ThemedText>
             </View>
           ))}
@@ -301,6 +339,8 @@ export function InviteContent({
           <TouchableOpacity
             onPress={() => {
               setCreatedInvites([]);
+              setSendTo('');
+              setNote('');
               setShareModalVisible(false);
             }}
             activeOpacity={0.75}
@@ -320,9 +360,14 @@ export function InviteContent({
       visible={shareModalVisible}
       onClose={() => setShareModalVisible(false)}
       shareBody={sharePayload.shareBody}
-      waBody={sharePayload.waBody}
+      messengerBody={sharePayload.messengerBody}
       emailSubject={sharePayload.subject}
       shareTitle={t('ownerInvite.shareTitle')}
+      previewNote={showPersonalNote ? note.trim() : undefined}
+      previewItems={createdInvites.map((inv) => ({
+        estateName: inv.estateName,
+        inviteCode: inv.code,
+      }))}
     />
   );
 
@@ -402,11 +447,20 @@ const styles = StyleSheet.create({
 
   codesHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1 },
   codesHeaderText: { fontSize: 14, fontWeight: '600' },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  noteCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 6 },
+  noteText: { fontSize: 15, lineHeight: 21 },
   codeCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 8 },
   codeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   codeEstate: { fontSize: 15 },
   roleBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
   roleBadgeText: { fontSize: 12, fontWeight: '600' },
+  linkText: { fontSize: 13, lineHeight: 18 },
   code: { fontSize: 28, fontWeight: '800', letterSpacing: 6 },
   codeHint: { fontSize: 12 },
   secondaryBtn: {

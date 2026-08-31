@@ -84,14 +84,14 @@ Three roles, assigned at invite time by the sponsor, stored per property per use
 | Role | Who | Count |
 |---|---|---|
 | **Sponsor** | Creator; holds the slot | Exactly 1 |
-| **Owner** | Invited with owner role | Max 4 total, including the sponsor |
+| **Host** | Invited with `owner` role (UI label: Host) | Max 4 total, including the sponsor |
 | **Guest** | Invited with guest role | Uncapped |
 
 **Assumption to confirm:** the cap is 4 owner-role holders in total (sponsor + 3). Adjust `OWNER_CAP` if the intent was 4 in addition to the sponsor.
 
 ### 3.1 Permissions on a covered property
 
-| Action | Sponsor | Owner | Guest |
+| Action | Sponsor | Host | Guest |
 |---|---|---|---|
 | Read documents, contacts, FAQ, events | Yes | Yes | Stay window only |
 | Write documents, contacts, FAQ, events | Yes | Yes | No |
@@ -100,26 +100,26 @@ Three roles, assigned at invite time by the sponsor, stored per property per use
 | Request dates | Yes | Yes | Yes |
 | Approve / decline stay requests | Yes | Yes | No |
 | Invite guests | Yes | Yes | No |
-| Invite or remove owners | Yes | **No** | No |
+| Invite or remove hosts | Yes | **No** | No |
 | Edit property details | Yes | Yes | No |
 | Delete property | Yes | No | No |
 | Transfer sponsorship | Yes | No | No |
 | Manage subscription | Yes | n/a | n/a |
 
-Everything operational is shared; everything structural stays with the sponsor. This prevents a co-owner filling the four seats, removing the sponsor, or deleting the property.
+Everything operational is shared; everything structural stays with the sponsor. This prevents a co-host filling the four seats, removing the sponsor, or deleting the property.
 
 On an **uncovered** property every write becomes unavailable for every role. Reads are unaffected.
 
-### 3.2 Owner role grants nothing account-wide
+### 3.2 Host role grants nothing account-wide
 
-Holding an owner role on someone else's property confers no slot. Creating your own property still requires your own slot. Without this rule, one purchase distributes free accounts indefinitely.
+Holding the host (`owner`) role on someone else's property confers no slot. Creating your own property still requires your own slot. Without this rule, one purchase distributes free accounts indefinitely.
 
 ### 3.3 Invite roles in code
 
-The existing `guest | owner` invite roles map directly. Rename `owner` → `owner` (unchanged) but update UI copy from "co-owner" for consistency, and migrate existing rows.
+The existing `guest | owner` invite roles map directly. The invite role value stays `owner`; UI copy uses **Host**. Migrate existing rows as needed.
 
 - Add the role picker to `estates/[estateId]/guests/invite.tsx`, which currently hardcodes `guest`.
-- The owner option is disabled with an explanatory label when `OWNER_CAP` is reached or the property is uncovered.
+- The host option is disabled with an explanatory label when `OWNER_CAP` is reached or the property is uncovered.
 - Keep `updateInvitationRole` working. Demoting owner → guest revokes write capabilities immediately.
 
 ---
@@ -183,7 +183,7 @@ Expose as `useCan()` reading from the entitlement store.
 
 **Acceptance criteria**
 - Grepping for a subscription check outside this module returns nothing.
-- A user with zero slots has full write access on a covered property they were invited to as owner.
+- A user with zero slots has full write access on a covered property they were invited to as host.
 - The same user cannot create their own property.
 
 ---
@@ -271,10 +271,10 @@ When a slot expires or is lost, every property it covered becomes read-only for 
 
 - No data deleted, ever. Documents open, contacts dial, calendar renders.
 - Do not interrupt on the expiry date. The prompt appears on the next write attempt.
-- The lock message names the cause: *"Management is paused — [sponsor name]'s subscription has ended."* An owner who pays for their own property elsewhere must never see a generic upgrade prompt on a property they don't sponsor. This is the most churn-inducing possible bug in this design.
+- The lock message names the cause: *"Management is paused — [sponsor name]'s subscription has ended."* A host who pays for their own property elsewhere must never see a generic upgrade prompt on a property they don't sponsor. This is the most churn-inducing possible bug in this design.
 - The message states what is **retained**, not only what is locked: *"Everything you added is still here."*
-- **Sponsor transfer:** any owner with a free slot takes over in one tap from that message. `sponsorUserId` updates, property becomes covered, their slot is consumed, previous sponsor keeps their owner role.
-- An owner with no free slot sees the purchase path instead.
+- **Sponsor transfer:** any host with a free slot takes over in one tap from that message. `sponsorUserId` updates, property becomes covered, their slot is consumed, previous sponsor keeps their host (`owner`) role.
+- A host with no free slot sees the purchase path instead.
 - Guests are unaffected. Invites stay valid. Guests never see a paywall anywhere in the app.
 
 ---
@@ -292,7 +292,7 @@ Everything else is coverage state, not a sales moment. Two sub-cases, which must
 | `hasUsedTrial === false` | Grant trial, no paywall, straight into the creation form |
 | `hasUsedTrial === true`, no free slot | Paywall |
 
-`hasUsedTrial === false` and "trial expired" are opposite states. A null `trialEndsAt` and a past `trialEndsAt` produce different behaviour; conflating them causes either double trials or a paywall in front of a first-time owner.
+`hasUsedTrial === false` and "trial expired" are opposite states. A null `trialEndsAt` and a past `trialEndsAt` produce different behaviour; conflating them causes either double trials or a paywall in front of a first-time host.
 
 Retain `paywall-trust` and `paywall-outcome` as the soft-pitch screens, reached only from this trigger. Pitch copy varies by origin: cold signup gets generic; a user who joined by invite first gets copy leading with what they already know works.
 
@@ -344,7 +344,7 @@ Guests get FAQ / Documents / Contacts / Events from ~3 days before a stay until 
 
 ### 9.5 Guest empty states
 
-- Stays tab: "Ask the property owner for an invite link" + an **Enter a code** button.
+- Stays tab: "Ask the property host for an invite link" + an **Enter a code** button.
 - Properties tab mirrors it.
 
 ### 9.6 Metric note
@@ -429,10 +429,10 @@ Expo Notifications. Minimum set:
 
 | Event | Recipient |
 |---|---|
-| New stay request | Sponsor + owners |
+| New stay request | Sponsor + hosts |
 | Request approved / declined / alternate proposed | Guest |
-| Stay starts tomorrow | Guest + owners |
-| New ticket/issue created | Sponsor + owners |
+| Stay starts tomorrow | Guest + hosts |
+| New ticket/issue created | Sponsor + hosts |
 | Invite accepted | Inviter |
 
 - Permission requested **after** the first meaningful action (first property created, or first invite redeemed). Never on cold start.
@@ -449,7 +449,7 @@ Events already support recurrence. Extend for maintenance: annual, semi-annual, 
 
 ### 14.2 Handover checklist
 
-Per-property template (close windows, empty fridge, bins out, thermostat to 12°, lock shutters). Surfaces to the guest on the last day of their stay and +1 day after. Sponsor or owner defines it; guest ticks items; completion written to the Activity log.
+Per-property template (close windows, empty fridge, bins out, thermostat to 12°, lock shutters). Surfaces to the guest on the last day of their stay and +1 day after. Sponsor or host defines it; guest ticks items; completion written to the Activity log.
 
 ### 14.3 Expenses — build last
 
@@ -481,8 +481,8 @@ Client gating is insufficient. A user's write access depends on a **third party'
 
 - RLS on all property-scoped tables resolves coverage through `sponsorUserId` → RevenueCat mirror + `trialEndsAt`.
 - Reject property inserts when the creator has no free slot.
-- Reject owner invites beyond `OWNER_CAP`.
-- Reject owner-role users attempting sponsor-only actions.
+- Reject host invites beyond `OWNER_CAP`.
+- Reject host-role users attempting sponsor-only actions.
 - Reject a second trial when `hasUsedTrial` is true.
 - Distinguishable error codes: `NO_FREE_SLOT`, `OWNER_CAP_REACHED`, `NOT_SPONSOR`, `PROPERTY_UNCOVERED`, `TRIAL_ALREADY_USED`. The client maps each to a specific message.
 - Index the coverage lookup; it runs on nearly every request.
@@ -514,7 +514,7 @@ This spec reflects design rationale, not legal advice. Have the Terms, Privacy P
 
 ### 18.2 Migration
 
-- Map existing invite roles: `owner` → `owner`, `guest` → `guest`. Update UI copy from "co-owner".
+- Map existing invite roles: `owner` → `owner`, `guest` → `guest`. UI copy uses **Host** (not co-owner).
 - Set `sponsorUserId = ownerId` on all existing properties.
 - Derive `slotCount` for existing subscribers from their entitlement; **grandfather** anyone who would otherwise be over-allocated rather than locking them out.
 - Set `hasUsedTrial = true` for any account with a past or present `trialEndsAt`.
@@ -538,7 +538,7 @@ Ship Phases 1–2 as one release.
 
 ## 20. Open decisions
 
-1. **Owner cap** — 4 total including sponsor, or 4 plus sponsor? Spec assumes the former.
+1. **Host cap** — 4 total including sponsor, or 4 plus sponsor? Spec assumes the former.
 2. **Slot reuse cooldown** — delete-and-recreate frees a slot immediately. Acceptable; if abuse appears, add a 24h cooldown rather than blocking deletion.
 3. **Above 10 properties** — not sold. Contact form, manual grant. Revisit only if volume justifies it.
 4. **Maintenance tile vs tab** — §10.4, needs a decision before Phase 4.
@@ -554,9 +554,9 @@ Run after every phase.
 3. Invited-first user later creates their own property → full 14-day trial granted then.
 4. Trial used, no free slot → property creation shows the paywall.
 5. Delete property, create another → no second trial.
-6. Owner-role user with zero slots: full write access on a covered property; cannot invite owners, delete it, or transfer sponsorship.
-7. Owner cap: invite to the cap → next owner invite blocked client- and server-side with distinct messaging; guest invites still work.
-8. Sponsor lapse: all their properties read-only for all roles; named message; owner with a free slot transfers in one tap; owner without one sees the purchase path.
+6. Host-role user with zero slots: full write access on a covered property; cannot invite hosts, delete it, or transfer sponsorship.
+7. Host cap: invite to the cap → next host invite blocked client- and server-side with distinct messaging; guest invites still work.
+8. Sponsor lapse: all their properties read-only for all roles; named message; host with a free slot transfers in one tap; host without one sees the purchase path.
 9. Guest during sponsor lapse: no change, no paywall, invite still valid.
 10. Downgrade Family → Home with 3 properties: all locked, sponsor prompted to choose 1, nothing deleted.
 11. Deep link, app installed, signed out → invite preview → sign up → accept → guest landing. No quiz, no fork.

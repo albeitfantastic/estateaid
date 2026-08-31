@@ -94,7 +94,7 @@
   "guestEstates": {
     "title": "Propiedades",
     "emptyTitle": "Aún no hay fincas",
-    "emptySub": "Acepta una invitación del propietario para acceder."
+    "emptySub": "Acepta una invitación del anfitrión para acceder."
   },
   "guestRequests": {
     "title": "Mis solicitudes",
@@ -162,8 +162,8 @@
     "accessGrantedBody": "Ahora tienes acceso a {{name}}.",
     "defaultAccessName": "la finca",
     "emptyTitle": "Sin invitaciones pendientes",
-    "emptySub": "Cuando un propietario te invite, aparecerá aquí.",
-    "emptySubOwner": "Cuando otro propietario te invite, aparecerá aquí.",
+    "emptySub": "Cuando un anfitrión te invite, aparecerá aquí.",
+    "emptySubOwner": "Cuando otro anfitrión te invite, aparecerá aquí.",
     "fromHost": "De {{name}}",
     "errFetch": "No se pudo verificar el código. Revisa la conexión.",
     "errUpdate": "No se pudo aplicar el código. Puede haberse usado ya — inténtalo de nuevo.",

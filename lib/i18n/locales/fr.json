@@ -94,7 +94,7 @@
   "guestEstates": {
     "title": "Propriétés",
     "emptyTitle": "Pas encore de propriétés",
-    "emptySub": "Accepte une invitation du propriétaire pour y accéder."
+    "emptySub": "Accepte une invitation de l’hôte pour y accéder."
   },
   "guestRequests": {
     "title": "Mes demandes",
@@ -162,8 +162,8 @@
     "accessGrantedBody": "Tu as maintenant accès à {{name}}.",
     "defaultAccessName": "la propriété",
     "emptyTitle": "Aucune invitation en attente",
-    "emptySub": "Quand un propriétaire t’invite, cela apparaît ici.",
-    "emptySubOwner": "Quand un autre propriétaire t’invite, cela apparaît ici.",
+    "emptySub": "Quand un hôte t’invite, cela apparaît ici.",
+    "emptySubOwner": "Quand un autre hôte t’invite, cela apparaît ici.",
     "fromHost": "De {{name}}",
     "errFetch": "Impossible de vérifier le code. Vérifie la connexion.",
     "errUpdate": "Impossible d’appliquer le code. Il vient peut-être d’être utilisé.",

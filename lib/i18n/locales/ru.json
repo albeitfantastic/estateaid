@@ -42,7 +42,7 @@
     "guest": "Гость",
     "premium": "Premium",
     "starter": "Starter",
-    "ownerResponse": "Ответ владельца",
+    "ownerResponse": "Ответ хоста",
     "proposed": "Предложено"
   },
   "calendar": {
@@ -94,13 +94,13 @@
   "guestEstates": {
     "title": "Объекты",
     "emptyTitle": "Пока нет объектов",
-    "emptySub": "Примите приглашение владельца для доступа."
+    "emptySub": "Примите приглашение хоста для доступа."
   },
   "guestRequests": {
     "title": "Мои запросы",
     "emptyTitle": "Нет запросов на проживание",
     "emptySub": "Когда вы запросите проживание, оно появится здесь.",
-    "ownerNoteLabel": "Ответ владельца",
+    "ownerNoteLabel": "Ответ хоста",
     "proposed": "Предложено"
   },
   "ownerHome": {
@@ -133,7 +133,7 @@
     "title": "Проживания",
     "upcoming": "Предстоящие",
     "requestsTab": "Запросы",
-    "ownerPrefix": "Владелец:",
+    "ownerPrefix": "Хост:",
     "proposedAlt": "Предложенная альтернатива:",
     "conflictTitle": "Конфликт",
     "conflictBody": "Эти даты больше недоступны.",
@@ -150,7 +150,7 @@
     "planStayCta": "Запланировать проживание",
     "emptyRequestsTitle": "Нет запросов на проживание",
     "emptyRequestsSub": "Когда вы запросите проживание, оно появится здесь.",
-    "ownerNoteLabel": "Ответ владельца",
+    "ownerNoteLabel": "Ответ хоста",
     "proposed": "Предложено"
   },
   "guestInvitations": {
@@ -162,8 +162,8 @@
     "accessGrantedBody": "У вас есть доступ к {{name}}.",
     "defaultAccessName": "объекту",
     "emptyTitle": "Нет ожидающих приглашений",
-    "emptySub": "Когда владелец пригласит вас, это появится здесь.",
-    "emptySubOwner": "Когда другой владелец пригласит вас, это появится здесь.",
+    "emptySub": "Когда хост пригласит вас, это появится здесь.",
+    "emptySubOwner": "Когда другой хост пригласит вас, это появится здесь.",
     "fromHost": "От {{name}}",
     "errFetch": "Не удалось проверить код. Проверьте соединение.",
     "errUpdate": "Не удалось применить код. Возможно, он только что использован.",
@@ -171,7 +171,7 @@
     "errNoEmail": "Для приглашений нужен e-mail в профиле.",
     "errOutdated": "Приглашение устарело. Попросите новое с вашей почтой.",
     "errGeneric": "Код не найден или уже использован.",
-    "ownerFallback": "Владелец"
+    "ownerFallback": "Хост"
   },
   "guestCalendar": {
     "emptyNoProperties": "Пока нет объектов. Сначала примите приглашение.",
