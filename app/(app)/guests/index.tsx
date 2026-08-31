@@ -9,7 +9,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { EstateColors } from '@/constants/estate-colors';
+import { EstateColors } from '@/constants/theme';
 import { useAppTheme } from '@/theme/useAppTheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';

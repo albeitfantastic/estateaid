@@ -534,7 +534,7 @@ export default function HomeDashboard() {
         <View style={styles.quickActionRow}>
           <HostProLockTouchable
             locked={false}
-            onPress={() => router.push('/(app)/plan-stay' as never)}
+            onPress={() => router.push('/(app)/stays/block' as never)}
             style={styles.quickActionTouchable}
           >
             <View style={[styles.quickActionCard, { backgroundColor: colors.tint }]}>

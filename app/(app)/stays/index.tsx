@@ -427,14 +427,14 @@ export default function StaysIndex() {
             title="No upcoming stays"
             subtitle="Block dates for yourself or a guest."
             actionLabel="Block dates"
-            onAction={() => router.push('/(app)/plan-stay' as never)}
+            onAction={() => router.push('/(app)/stays/block' as never)}
           />
         ) : (
           <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}>
             {upcoming.map((s) => renderHostStayRow(s))}
             <TouchableOpacity
               style={[styles.scheduleBtn, { backgroundColor: colors.tint }]}
-              onPress={() => router.push('/(app)/plan-stay' as never)}
+              onPress={() => router.push('/(app)/stays/block' as never)}
               activeOpacity={0.85}
             >
               <IconSymbol name="plus" size={16} color="#fff" />
