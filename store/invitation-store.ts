@@ -68,7 +68,8 @@ export const useInvitationStore = create<InvitationState>()(
       setInvitations: (invitations) => set({ invitations }),
       fetchFromSupabase: async () => {
         const { data, error } = await supabase.from('invitations').select('*');
-        if (!error && data != null) {
+        if (error) throw new Error(error.message);
+        if (data != null) {
           set({ invitations: dedupeById(data).map(fromDb) });
         }
       },
@@ -126,14 +127,12 @@ export const useInvitationStore = create<InvitationState>()(
         }
         if (status === 'accepted' && inv) {
           if (actorId) void maybeRequestPushAfterMeaningfulAction(actorId);
-          void getPushToken(inv.ownerId).then((token) =>
-            sendCategorizedPush(
-              'invites',
-              token,
-              'Invite accepted',
-              'A guest accepted your invitation.',
-              { type: 'invite_accepted', estateId: inv.estateId }
-            )
+          void sendCategorizedPush(
+            'invites',
+            inv.ownerId,
+            'Invite accepted',
+            'A guest accepted your invitation.',
+            { type: 'invite_accepted', estateId: inv.estateId }
           );
         }
       },
@@ -240,14 +239,12 @@ export const useInvitationStore = create<InvitationState>()(
                 .getState()
                 .logActivity(invAccepted.estateId, guestId, 'invitation_accepted');
               void maybeRequestPushAfterMeaningfulAction(guestId);
-              void getPushToken(invAccepted.ownerId).then((token) =>
-                sendCategorizedPush(
-                  'invites',
-                  token,
-                  'Invite accepted',
-                  'A guest accepted your invitation.',
-                  { type: 'invite_accepted', estateId: invAccepted.estateId }
-                )
+              void sendCategorizedPush(
+                'invites',
+                invAccepted.ownerId,
+                'Invite accepted',
+                'A guest accepted your invitation.',
+                { type: 'invite_accepted', estateId: invAccepted.estateId }
               );
               return { success: true, invitation: invAccepted };
             }
@@ -311,14 +308,12 @@ export const useInvitationStore = create<InvitationState>()(
         void useEstateStore.getState().fetchFromSupabase();
         useActivityLogStore.getState().logActivity(inv.estateId, guestId, 'invitation_accepted');
         void maybeRequestPushAfterMeaningfulAction(guestId);
-        void getPushToken(inv.ownerId).then((token) =>
-          sendCategorizedPush(
-            'invites',
-            token,
-            'Invite accepted',
-            'A guest accepted your invitation.',
-            { type: 'invite_accepted', estateId: inv.estateId }
-          )
+        void sendCategorizedPush(
+          'invites',
+          inv.ownerId,
+          'Invite accepted',
+          'A guest accepted your invitation.',
+          { type: 'invite_accepted', estateId: inv.estateId }
         );
         return { success: true, invitation: { ...inv!, status: 'accepted', guestId } };
       },

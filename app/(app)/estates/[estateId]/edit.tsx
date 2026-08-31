@@ -1,29 +1,25 @@
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useCallback } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
+import { ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
+import { useCan } from '@/lib/entitlements/capabilities';
 import { isRequired } from '@/lib/validators';
 
 export default function EditEstate() {
   const { t } = useTranslation();
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const currentUser = useAuthStore((s) => s.currentUser);
+  const { colors } = useScreenTheme();
+  const can = useCan();
   const { getEstateById, updateEstate, deleteEstate } = useEstateStore();
   const estate = getEstateById(estateId);
 
@@ -48,7 +44,8 @@ export default function EditEstate() {
     }
   }, [deleteEstate, estateId, router, t]);
 
-  if (estate && estate.ownerId !== currentUser?.id) {
+  // Sponsor-only screen: it carries delete, which spec §3.1 reserves to the sponsor.
+  if (estate && !can('property.delete', { estateId })) {
     return <Redirect href={`/(app)/estates/${estateId}` as never} />;
   }
 
@@ -93,24 +90,17 @@ export default function EditEstate() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.editEstate')}</ThemedText>
+    <ScreenShell
+      title={t('titles.editEstate')}
+      headerRight={
         <TouchableOpacity onPress={submit}>
           <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
         </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Cover photo picker */}
+      }
+    >
+      <ScreenScroll contentContainerStyle={styles.form} gap={20} keyboardShouldPersistTaps="handled">
         <TouchableOpacity
-          style={[styles.photoWrap, { borderColor: colors.border ?? colors.icon + '44', backgroundColor: colors.tint + '10' }]}
+          style={[styles.photoWrap, { borderColor: colors.border, backgroundColor: colors.tint + '10' }]}
           onPress={pickPhoto}
           activeOpacity={0.8}
         >
@@ -152,18 +142,14 @@ export default function EditEstate() {
             )}
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
-  form: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
+  form: { paddingTop: 8, gap: 20 },
   photoWrap: {
     borderRadius: 20,
     borderWidth: 1.5,

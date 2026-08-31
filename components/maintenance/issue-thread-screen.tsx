@@ -21,14 +21,14 @@ import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StatusBadge } from '@/components/ui/badge';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, Layout, Radius } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { FilledButton, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
+import { Layout, PriorityColors, Radius } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth-store';
 import { useContactStore } from '@/store/contact-store';
 import { useEstateStore } from '@/store/estate-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useEventStore } from '@/store/event-store';
+import { useCan } from '@/lib/entitlements/capabilities';
 import { generateId } from '@/lib/id';
 import { formatDate } from '@/lib/date-utils';
 import type { EstateContact, EstateEvent, IssuePriority, IssueStatus } from '@/types';
@@ -36,10 +36,10 @@ import type { EstateContact, EstateEvent, IssuePriority, IssueStatus } from '@/t
 const STATUS_OPTIONS: IssueStatus[] = ['open', 'in_progress', 'resolved'];
 
 const EDIT_PRIORITIES: { value: IssuePriority; label: string; color: string }[] = [
-  { value: 'low', label: 'Low', color: '#22c55e' },
-  { value: 'normal', label: 'Normal', color: '#3b82f6' },
-  { value: 'high', label: 'High', color: '#f59e0b' },
-  { value: 'urgent', label: 'Urgent', color: '#ef4444' },
+  { value: 'low', label: 'Low', color: PriorityColors.low },
+  { value: 'normal', label: 'Normal', color: PriorityColors.normal },
+  { value: 'high', label: 'High', color: PriorityColors.high },
+  { value: 'urgent', label: 'Urgent', color: PriorityColors.urgent },
 ];
 
 function contactLabel(c: EstateContact) {
@@ -58,8 +58,8 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
     typeof tabBarHeightFromContext === 'number' && tabBarHeightFromContext > 0
       ? tabBarHeightFromContext
       : 52;
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
+  const can = useCan();
   const currentUser = useAuthStore((s) => s.currentUser);
   const getEstateById = useEstateStore((s) => s.getEstateById);
   const allContacts = useContactStore((s) => s.contacts);
@@ -88,7 +88,8 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   const scrollRef = useRef<ScrollView>(null);
 
   const estate = estateId ? getEstateById(estateId) : undefined;
-  const isEstateOwner = !!(estate && currentUser && estate.ownerId === currentUser.id);
+  /** Host tools here follow `events.write`, so invited hosts and post-transfer sponsors qualify. */
+  const isEstateOwner = !!estate && can('events.write', { estateId });
 
   const estateContacts = useMemo(() => {
     if (!estateId) return [];
@@ -189,18 +190,17 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   const bottomComposerPad = tabBarHeight + insets.bottom + 10;
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
+    <ScreenShell
+      title={
+        <View>
           <ThemedText type="defaultSemiBold" style={styles.ticketTitle} numberOfLines={1}>
             {activeTicket.title}
           </ThemedText>
-          <ThemedText style={[styles.guestName, { color: colors.icon }]}>{guestName}</ThemedText>
+          <ThemedText style={[styles.guestName, { color: colors.textSecondary }]}>{guestName}</ThemedText>
         </View>
-        {isEstateOwner ? (
+      }
+      headerRight={
+        isEstateOwner ? (
           <View style={styles.headerActions}>
             <TouchableOpacity
               onPress={openEditModal}
@@ -216,8 +216,9 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
           </View>
         ) : (
           <StatusBadge status={activeTicket.status ?? 'open'} />
-        )}
-      </View>
+        )
+      }
+    >
 
       {(isEstateOwner || activeTicket.date) && (
         <View style={[styles.dueRow, { borderBottomColor: colors.icon + '22' }]}>
@@ -248,6 +249,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                 key={s}
                 style={[
                   styles.statusOpt,
+                  { borderColor: colors.border },
                   (activeTicket.status ?? 'open') === s && { backgroundColor: colors.tint },
                 ]}
                 onPress={() => {
@@ -257,7 +259,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                 <ThemedText
                   style={[
                     styles.statusOptText,
-                    (activeTicket.status ?? 'open') === s && { color: '#fff' },
+                    (activeTicket.status ?? 'open') === s && { color: colors.textOnBrand },
                   ]}
                 >
                   {s.replace('_', ' ')}
@@ -313,12 +315,12 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                       <View
                         style={[
                           styles.contactTag,
-                          { backgroundColor: isOwnMessage ? '#fff2' : colors.tint + '14' },
+                          { backgroundColor: isOwnMessage ? colors.textOnBrand + '22' : colors.tint + '14' },
                         ]}
                       >
-                        <IconSymbol name="person.fill" size={12} color={isOwnMessage ? '#fff' : colors.tint} />
+                        <IconSymbol name="person.fill" size={12} color={isOwnMessage ? colors.textOnBrand : colors.tint} />
                         <ThemedText
-                          style={[styles.contactTagText, { color: isOwnMessage ? '#fff' : colors.tint }]}
+                          style={[styles.contactTagText, { color: isOwnMessage ? colors.textOnBrand : colors.tint }]}
                           numberOfLines={2}
                         >
                           {t('ticketsHub.threadTaggedPrefix')}:{' '}
@@ -326,8 +328,8 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                         </ThemedText>
                       </View>
                     ) : null}
-                    <ThemedText style={[styles.msgText, isOwnMessage && { color: '#fff' }]}>{msg.body}</ThemedText>
-                    <ThemedText style={[styles.msgTime, isOwnMessage ? { color: '#fff8' } : { color: colors.icon }]}>
+                    <ThemedText style={[styles.msgText, isOwnMessage && { color: colors.textOnBrand }]}>{msg.body}</ThemedText>
+                    <ThemedText style={[styles.msgTime, isOwnMessage ? { color: colors.textOnBrand, opacity: 0.7 } : { color: colors.icon }]}>
                       {formatDate(msg.createdAt.slice(0, 10))}
                     </ThemedText>
                   </View>
@@ -384,7 +386,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                 onPress={sendReply}
                 disabled={!reply.trim()}
               >
-                <IconSymbol name="paperplane.fill" size={18} color="#fff" />
+                <IconSymbol name="paperplane.fill" size={18} color={colors.textOnBrand} />
               </TouchableOpacity>
             </View>
           </View>
@@ -433,12 +435,10 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                 );
               })}
             </View>
-            <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: colors.tint }]} onPress={saveEdits}>
-              <ThemedText style={styles.modalSaveText}>{t('ticketsHub.threadSaveEdits')}</ThemedText>
-            </TouchableOpacity>
+            <FilledButton label={t('ticketsHub.threadSaveEdits')} onPress={saveEdits} />
             <TouchableOpacity style={styles.modalDeleteBtn} onPress={confirmDelete}>
-              <IconSymbol name="trash" size={18} color="#dc2626" />
-              <ThemedText style={styles.modalDeleteText}>{t('ticketsHub.threadDeleteTicket')}</ThemedText>
+              <IconSymbol name="trash" size={18} color={colors.error} />
+              <ThemedText style={[styles.modalDeleteText, { color: colors.error }]}>{t('ticketsHub.threadDeleteTicket')}</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowEditModal(false)}>
               <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{t('common.cancel')}</ThemedText>
@@ -504,9 +504,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                 </TouchableOpacity>
               </View>
             ) : null}
-            <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: colors.tint }]} onPress={saveEditedMessage}>
-              <ThemedText style={styles.modalSaveText}>{t('ticketsHub.threadSaveMessage')}</ThemedText>
-            </TouchableOpacity>
+            <FilledButton label={t('ticketsHub.threadSaveMessage')} onPress={saveEditedMessage} />
             <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditMessageDraft(null)}>
               <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{t('common.cancel')}</ThemedText>
             </TouchableOpacity>
@@ -575,17 +573,13 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
           clearLabel={t('ticketsHub.threadClearDue')}
         />
       ) : null}
-    </ThemedView>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12, gap: 10 },
-  back: { padding: 4 },
-  headerText: { flex: 1 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerIconBtn: { padding: 6 },
   ticketTitle: { fontSize: 16 },
@@ -605,7 +599,7 @@ const styles = StyleSheet.create({
   statusPicker: { paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, gap: 8 },
   statusPickerLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   statusOptions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  statusOpt: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#94a3b855' },
+  statusOpt: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
   statusOptText: { fontSize: 12, fontWeight: '500' },
   messages: { paddingHorizontal: 16, gap: 12, paddingTop: 8 },
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
@@ -675,13 +669,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modalPriText: { fontSize: 13, fontWeight: '600' },
-  modalSaveBtn: {
-    marginTop: 16,
-    paddingVertical: 14,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  modalSaveText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   modalDeleteBtn: {
     marginTop: 12,
     flexDirection: 'row',
@@ -690,7 +677,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
   },
-  modalDeleteText: { color: '#dc2626', fontWeight: '600', fontSize: 15 },
+  modalDeleteText: { fontWeight: '600', fontSize: 15 },
   modalCancelBtn: { marginTop: 4, paddingVertical: 10, alignItems: 'center' },
   pickerOverlay: {
     flex: 1,

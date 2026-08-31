@@ -1,39 +1,31 @@
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter, Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
+import { FilledButton, ScreenScroll, ScreenShell, SectionLabel, useScreenTheme } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { EstateColors, Fonts, PriorityColors, Spacing, Colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEventStore } from '@/store/event-store';
 import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
-import { EventType, IssuePriority, RecurrenceFrequency } from '@/types';
+import { EventType, IssuePriority } from '@/types';
 import { formatDate, today } from '@/lib/date-utils';
 import { generateId, generateUuidV4 } from '@/lib/id';
 import { MAINTENANCE_TEMPLATES } from '@/lib/onboarding-starters';
+import { usesDayOfMonth } from '@/lib/event-utils';
+import { RecurrenceFields, type RecurrenceFieldsValue } from '@/components/maintenance/recurrence-fields';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 
-const EVENT_COLORS = ['#22c55e', '#8B5CF6', '#0a7ea4', '#f59e0b', '#ef4444', '#B5703A', '#64748B', '#2E7D91'];
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const FREQ_OPTIONS: { value: RecurrenceFrequency; label: string }[] = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Every 2 weeks' },
-  { value: 'monthly', label: 'Monthly' },
-];
-
+const EVENT_COLORS = [...EstateColors];
 const ISSUE_PRIORITIES: { value: IssuePriority; label: string; color: string }[] = [
-  { value: 'low', label: 'Low', color: '#22c55e' },
-  { value: 'normal', label: 'Normal', color: '#3b82f6' },
-  { value: 'high', label: 'High', color: '#f59e0b' },
-  { value: 'urgent', label: 'Urgent', color: '#ef4444' },
+  { value: 'low', label: 'Low', color: PriorityColors.low },
+  { value: 'normal', label: 'Normal', color: PriorityColors.normal },
+  { value: 'high', label: 'High', color: PriorityColors.high },
+  { value: 'urgent', label: 'Urgent', color: PriorityColors.urgent },
 ];
 
 function paramId(v: string | string[] | undefined): string {
@@ -45,9 +37,7 @@ function paramId(v: string | string[] | undefined): string {
 function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const addEvent = useEventStore((s) => s.addEvent);
   const [title, setTitle] = useState('');
@@ -101,19 +91,8 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.headerTitle}>
-          {t('maintenanceSchedule.newIssueTitle')}
-        </ThemedText>
-      </View>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + Spacing.xl * 2 }]}
-      >
+    <ScreenShell title={t('maintenanceSchedule.newIssueTitle')}>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16} keyboardShouldPersistTaps="handled">
         <FocusInput label={t('ticketsHub.threadEditTitleLabel')} placeholder="" value={title} onChangeText={setTitle} />
         <FocusInput
           label={t('maintenanceSchedule.issueFirstMessage')}
@@ -126,7 +105,7 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
           style={styles.issueMessageInput}
         />
         <View style={styles.issuePriorityBlock}>
-        <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ticketsHub.threadEditPriority')}</ThemedText>
+        <SectionLabel>{t('ticketsHub.threadEditPriority')}</SectionLabel>
         <View style={styles.issuePriRow}>
           {ISSUE_PRIORITIES.map((p) => {
             const selected = p.value === priority;
@@ -150,9 +129,9 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
           })}
         </View>
         </View>
-        <ThemedText style={[styles.label, { color: colors.icon, marginTop: Spacing.xs }]}>
+        <SectionLabel style={{ marginTop: Spacing.xs }}>
           {t('ticketsHub.newTicketDueOptional')}
-        </ThemedText>
+        </SectionLabel>
         <TouchableOpacity
           style={[styles.duePickBtn, { borderColor: colors.icon + '44' }]}
           onPress={() => setDueModalOpen(true)}
@@ -161,14 +140,12 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
             {dueDate ? formatDate(dueDate) : t('ticketsHub.newTicketPickDue')}
           </ThemedText>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: colors.tint, opacity: title.trim() ? 1 : 0.5 }]}
+        <FilledButton
+          label={t('maintenanceSchedule.reportIssueCta')}
           onPress={() => void submit()}
           disabled={!title.trim()}
-        >
-          <ThemedText style={styles.saveBtnText}>{t('maintenanceSchedule.reportIssueCta')}</ThemedText>
-        </TouchableOpacity>
-      </ScrollView>
+        />
+      </ScreenScroll>
       <DueDatePickerModal
         visible={dueModalOpen}
         onClose={() => setDueModalOpen(false)}
@@ -183,16 +160,14 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
         title={t('ticketsHub.newTicketPickDue')}
         clearLabel={t('ticketsHub.newTicketClearDue')}
       />
-    </ThemedView>
+    </ScreenShell>
   );
 }
 
 function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const addEvent = useEventStore((s) => s.addEvent);
 
   const [title, setTitle] = useState('');
@@ -202,11 +177,13 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
 
   // Task fields
   const [taskDate, setTaskDate] = useState(today());
-
-  // Recurring fields
-  const [frequency, setFrequency] = useState<RecurrenceFrequency>('weekly');
-  const [dayOfWeek, setDayOfWeek] = useState(1);
-  const [dayOfMonth, setDayOfMonth] = useState(1);
+  const [recurrence, setRecurrence] = useState<RecurrenceFieldsValue>({
+    frequency: 'weekly',
+    dayOfWeek: 1,
+    dayOfMonth: 1,
+    intervalMonths: 6,
+    reminderLeadDays: 7,
+  });
 
   function applyTemplate(id: string) {
     const tpl = MAINTENANCE_TEMPLATES.find((x) => x.id === id);
@@ -214,8 +191,12 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
     setTitle(tpl.title);
     setDescription(tpl.body);
     setType('recurring');
-    setFrequency('monthly');
-    setDayOfMonth(1);
+    setRecurrence((prev) => ({
+      ...prev,
+      frequency: tpl.recurrence,
+      dayOfMonth: new Date().getDate(),
+      reminderLeadDays: tpl.recurrence === 'yearly' || tpl.recurrence === 'semi_annual' ? 14 : 7,
+    }));
   }
 
   async function save() {
@@ -230,6 +211,7 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
 
     const id = generateUuidV4();
     const createdAt = new Date().toISOString();
+    const { frequency, dayOfWeek, dayOfMonth, intervalMonths, reminderLeadDays } = recurrence;
     const base = {
       id,
       estateId,
@@ -237,6 +219,7 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
       description: description.trim() || undefined,
       color,
       createdAt,
+      reminderLeadDays,
     } as const;
 
     const result =
@@ -253,7 +236,8 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
             recurrence: {
               frequency,
               dayOfWeek: frequency === 'weekly' || frequency === 'biweekly' ? dayOfWeek : undefined,
-              dayOfMonth: frequency === 'monthly' ? dayOfMonth : undefined,
+              dayOfMonth: usesDayOfMonth(frequency) ? dayOfMonth : undefined,
+              intervalMonths: frequency === 'custom' ? intervalMonths : undefined,
               startDate: today(),
             },
           });
@@ -266,16 +250,9 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.headerTitle}>{t('titles.newEvent')}</ThemedText>
-      </View>
-
-      <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + Spacing.xl }]}>
-        <ThemedText style={[styles.label, { color: colors.icon }]}>Templates</ThemedText>
+    <ScreenShell title={t('titles.newEvent')}>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
+        <SectionLabel>Templates</SectionLabel>
         <View style={styles.issuePriRow}>
           {MAINTENANCE_TEMPLATES.map((tpl) => (
             <TouchableOpacity
@@ -289,8 +266,7 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
           ))}
         </View>
 
-        {/* Type picker */}
-        <ThemedText style={[styles.label, { color: colors.icon }]}>Type</ThemedText>
+        <SectionLabel>Type</SectionLabel>
         <View style={styles.typePicker}>
           {(['recurring', 'task'] as EventType[]).map((kind) => (
             <TouchableOpacity
@@ -306,9 +282,9 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
               <IconSymbol
                 name={kind === 'recurring' ? 'arrow.triangle.2.circlepath' : 'checkmark.circle.fill'}
                 size={18}
-                color={type === kind ? '#fff' : colors.tint}
+                color={type === kind ? colors.textOnBrand : colors.tint}
               />
-              <ThemedText style={[styles.typeBtnText, { color: type === kind ? '#fff' : colors.text }]}>
+              <ThemedText style={[styles.typeBtnText, { color: type === kind ? colors.textOnBrand : colors.text }]}>
                 {kind === 'recurring' ? t('maintenanceSchedule.typeRecurring') : t('maintenanceSchedule.oneTimeTask')}
               </ThemedText>
             </TouchableOpacity>
@@ -321,8 +297,7 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
         {/* Description */}
         <FocusInput label="Description (optional)" placeholder="Additional notes..." value={description} onChangeText={setDescription} multiline numberOfLines={3} textAlignVertical="top" style={styles.textArea} />
 
-        {/* Color */}
-        <ThemedText style={[styles.label, { paddingTop: 24 },  { color: colors.icon }]}>Color</ThemedText>
+        <SectionLabel style={{ paddingTop: 24 }}>Color</SectionLabel>
         <View style={[styles.colorRow, ]}>
           {EVENT_COLORS.map((c) => (
             <TouchableOpacity
@@ -333,118 +308,45 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
           ))}
         </View>
 
-        {/* Recurring options */}
-        {type === 'recurring' && (
+        {type === 'recurring' ? (
+          <RecurrenceFields value={recurrence} onChange={setRecurrence} />
+        ) : (
           <>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>Frequency</ThemedText>
-            <View style={styles.freqRow}>
-              {FREQ_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.freqBtn,
-                    { borderColor: colors.tint + '44' },
-                    frequency === opt.value && { backgroundColor: colors.tint, borderColor: colors.tint },
-                  ]}
-                  onPress={() => setFrequency(opt.value)}
-                  activeOpacity={0.8}
-                >
-                  <ThemedText style={[styles.freqBtnText, { color: frequency === opt.value ? '#fff' : colors.text }]}>
-                    {opt.label}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {(frequency === 'weekly' || frequency === 'biweekly') && (
-              <>
-                <ThemedText style={[styles.label, { color: colors.icon }]}>Day of Week</ThemedText>
-                <View style={styles.dayRow}>
-                  {DAY_NAMES.map((name, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[
-                        styles.dayBtn,
-                        { borderColor: colors.tint + '44' },
-                        dayOfWeek === i && { backgroundColor: colors.tint, borderColor: colors.tint },
-                      ]}
-                      onPress={() => setDayOfWeek(i)}
-                      activeOpacity={0.8}
-                    >
-                      <ThemedText style={[styles.dayBtnText, { color: dayOfWeek === i ? '#fff' : colors.text }]}>
-                        {name}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </>
-            )}
-
-            {frequency === 'monthly' && (
-              <>
-                <ThemedText style={[styles.label, { color: colors.icon }]}>Day of Month</ThemedText>
-                <View style={styles.dayOfMonthRow}>
-                  {[1, 5, 10, 15, 20, 25].map((d) => (
-                    <TouchableOpacity
-                      key={d}
-                      style={[
-                        styles.dayBtn,
-                        { borderColor: colors.tint + '44' },
-                        dayOfMonth === d && { backgroundColor: colors.tint, borderColor: colors.tint },
-                      ]}
-                      onPress={() => setDayOfMonth(d)}
-                      activeOpacity={0.8}
-                    >
-                      <ThemedText style={[styles.dayBtnText, { color: dayOfMonth === d ? '#fff' : colors.text }]}>
-                        {d}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </>
-            )}
+            <FocusInput
+              label="Date (YYYY-MM-DD)"
+              placeholder="2026-06-15"
+              value={taskDate}
+              onChangeText={setTaskDate}
+              keyboardType="numbers-and-punctuation"
+            />
+            <RecurrenceFields
+              value={recurrence}
+              onChange={setRecurrence}
+              showFrequency={false}
+            />
           </>
         )}
 
-        {/* Task date */}
-        {type === 'task' && (
-          <FocusInput label="Date (YYYY-MM-DD)" placeholder="2026-06-15" value={taskDate} onChangeText={setTaskDate} keyboardType="numbers-and-punctuation" />
-        )}
-
         {/* Save */}
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: colors.tint, shadowColor: colors.tint, opacity: title.trim() ? 1 : 0.5 }]}
+        <FilledButton
+          label={t('maintenanceSchedule.saveButton')}
           onPress={save}
           disabled={!title.trim()}
-          activeOpacity={0.8}
-        >
-          <ThemedText style={styles.saveBtnText}>{t('maintenanceSchedule.saveButton')}</ThemedText>
-        </TouchableOpacity>
-      </ScrollView>
-    </ThemedView>
+        />
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: Layout.sectionGap - 8,
-    gap: 12,
-  },
-  back: { padding: 4 },
-  headerTitle: { flex: 1, fontSize: 28, fontWeight: '700' },
-  form: { paddingHorizontal: Layout.screenPaddingX, gap: 16 },
-  label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: Fonts.labelBold },
+  form: { gap: 16 },
   textArea: { minHeight: 80, paddingTop: 14, textAlignVertical: 'top' },
   typePicker: { flexDirection: 'row', gap: 10 },
   typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5 },
   typeBtnText: { fontSize: 14, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
   colorRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   colorDot: { width: 34, height: 34, borderRadius: 17 },
-  colorDotSelected: { borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4 },
+  colorDotSelected: { borderWidth: 3, borderColor: Colors.light.textOnBrand, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4 },
   freqRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   freqBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
   freqBtnText: { fontSize: 13, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
@@ -452,17 +354,6 @@ const styles = StyleSheet.create({
   dayBtn: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
   dayBtnText: { fontSize: 13, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
   dayOfMonthRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  saveBtn: {
-    marginTop: 8,
-    paddingVertical: 16,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: Fonts.heading, letterSpacing: 0.3 },
   issuePriRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   issuePriPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
   issuePriText: { fontSize: 13, fontWeight: '600' },

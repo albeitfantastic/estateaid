@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
 
 interface AvatarProps {
   name: string;
@@ -33,7 +34,7 @@ export function Avatar({ name, imageUri, size = 40, color = '#687076' }: AvatarP
 
   return (
     <View style={[styles.base, { width: size, height: size, borderRadius: size / 2, backgroundColor: color }]}>
-      <ThemedText style={[styles.text, { fontSize, color: '#fff' }]}>
+      <ThemedText style={[styles.text, { fontSize, color: Colors.light.textOnBrand }]}>
         {initials(name)}
       </ThemedText>
     </View>

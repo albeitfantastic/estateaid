@@ -20,6 +20,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { hydrateStoredLanguage, initI18n } from '@/lib/i18n';
 import { loadAllStores } from '@/lib/load-all-stores';
 import { clearPushToken, registerPushToken, setupNotificationDeepLinkListener } from '@/lib/notifications';
+import { maybeSendEventReminders } from '@/lib/event-reminders';
 import { maybeSendStayTomorrowReminders } from '@/lib/stay-reminders';
 import { supabase } from '@/lib/supabase';
 import { SubscriptionProvider } from '@/providers/subscription-provider';
@@ -91,6 +92,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (!currentUserId) return;
     void maybeSendStayTomorrowReminders();
+    void maybeSendEventReminders();
   }, [currentUserId]);
 
   useEffect(() => {
@@ -149,6 +151,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="auth" />
           <Stack.Screen name="i/[code]" />
+          <Stack.Screen name="legal" />
           <Stack.Screen name="(onboarding)" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(app)" />

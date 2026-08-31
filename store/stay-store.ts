@@ -7,11 +7,13 @@ import { calendarBlockingRangesFromRules, rangeOverlapsRuleBlocking } from '@/li
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { generateUuidV4 } from '@/lib/id';
 import { supabase } from '@/lib/supabase';
+import { throwIfQueryError } from '@/lib/supabase-write-error';
 import { dedupeById } from '@/lib/dedup-by-id';
 import { useAuthStore } from '@/store/auth-store';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useEstateStore } from '@/store/estate-store';
-import { getPushToken, sendCategorizedPush } from '@/lib/notifications';
+import { reportWriteFailure } from '@/lib/write-failure';
+import i18n from 'i18next';
 
 function requestFromDb(row: Record<string, unknown>): StayRequest {
   return {
@@ -81,6 +83,29 @@ function stayToDb(s: Stay) {
   };
 }
 
+type StaySetter = (partial: Partial<StayState>) => void;
+
+/** Restores the pre-write snapshot and tells the user, instead of failing silently. */
+function rollbackRequests(
+  set: StaySetter,
+  previous: StayRequest[],
+  error: { message: string } | null
+): void {
+  if (!error) return;
+  set({ stayRequests: previous });
+  reportWriteFailure(error.message);
+}
+
+function rollbackStays(
+  set: StaySetter,
+  previous: Stay[],
+  error: { message: string } | null
+): void {
+  if (!error) return;
+  set({ stays: previous });
+  reportWriteFailure(error.message);
+}
+
 interface StayState {
   stayRequests: StayRequest[];
   stays: Stay[];
@@ -119,10 +144,12 @@ export const useStayStore = create<StayState>()(
           supabase.from('stay_requests').select('*'),
           supabase.from('stays').select('*'),
         ]);
-        if (!reqRes.error && reqRes.data != null) {
+        throwIfQueryError(reqRes.error);
+        throwIfQueryError(stayRes.error);
+        if (reqRes.data != null) {
           set({ stayRequests: dedupeById(reqRes.data).map(requestFromDb) });
         }
-        if (!stayRes.error && stayRes.data != null) {
+        if (stayRes.data != null) {
           set({ stays: dedupeById(stayRes.data).map(stayFromDb) });
         }
       },
@@ -156,19 +183,19 @@ export const useStayStore = create<StayState>()(
           return { error: error.message };
         }
         const estate = useEstateStore.getState().getEstateById(request.estateId);
-        if (estate?.ownerId) {
-          void getPushToken(estate.ownerId).then((token) =>
-            sendCategorizedPush(
-              'stay_requests',
-              token,
-              'New stay request',
-              'A guest requested dates at your property.',
-              {
-                type: 'stay_request',
-                estateId: request.estateId,
-                requestId: request.id,
-              }
-            )
+        if (estate) {
+          const { hostUserIdsForEstate } = await import('@/lib/estate-host-ids');
+          const { sendCategorizedPushToMany } = await import('@/lib/notifications');
+          void sendCategorizedPushToMany(
+            'stay_requests',
+            hostUserIdsForEstate(request.estateId),
+            i18n.t('pushCopy.stayRequestTitle'),
+            i18n.t('pushCopy.stayRequestBody'),
+            {
+              type: 'stay_request',
+              estateId: request.estateId,
+              requestId: request.id,
+            }
           );
         }
         return { error: null };
@@ -189,6 +216,8 @@ export const useStayStore = create<StayState>()(
           to: req.requestedTo,
         };
         const updatedAt = new Date().toISOString();
+        const previousStays = get().stays;
+        const previousRequests = get().stayRequests;
         set((s) => ({
           stays: [...s.stays, stay],
           stayRequests: s.stayRequests.map((r) =>
@@ -198,7 +227,12 @@ export const useStayStore = create<StayState>()(
         void Promise.all([
           supabase.from('stays').insert(stayToDb(stay)),
           supabase.from('stay_requests').update({ status: 'approved', owner_note: ownerNote ?? null, updated_at: updatedAt }).eq('id', requestId),
-        ]);
+        ]).then(([insertRes, updateRes]) => {
+          const error = insertRes.error ?? updateRes.error;
+          if (!error) return;
+          set({ stays: previousStays, stayRequests: previousRequests });
+          reportWriteFailure(error.message);
+        });
         const approveActorId = useAuthStore.getState().currentUser?.id;
         if (approveActorId) {
           useActivityLogStore.getState().logActivity(req.estateId, approveActorId, 'stay_request_approved');
@@ -209,12 +243,17 @@ export const useStayStore = create<StayState>()(
       declineStay: (requestId, ownerNote) => {
         const req = get().stayRequests.find((r) => r.id === requestId);
         const updatedAt = new Date().toISOString();
+        const previousRequests = get().stayRequests;
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
             r.id === requestId ? { ...r, status: 'declined', ownerNote, updatedAt } : r
           ),
         }));
-        void supabase.from('stay_requests').update({ status: 'declined', owner_note: ownerNote ?? null, updated_at: updatedAt }).eq('id', requestId);
+        void supabase
+          .from('stay_requests')
+          .update({ status: 'declined', owner_note: ownerNote ?? null, updated_at: updatedAt })
+          .eq('id', requestId)
+          .then(({ error }) => rollbackRequests(set, previousRequests, error));
         const actorId = useAuthStore.getState().currentUser?.id;
         if (req && actorId) {
           useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_declined');
@@ -224,6 +263,7 @@ export const useStayStore = create<StayState>()(
       proposeAlternative: (requestId, from, to, ownerNote) => {
         const req = get().stayRequests.find((r) => r.id === requestId);
         const updatedAt = new Date().toISOString();
+        const previousRequests = get().stayRequests;
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
             r.id === requestId
@@ -237,7 +277,7 @@ export const useStayStore = create<StayState>()(
           alternative_to: to,
           owner_note: ownerNote ?? null,
           updated_at: updatedAt,
-        }).eq('id', requestId);
+        }).eq('id', requestId).then(({ error }) => rollbackRequests(set, previousRequests, error));
         const actorId = useAuthStore.getState().currentUser?.id;
         if (req && actorId) {
           useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_alternative_proposed');
@@ -246,23 +286,33 @@ export const useStayStore = create<StayState>()(
 
       askQuestion: (requestId, ownerNote) => {
         const updatedAt = new Date().toISOString();
+        const previousRequests = get().stayRequests;
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
             r.id === requestId ? { ...r, status: 'question_asked', ownerNote, updatedAt } : r
           ),
         }));
-        void supabase.from('stay_requests').update({ status: 'question_asked', owner_note: ownerNote, updated_at: updatedAt }).eq('id', requestId);
+        void supabase
+          .from('stay_requests')
+          .update({ status: 'question_asked', owner_note: ownerNote, updated_at: updatedAt })
+          .eq('id', requestId)
+          .then(({ error }) => rollbackRequests(set, previousRequests, error));
       },
 
       cancelRequest: (requestId) => {
         const req = get().stayRequests.find((r) => r.id === requestId);
         const updatedAt = new Date().toISOString();
+        const previousRequests = get().stayRequests;
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
             r.id === requestId ? { ...r, status: 'cancelled', updatedAt } : r
           ),
         }));
-        void supabase.from('stay_requests').update({ status: 'cancelled', updated_at: updatedAt }).eq('id', requestId);
+        void supabase
+          .from('stay_requests')
+          .update({ status: 'cancelled', updated_at: updatedAt })
+          .eq('id', requestId)
+          .then(({ error }) => rollbackRequests(set, previousRequests, error));
         const actorId = useAuthStore.getState().currentUser?.id;
         if (req && actorId) {
           useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_cancelled');
@@ -271,6 +321,7 @@ export const useStayStore = create<StayState>()(
 
       updateRequest: (id, from, to) => {
         const updatedAt = new Date().toISOString();
+        const previousRequests = get().stayRequests;
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
             r.id === id
@@ -286,7 +337,7 @@ export const useStayStore = create<StayState>()(
           alternative_to: null,
           owner_note: null,
           updated_at: updatedAt,
-        }).eq('id', id);
+        }).eq('id', id).then(({ error }) => rollbackRequests(set, previousRequests, error));
       },
 
       acceptAlternative: (requestId) => {
@@ -306,6 +357,8 @@ export const useStayStore = create<StayState>()(
           to: req.alternativeTo,
         };
         const updatedAt = new Date().toISOString();
+        const previousStays = get().stays;
+        const previousRequests = get().stayRequests;
         set((s) => ({
           stays: [...s.stays, stay],
           stayRequests: s.stayRequests.map((r) =>
@@ -322,18 +375,28 @@ export const useStayStore = create<StayState>()(
             requested_to: req.alternativeTo,
             updated_at: updatedAt,
           }).eq('id', requestId),
-        ]);
+        ]).then(([insertRes, updateRes]) => {
+          const error = insertRes.error ?? updateRes.error;
+          if (!error) return;
+          set({ stays: previousStays, stayRequests: previousRequests });
+          reportWriteFailure(error.message);
+        });
         return { success: true };
       },
 
       declineAlternative: (requestId) => {
         const updatedAt = new Date().toISOString();
+        const previousRequests = get().stayRequests;
         set((s) => ({
           stayRequests: s.stayRequests.map((r) =>
             r.id === requestId ? { ...r, status: 'declined', updatedAt } : r
           ),
         }));
-        void supabase.from('stay_requests').update({ status: 'declined', updated_at: updatedAt }).eq('id', requestId);
+        void supabase
+          .from('stay_requests')
+          .update({ status: 'declined', updated_at: updatedAt })
+          .eq('id', requestId)
+          .then(({ error }) => rollbackRequests(set, previousRequests, error));
       },
 
       createDirectStay: async (stay) => {
@@ -347,15 +410,25 @@ export const useStayStore = create<StayState>()(
       },
 
       updateStayDates: (id, from, to) => {
+        const previousStays = get().stays;
         set((s) => ({
           stays: s.stays.map((st) => st.id === id ? { ...st, from, to } : st),
         }));
-        void supabase.from('stays').update({ from, to }).eq('id', id);
+        void supabase
+          .from('stays')
+          .update({ from, to })
+          .eq('id', id)
+          .then(({ error }) => rollbackStays(set, previousStays, error));
       },
 
       deleteStay: (id) => {
+        const previousStays = get().stays;
         set((s) => ({ stays: s.stays.filter((st) => st.id !== id) }));
-        void supabase.from('stays').delete().eq('id', id);
+        void supabase
+          .from('stays')
+          .delete()
+          .eq('id', id)
+          .then(({ error }) => rollbackStays(set, previousStays, error));
       },
 
       getRequestsByEstate: (estateId) =>

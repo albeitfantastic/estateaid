@@ -1,13 +1,11 @@
 import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useScreenTheme } from '@/components/ui/screen-layout';
 
 export default function SettingsLayout() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme ?? 'light'];
-  const { t, i18n } = useTranslation();
+  const { colors } = useScreenTheme();
+  const { i18n } = useTranslation();
   return (
     <Stack
       key={i18n.resolvedLanguage}
@@ -21,11 +19,14 @@ export default function SettingsLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Settings' }} />
-      <Stack.Screen name="profile" options={{ title: 'Profile' }} />
-      <Stack.Screen name="subscription" options={{ title: 'Manage subscription' }} />
-      <Stack.Screen name="account" options={{ title: 'Account' }} />
-      <Stack.Screen name="language" options={{ title: t('settingsScreens.languageTitle') }} />
-      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
+      <Stack.Screen name="subscription" options={{ headerShown: false }} />
+      <Stack.Screen name="account" options={{ headerShown: false }} />
+      <Stack.Screen name="language" options={{ headerShown: false }} />
+      <Stack.Screen name="notifications" options={{ headerShown: false }} />
+      <Stack.Screen name="legal/terms" options={{ headerShown: false }} />
+      <Stack.Screen name="legal/privacy" options={{ headerShown: false }} />
+      <Stack.Screen name="legal/impressum" options={{ headerShown: false }} />
       <Stack.Screen name="paywall" options={{ headerShown: false }} />
       <Stack.Screen name="customer-center" options={{ headerShown: false }} />
       {/* Maison paywall flow */}

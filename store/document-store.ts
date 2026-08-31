@@ -1,5 +1,6 @@
 import { dedupeById } from '@/lib/dedup-by-id';
 import { supabase } from '@/lib/supabase';
+import { reportWriteFailure } from '@/lib/write-failure';
 import { DocumentCategory, EstateDocument } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
@@ -52,15 +53,20 @@ export const useDocumentStore = create<DocumentState>()(
       documents: [],
       setDocuments: (documents) => set({ documents }),
       fetchFromSupabase: async () => {
-        const { data } = await supabase.from('estate_documents').select('*');
+        const { data, error } = await supabase.from('estate_documents').select('*');
+        if (error) throw new Error(error.message);
         if (data) set({ documents: dedupeById(data).map(fromDb) });
       },
       addDocument: async (document) => {
         set((s) => ({ documents: [...s.documents, document] }));
         const { error } = await supabase.from('estate_documents').insert(toDb(document));
-        if (error) set((s) => ({ documents: s.documents.filter((d) => d.id !== document.id) }));
+        if (error) {
+          set((s) => ({ documents: s.documents.filter((d) => d.id !== document.id) }));
+          reportWriteFailure(error.message);
+        }
       },
       updateDocument: async (id, patch) => {
+        const previous = get().documents;
         set((s) => ({
           documents: s.documents.map((d) => (d.id === id ? { ...d, ...patch } : d)),
         }));
@@ -71,11 +77,20 @@ export const useDocumentStore = create<DocumentState>()(
         if (patch.mimeType !== undefined) dbPatch.mime_type = patch.mimeType;
         if (patch.fileSizeBytes !== undefined) dbPatch.file_size_bytes = patch.fileSizeBytes;
         if (patch.category !== undefined) dbPatch.category = patch.category;
-        await supabase.from('estate_documents').update(dbPatch).eq('id', id);
+        const { error } = await supabase.from('estate_documents').update(dbPatch).eq('id', id);
+        if (error) {
+          set({ documents: previous });
+          reportWriteFailure(error.message);
+        }
       },
       deleteDocument: async (id) => {
+        const previous = get().documents;
         set((s) => ({ documents: s.documents.filter((d) => d.id !== id) }));
-        await supabase.from('estate_documents').delete().eq('id', id);
+        const { error } = await supabase.from('estate_documents').delete().eq('id', id);
+        if (error) {
+          set({ documents: previous });
+          reportWriteFailure(error.message);
+        }
       },
       getDocumentsByEstate: (estateId) =>
         get().documents.filter((d) => d.estateId === estateId),

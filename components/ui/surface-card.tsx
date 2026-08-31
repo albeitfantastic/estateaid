@@ -1,5 +1,6 @@
 import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
 
+import { Radius } from '@/constants/theme';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 type SurfaceCardProps = ViewProps & {
@@ -33,7 +34,7 @@ export function SurfaceCard({
         styles.base,
         {
           backgroundColor:
-            variant === 'muted' ? colors.surface : colors.card,
+            variant === 'muted' ? colors.surfaceMuted : colors.card,
           borderColor: colors.border,
           borderWidth:
             variant === 'outline' || variant === 'elevated'
@@ -55,7 +56,7 @@ export function SurfaceCard({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 28,
+    borderRadius: Radius.lg,
     overflow: 'hidden',
     flexDirection: 'row',
   },

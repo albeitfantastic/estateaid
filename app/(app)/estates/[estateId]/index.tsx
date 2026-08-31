@@ -4,65 +4,102 @@ import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SetupChecklist } from '@/components/ui/setup-checklist';
 import { SponsorCoverageBanner } from '@/components/ui/sponsor-coverage-banner';
-import { Colors, Elevation, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ScreenScroll, ScreenShell, FilledButton, OutlineButton, useScreenTheme } from '@/components/ui/screen-layout';
+import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useCan, type Capability } from '@/lib/entitlements/capabilities';
 import type { UpgradeFeature } from '@/lib/maison-pro-upgrade';
 import { addDays, today } from '@/lib/date-utils';
 import { getEstateActorRole } from '@/lib/estate-role';
+import { hubEmphasisRoutes, type OnboardingUseCase } from '@/lib/onboarding-starters';
+import { fetchProfileUseCase } from '@/lib/use-case-profile';
+import { nextSetupStep, SETUP_STEP_TILE } from '@/lib/setup-progress';
 import { useAuthStore } from '@/store/auth-store';
 import { useContactStore } from '@/store/contact-store';
 import { useDocumentStore } from '@/store/document-store';
 import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
+import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 const OWNER_ITEMS: {
-  label: string;
+  labelKey: string;
   icon: string;
   route: string;
-  primary: boolean;
   cap: Capability;
   feature: UpgradeFeature;
   countKey?: 'documents' | 'contacts' | 'guests';
 }[] = [
-  { label: 'Guests', icon: 'person.2.fill', route: 'guests', primary: false, cap: 'activity.view', feature: 'guests.invite', countKey: 'guests' },
-  { label: 'Stay Requests', icon: 'calendar', route: 'stays', primary: false, cap: 'activity.view', feature: 'stays.approve' },
-  { label: 'Availability', icon: 'calendar.badge.exclamationmark', route: 'availability', primary: false, cap: 'availability.read', feature: 'availability.write' },
-  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', primary: false, cap: 'faq.read', feature: 'generic' },
-  { label: 'Documents', icon: 'doc.fill', route: 'documents', primary: false, cap: 'documents.read', feature: 'documents.upload', countKey: 'documents' },
-  { label: 'Contacts', icon: 'phone.fill', route: 'contacts', primary: false, cap: 'contacts.read', feature: 'generic', countKey: 'contacts' },
-  { label: 'Activity', icon: 'clock.fill', route: 'activity', primary: false, cap: 'activity.view', feature: 'generic' },
-  { label: 'Handover', icon: 'checkmark.circle.fill', route: 'handover', primary: false, cap: 'property.edit', feature: 'generic' },
-  { label: 'Expenses', icon: 'creditcard.fill', route: 'expenses', primary: false, cap: 'property.edit', feature: 'generic' },
+  { labelKey: 'estateHub.guests', icon: 'person.2.fill', route: 'guests', cap: 'activity.view', feature: 'guests.invite', countKey: 'guests' },
+  { labelKey: 'estateHub.stayRequests', icon: 'calendar', route: 'stays', cap: 'activity.view', feature: 'stays.approve' },
+  { labelKey: 'estateHub.maintenance', icon: 'wrench.fill', route: 'events', cap: 'events.read', feature: 'events.write' },
+  { labelKey: 'estateHub.availability', icon: 'calendar.badge.exclamationmark', route: 'availability', cap: 'availability.read', feature: 'availability.write' },
+  { labelKey: 'estateHub.faq', icon: 'questionmark.circle.fill', route: 'faq', cap: 'faq.read', feature: 'generic' },
+  { labelKey: 'estateHub.documents', icon: 'doc.fill', route: 'documents', cap: 'documents.read', feature: 'documents.upload', countKey: 'documents' },
+  { labelKey: 'estateHub.contacts', icon: 'phone.fill', route: 'contacts', cap: 'contacts.read', feature: 'generic', countKey: 'contacts' },
+  { labelKey: 'estateHub.activity', icon: 'clock.fill', route: 'activity', cap: 'activity.view', feature: 'generic' },
+  { labelKey: 'estateHub.handover', icon: 'checkmark.circle.fill', route: 'handover', cap: 'property.edit', feature: 'generic' },
+  { labelKey: 'estateHub.expenses', icon: 'creditcard.fill', route: 'expenses', cap: 'property.edit', feature: 'generic' },
 ];
 
 type GuestHubItem =
-  | { label: string; icon: string; href: 'plan' | 'my-stays'; alwaysOn: true }
-  | { label: string; icon: string; route: string; alwaysOn: boolean };
+  | { labelKey: string; icon: string; href: 'plan' | 'my-stays'; alwaysOn: true }
+  | { labelKey: string; icon: string; route: string; alwaysOn: boolean };
 
 const GUEST_ITEMS: GuestHubItem[] = [
-  { label: 'Request dates', icon: 'calendar', href: 'plan', alwaysOn: true },
-  { label: 'My Stays', icon: 'checkmark.circle.fill', href: 'my-stays', alwaysOn: true },
-  { label: 'FAQ', icon: 'questionmark.circle.fill', route: 'faq', alwaysOn: false },
-  { label: 'Documents', icon: 'doc.fill', route: 'documents', alwaysOn: false },
-  { label: 'Contacts', icon: 'phone.fill', route: 'contacts', alwaysOn: false },
-  { label: 'Handover', icon: 'checkmark.circle.fill', route: 'handover', alwaysOn: false },
-  { label: 'Activity', icon: 'clock.fill', route: 'activity', alwaysOn: false },
+  { labelKey: 'estateHub.requestDates', icon: 'calendar', href: 'plan', alwaysOn: true },
+  { labelKey: 'estateHub.myStays', icon: 'checkmark.circle.fill', href: 'my-stays', alwaysOn: true },
+  { labelKey: 'estateHub.faq', icon: 'questionmark.circle.fill', route: 'faq', alwaysOn: false },
+  { labelKey: 'estateHub.documents', icon: 'doc.fill', route: 'documents', alwaysOn: false },
+  { labelKey: 'estateHub.contacts', icon: 'phone.fill', route: 'contacts', alwaysOn: false },
+  { labelKey: 'estateHub.handover', icon: 'checkmark.circle.fill', route: 'handover', alwaysOn: false },
+  { labelKey: 'estateHub.activity', icon: 'clock.fill', route: 'activity', alwaysOn: false },
 ];
 
+function EstateHeaderTitle({
+  name,
+  location,
+  guestBadge,
+}: {
+  name: string;
+  location: string;
+  guestBadge?: boolean;
+}) {
+  const { t } = useTranslation();
+  const { colors } = useScreenTheme();
+  return (
+    <View style={styles.headerText}>
+      {guestBadge ? (
+        <View style={styles.nameRow}>
+          <ThemedText type="title" style={styles.name} numberOfLines={1}>
+            {name}
+          </ThemedText>
+          <View style={[styles.guestBadge, { backgroundColor: colors.tintMuted }]}>
+            <ThemedText style={[styles.guestBadgeText, { color: colors.tint }]}>{t('common.guest')}</ThemedText>
+          </View>
+        </View>
+      ) : (
+        <ThemedText type="title" style={styles.name} numberOfLines={1}>
+          {name}
+        </ThemedText>
+      )}
+      <View style={styles.locationRow}>
+        <IconSymbol name="map.fill" size={13} color={colors.icon} />
+        <ThemedText style={[styles.location, { color: colors.icon }]}>{location}</ThemedText>
+      </View>
+    </View>
+  );
+}
+
 export default function EstateHub() {
-  const { estateId } = useLocalSearchParams<{ estateId: string }>();
+  const { t } = useTranslation();
+  const { estateId, landing } = useLocalSearchParams<{ estateId: string; landing?: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const scheme = colorScheme === 'dark' ? 'dark' : 'light';
-  const colors = Colors[scheme];
+  const { colors, cardShadow } = useScreenTheme();
   const estates = useEstateStore((s) => s.estates);
   const estate = estates.find((e) => e.id === estateId);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -70,14 +107,21 @@ export default function EstateHub() {
   const allStays = useStayStore((s) => s.stays);
   const documents = useDocumentStore((s) => s.documents);
   const contacts = useContactStore((s) => s.contacts);
+  const profileById = useProfileStore((s) => s.byId);
   const todayStr = today();
   const can = useCan();
   const estateCtx = { estateId: estateId as string };
   const fetchCoverage = useEstateCoverageStore((s) => s.fetchCoverage);
+  const [useCase, setUseCase] = useState<OnboardingUseCase | null>(null);
 
   useEffect(() => {
     if (estateId) void fetchCoverage([estateId]);
   }, [estateId, fetchCoverage]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    void fetchProfileUseCase(currentUser.id).then(setUseCase);
+  }, [currentUser?.id]);
 
   const actorRole = useMemo(() => {
     if (!estate || !currentUser) return 'none' as const;
@@ -85,6 +129,24 @@ export default function EstateHub() {
   }, [estate, currentUser, estates, allInvitations, estateId]);
 
   const isHost = actorRole === 'sponsor' || actorRole === 'owner';
+  const showGuestLanding = !isHost && landing === '1';
+  const nextStep = estateId ? nextSetupStep(estateId) : null;
+  const nextTile = nextStep ? SETUP_STEP_TILE[nextStep] : null;
+  const emphasisRoutes = hubEmphasisRoutes(useCase);
+
+  const inviterName = useMemo(() => {
+    if (!currentUser) return '';
+    const inv = allInvitations.find(
+      (i) =>
+        i.estateId === estateId &&
+        i.status === 'accepted' &&
+        (i.guestId === currentUser.id ||
+          (i.guestEmail &&
+            currentUser.email &&
+            i.guestEmail.toLowerCase() === currentUser.email.toLowerCase()))
+    );
+    return inv ? resolveUserDisplayName(inv.ownerId, profileById) : '';
+  }, [allInvitations, estateId, currentUser, profileById]);
 
   const docCount = useMemo(
     () => documents.filter((d) => d.estateId === estateId).length,
@@ -126,19 +188,19 @@ export default function EstateHub() {
     const upcoming = allStays
       .filter((s) => s.estateId === estateId && s.guestId === currentUser.id && todayStr < addDays(s.from, -3))
       .sort((a, b) => a.from.localeCompare(b.from))[0];
-    if (!upcoming) return 'Available during your stay';
+    if (!upcoming) return t('estateHub.availableDuringStay');
     const unlockDay = addDays(upcoming.from, -3);
     const days = Math.ceil(
       (new Date(unlockDay).getTime() - new Date(todayStr).getTime()) / 86400000
     );
-    if (days > 0) return `Unlocks in ${days} day${days === 1 ? '' : 's'}`;
-    return 'Unlocks 3 days before your stay';
-  }, [allStays, estateId, currentUser, todayStr, hasContextAccess]);
+    if (days > 0) return t('estateHub.unlocksInDays', { count: days });
+    return t('estateHub.unlocks3DaysBefore');
+  }, [allStays, estateId, currentUser, todayStr, hasContextAccess, t]);
 
   if (!estate) {
     return (
       <ThemedView style={styles.center}>
-        <ThemedText>Estate not found.</ThemedText>
+        <ThemedText>{t('estateHub.notFound')}</ThemedText>
       </ThemedView>
     );
   }
@@ -146,40 +208,53 @@ export default function EstateHub() {
   if (!currentUser) {
     return (
       <ThemedView style={styles.center}>
-        <ThemedText>Loading…</ThemedText>
+        <ThemedText>{t('common.loading')}</ThemedText>
       </ThemedView>
+    );
+  }
+
+  if (showGuestLanding && estate) {
+    return (
+      <ScreenShell
+        title={t('guestLanding.invitedYou', {
+          name: inviterName || t('common.you'),
+          property: estate.name,
+        })}
+      >
+        <ScreenScroll contentContainerStyle={styles.grid} bottomInset={Spacing.xl} gap={12}>
+          <FilledButton
+            label={t('guestLanding.requestDates')}
+            onPress={() => router.push(`/(app)/stays/plan?estateId=${estateId}` as never)}
+          />
+          <OutlineButton
+            label={t('guestLanding.viewProperty')}
+            onPress={() => router.replace(`/(app)/estates/${estateId}` as never)}
+          />
+        </ScreenScroll>
+      </ScreenShell>
     );
   }
 
   if (isHost) {
     const canEdit = can('property.edit', estateCtx);
-    // Coverage lapse copy lives on SponsorCoverageBanner — no upgrade pitch in the header.
     return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-          <View style={styles.headerText}>
-            <ThemedText type="title" style={styles.name} numberOfLines={1}>
-              {estate.name}
-            </ThemedText>
-            <View style={styles.locationRow}>
-              <IconSymbol name="map.fill" size={13} color={colors.icon} />
-              <ThemedText style={[styles.location, { color: colors.icon }]}>{estate.location}</ThemedText>
-            </View>
-          </View>
+      <ScreenShell
+        title={<EstateHeaderTitle name={estate.name} location={estate.location} />}
+        headerRight={
           <HostProLockTouchable
             locked={!canEdit}
             feature="generic"
             estateId={estateId}
             onPress={() => router.push(`/(app)/estates/${estateId}/edit` as never)}
             style={styles.editBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('estateHub.editProperty')}
           >
             <IconSymbol name="pencil" size={20} color={colors.tint} />
           </HostProLockTouchable>
-        </View>
-        <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + Spacing.xl }]}>
+        }
+      >
+        <ScreenScroll contentContainerStyle={styles.grid} bottomInset={Spacing.xl}>
           <SponsorCoverageBanner estateId={estateId as string} />
           {estate.description ? (
             <ThemedText style={[styles.description, { color: colors.icon }]}>{estate.description}</ThemedText>
@@ -190,6 +265,8 @@ export default function EstateHub() {
               const canOpen = can(item.cap, estateCtx);
               const locked = !canOpen;
               const count = tileCountLabel(item.countKey);
+              const isNext = item.route === nextTile;
+              const emphasised = isNext || emphasisRoutes.includes(item.route);
               return (
                 <HostProLockTouchable
                   key={item.route}
@@ -201,49 +278,32 @@ export default function EstateHub() {
                   style={[
                     styles.tile,
                     {
-                      backgroundColor: item.primary ? colors.tintMuted : colors.surface,
-                      borderColor: item.primary ? colors.tintMuted : colors.border,
+                      backgroundColor: emphasised ? colors.tintMuted : colors.surface,
+                      borderColor: isNext ? colors.tint : emphasised ? colors.tintMuted : colors.border,
                       opacity: count == null && !locked ? 0.85 : 1,
                     },
-                    Elevation.card[scheme],
+                    cardShadow,
                   ]}
                 >
                   <IconSymbol name={item.icon as never} size={28} color={colors.tint} />
                   <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
-                    {item.label}
+                    {t(item.labelKey)}
                     {count != null ? ` · ${count}` : ''}
                   </ThemedText>
                 </HostProLockTouchable>
               );
             })}
           </View>
-        </ScrollView>
-      </ThemedView>
+        </ScreenScroll>
+      </ScreenShell>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + Layout.sectionGap - 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <View style={styles.nameRow}>
-            <ThemedText type="title" style={styles.name} numberOfLines={1}>
-              {estate.name}
-            </ThemedText>
-            <View style={[styles.guestBadge, { backgroundColor: colors.tintMuted }]}>
-              <ThemedText style={[styles.guestBadgeText, { color: colors.tint }]}>Guest</ThemedText>
-            </View>
-          </View>
-          <View style={styles.locationRow}>
-            <IconSymbol name="map.fill" size={13} color={colors.icon} />
-            <ThemedText style={[styles.location, { color: colors.icon }]}>{estate.location}</ThemedText>
-          </View>
-        </View>
-      </View>
-      <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + Spacing.xl }]}>
+    <ScreenShell
+      title={<EstateHeaderTitle name={estate.name} location={estate.location} guestBadge />}
+    >
+      <ScreenScroll contentContainerStyle={styles.grid} bottomInset={Spacing.xl}>
         <View style={styles.tiles}>
           {GUEST_ITEMS.map((item) => {
             const key = 'href' in item ? item.href : item.route;
@@ -257,7 +317,9 @@ export default function EstateHub() {
                     if (item.href === 'plan') {
                       router.push(`/(app)/stays/plan?estateId=${estateId}` as never);
                     } else {
-                      router.push(`/(app)/stays?estateId=${estateId}` as never);
+                      router.push(
+                        `/(app)/calendar?segment=stays&estateId=${estateId}` as never
+                      );
                     }
                     return;
                   }
@@ -270,39 +332,30 @@ export default function EstateHub() {
                     borderColor: colors.border,
                     opacity: unlocked ? 1 : 0.55,
                   },
-                  Elevation.card[scheme],
+                  cardShadow,
                 ]}
                 activeOpacity={0.75}
               >
                 <IconSymbol name={item.icon as never} size={28} color={colors.tint} />
                 <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
-                  {item.label}
+                  {t(item.labelKey)}
                 </ThemedText>
                 {!unlocked ? (
                   <ThemedText style={[styles.contextHint, { color: colors.icon }]}>
-                    {contextUnlockLabel ?? 'Unlocks 3 days before your stay'}
+                    {contextUnlockLabel ?? t('estateHub.unlocks3DaysBefore')}
                   </ThemedText>
                 ) : null}
               </TouchableOpacity>
             );
           })}
         </View>
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: Layout.sectionGap - 8,
-    gap: 8,
-  },
-  back: { padding: 4 },
   headerText: { flex: 1, minWidth: 0 },
   name: { fontSize: 22, fontFamily: Fonts.heading },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -311,7 +364,7 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   location: { fontSize: 13 },
   editBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  grid: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 8 },
+  grid: { paddingTop: 8 },
   description: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: {

@@ -56,7 +56,8 @@ export const useAvailabilityRuleStore = create<AvailabilityRuleState>()(
       setRules: (rules) => set({ rules }),
       fetchFromSupabase: async () => {
         const { data, error } = await supabase.from('estate_availability_rules').select('*');
-        if (!error && data) set({ rules: dedupeById(data).map(fromDb) });
+        if (error) throw new Error(error.message);
+        if (data) set({ rules: dedupeById(data).map(fromDb) });
       },
       addRule: async (rule) => {
         set((s) => ({ rules: [...s.rules, rule] }));

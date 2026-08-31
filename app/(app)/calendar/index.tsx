@@ -1,38 +1,81 @@
-import { useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DayInfo, MonthGrid } from '@/components/calendar/month-grid';
+import {
+  StayRequestsList,
+  useIncomingStayRequests,
+  useOutgoingStayRequests,
+} from '@/components/stays/stay-requests-list';
+import { StaysList, useManagedStays, useMyStays } from '@/components/stays/stays-list';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { EmptyState } from '@/components/ui/empty-state';
+import { BootstrapErrorBanner } from '@/components/ui/bootstrap-error-banner';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import {
+  FilledButton,
+  OutlineButton,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { CalendarColors } from '@/constants/theme';
 import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
 import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
 import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
 import { isIssueTask } from '@/lib/issue-task';
 import { acceptedInvitedEstateIds } from '@/lib/accepted-invited-estates';
+import { useManagedEstates } from '@/lib/entitlements/capabilities';
 import { useAuthStore } from '@/store/auth-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useEventStore } from '@/store/event-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
-import { useAppTheme } from '@/theme/useAppTheme';
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+type CalendarSegment = 'month' | 'stays' | 'requests';
 
-const ISSUE_DUE_DOT = '#f59e0b';
+function paramString(v: string | string[] | undefined): string {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v[0]) return v[0];
+  return '';
+}
 
+function parseSegment(raw: string): CalendarSegment | null {
+  const lower = raw.toLowerCase();
+  if (lower === 'month' || lower === 'stays' || lower === 'requests') return lower;
+  // Old Stays-tab aliases (`?tab=upcoming`) land on the Stays segment.
+  if (lower === 'upcoming') return 'stays';
+  return null;
+}
+
+/**
+ * The single time surface (spec §12 / plan Phase 2): Month answers "when can this
+ * place be used", Stays lists confirmed bookings and Requests is the inbox. All three
+ * segments exist for both roles; only their sections differ, so a host who is also a
+ * guest elsewhere sees both without a `guestMode` fork.
+ */
 export default function CalendarScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
-  const appTheme = useAppTheme();
-  const colors = appTheme.colors;
+  const params = useLocalSearchParams<{
+    segment?: string | string[];
+    /** @deprecated Old Stays-tab query. Same three segments for every role; `view` is ignored. */
+    tab?: string | string[];
+    view?: string | string[];
+    estateId?: string | string[];
+  }>();
+  const paramSegment =
+    parseSegment(paramString(params.segment)) ?? parseSegment(paramString(params.tab));
+  const paramEstateId = paramString(params.estateId);
+  const { colors, scheme } = useScreenTheme();
+  const cal = CalendarColors[scheme];
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allStays = useStayStore((s) => s.stays);
@@ -40,36 +83,65 @@ export default function CalendarScreen() {
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
   const allInvitations = useInvitationStore((s) => s.invitations);
 
+  const { estates: managedEstates, isManaged } = useManagedEstates();
+
   const invitedEstateIds = useMemo(
     () => acceptedInvitedEstateIds(allInvitations, currentUser?.id, currentUser?.email),
     [allInvitations, currentUser?.id, currentUser?.email]
   );
 
   const myEstates = useMemo(() => {
-    const owned = allEstates.filter((e) => e.ownerId === (currentUser?.id ?? ''));
-    const invited = allEstates.filter(
-      (e) => e.ownerId !== currentUser?.id && invitedEstateIds.includes(e.id)
-    );
-    return [...owned, ...invited];
-  }, [allEstates, currentUser?.id, invitedEstateIds]);
+    const invited = allEstates.filter((e) => !isManaged(e.id) && invitedEstateIds.includes(e.id));
+    return [...managedEstates, ...invited];
+  }, [allEstates, managedEstates, isManaged, invitedEstateIds]);
 
   const estateIds = useMemo(() => myEstates.map((e) => e.id), [myEstates]);
 
-  const [selectedEstateId, setSelectedEstateId] = useState<string>('');
+  /** A deep link may scope every segment to one property (e.g. from the property hub). */
+  const scopedEstateId = paramEstateId && estateIds.includes(paramEstateId) ? paramEstateId : undefined;
+
+  const [segment, setSegment] = useState<CalendarSegment>(paramSegment ?? 'month');
+  const [selectedEstateId, setSelectedEstateId] = useState<string>(scopedEstateId ?? '');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
 
   useEffect(() => {
+    if (paramSegment) setSegment(paramSegment);
+  }, [paramSegment]);
+
+  useEffect(() => {
     if (estateIds.length === 0) return;
-    if (!selectedEstateId || !estateIds.includes(selectedEstateId)) {
-      setSelectedEstateId(estateIds[0]);
+    const preferred = scopedEstateId ?? selectedEstateId;
+    if (!preferred || !estateIds.includes(preferred)) {
+      setSelectedEstateId(scopedEstateId ?? estateIds[0]);
+    } else if (preferred !== selectedEstateId) {
+      setSelectedEstateId(preferred);
     }
-  }, [estateIds, selectedEstateId]);
+  }, [estateIds, selectedEstateId, scopedEstateId]);
 
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
 
+  // ── Segment data ────────────────────────────────────────────────────────────
+  const incomingRequests = useIncomingStayRequests(scopedEstateId);
+  const outgoingRequests = useOutgoingStayRequests(scopedEstateId);
+  const managedStays = useManagedStays(scopedEstateId);
+  const myUpcomingStays = useMyStays(scopedEstateId);
+
+  const managesAny = managedEstates.length > 0;
+  const guestsAnywhere = invitedEstateIds.length > 0;
+  const pendingOutgoing = outgoingRequests.filter((r) => r.status === 'pending').length;
+  const requestBadge = incomingRequests.length + pendingOutgoing;
+
+  const blockDatesHref = scopedEstateId
+    ? `/(app)/stays/block?estateId=${scopedEstateId}`
+    : '/(app)/stays/block';
+  const requestDatesHref = scopedEstateId
+    ? `/(app)/stays/plan?estateId=${scopedEstateId}`
+    : '/(app)/stays/plan';
+
+  // ── Month segment data ──────────────────────────────────────────────────────
   function pickEstate(id: string) {
     setSelectedEstateId(id);
     setSelectedDay(null);
@@ -91,9 +163,7 @@ export default function CalendarScreen() {
 
   const myStays = useMemo(
     () =>
-      allStays.filter(
-        (s) => s.estateId === selectedEstateId && s.guestId === currentUser?.id
-      ),
+      allStays.filter((s) => s.estateId === selectedEstateId && s.guestId === currentUser?.id),
     [allStays, selectedEstateId, currentUser?.id]
   );
 
@@ -137,7 +207,13 @@ export default function CalendarScreen() {
           ...existing,
           dots: [
             ...(existing.dots ?? []),
-            { color: event.color ?? colors.primary, key: event.id },
+            {
+              color:
+                isIssueTask(event) && (event.status === 'open' || event.status === 'in_progress')
+                  ? cal.issue
+                  : event.color ?? colors.tint,
+              key: event.id,
+            },
           ],
         };
       });
@@ -152,7 +228,8 @@ export default function CalendarScreen() {
     selectedEstateId,
     viewYear,
     viewMonth,
-    colors.primary,
+    colors.tint,
+    cal.issue,
   ]);
 
   const selectedDayData = useMemo(() => {
@@ -177,23 +254,36 @@ export default function CalendarScreen() {
   const selectedEstate = myEstates.find((e) => e.id === selectedEstateId);
   const canGoBack = navigation.canGoBack();
 
-  return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        
-      </View>
+  if (myEstates.length === 0) {
+    return (
+      <ScreenShell title={t('tabs.calendar')} showBack={canGoBack}>
+        <BootstrapErrorBanner />
+        <EmptyState
+          icon="building.2.fill"
+          title={t('estatesList.emptyTitle')}
+          subtitle={t('guestCalendar.emptyNoProperties')}
+          actionLabel={t('tabs.properties')}
+          onAction={() => router.push('/(app)/estates' as never)}
+        />
+      </ScreenShell>
+    );
+  }
 
-      {myEstates.length === 0 ? (
-        <View style={styles.center}>
-          <ThemedText style={{ opacity: 0.5 }}>
-            No properties yet. Add a property to see the calendar.
-          </ThemedText>
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
-          showsVerticalScrollIndicator={false}
-        >
+  return (
+    <ScreenShell title={t('tabs.calendar')} showBack={canGoBack}>
+      <BootstrapErrorBanner />
+      <SegmentedControl<CalendarSegment>
+        segments={[
+          { key: 'month', label: t('calendarTab.segmentMonth') },
+          { key: 'stays', label: t('calendarTab.segmentStays') },
+          { key: 'requests', label: t('calendarTab.segmentRequests'), badge: requestBadge },
+        ]}
+        value={segment}
+        onChange={(next) => setSegment(next)}
+      />
+
+      {segment === 'month' && (
+        <ScreenScroll>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -206,13 +296,18 @@ export default function CalendarScreen() {
                   key={estate.id}
                   style={[
                     styles.estatePill,
-                    { borderColor: colors.primary + '44' },
-                    active && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    { borderColor: colors.tint + '44' },
+                    active && { backgroundColor: colors.tint, borderColor: colors.tint },
                   ]}
                   onPress={() => pickEstate(estate.id)}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={estate.name}
                 >
-                  <ThemedText style={[styles.estatePillText, { color: active ? '#fff' : colors.text }]}>
+                  <ThemedText
+                    style={[styles.estatePillText, { color: active ? colors.textOnBrand : colors.text }]}
+                  >
                     {estate.name}
                   </ThemedText>
                 </TouchableOpacity>
@@ -221,14 +316,22 @@ export default function CalendarScreen() {
           </ScrollView>
 
           <View style={styles.nav}>
-            <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-              <IconSymbol name="arrow.left" size={18} color={colors.primary} />
+            <TouchableOpacity
+              onPress={prevMonth}
+              style={styles.navBtn}
+              accessibilityLabel={t('calendarTab.previousMonth')}
+            >
+              <IconSymbol name="arrow.left" size={18} color={colors.tint} />
             </TouchableOpacity>
             <ThemedText type="defaultSemiBold" style={styles.monthLabel}>
-              {MONTHS[viewMonth]} {viewYear}
+              {(t('calendar.months', { returnObjects: true }) as string[])[viewMonth]} {viewYear}
             </ThemedText>
-            <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-              <IconSymbol name="arrow.right" size={18} color={colors.primary} />
+            <TouchableOpacity
+              onPress={nextMonth}
+              style={styles.navBtn}
+              accessibilityLabel={t('calendarTab.nextMonth')}
+            >
+              <IconSymbol name="arrow.right" size={18} color={colors.tint} />
             </TouchableOpacity>
           </View>
 
@@ -239,20 +342,20 @@ export default function CalendarScreen() {
                 {
                   backgroundColor:
                     selectedDayData.type === 'my-stay'
-                      ? '#22c55e12'
+                      ? cal.availableFill
                       : selectedDayData.type === 'blocked'
-                        ? '#ef444410'
+                        ? cal.bookedFill
                         : selectedDayData.type === 'unavailable'
-                          ? '#64748b14'
-                          : colors.primarySoft,
+                          ? colors.textSecondary + '14'
+                          : cal.availableFill,
                   borderColor:
                     selectedDayData.type === 'my-stay'
-                      ? '#22c55e44'
+                      ? cal.availableBorder
                       : selectedDayData.type === 'blocked'
-                        ? '#ef444430'
+                        ? cal.bookedBorder
                         : selectedDayData.type === 'unavailable'
-                          ? '#64748b40'
-                          : colors.primary + '33',
+                          ? colors.textSecondary + '40'
+                          : cal.availableBorder,
                 },
               ]}
             >
@@ -263,12 +366,12 @@ export default function CalendarScreen() {
                     {
                       backgroundColor:
                         selectedDayData.type === 'my-stay'
-                          ? '#22c55e'
+                          ? cal.myStay
                           : selectedDayData.type === 'blocked'
-                            ? '#ef4444'
+                            ? cal.booked
                             : selectedDayData.type === 'unavailable'
-                              ? '#64748b'
-                              : '#22c55e',
+                              ? colors.textSecondary
+                              : cal.available,
                     },
                   ]}
                 />
@@ -278,8 +381,8 @@ export default function CalendarScreen() {
                   </ThemedText>
                   {selectedDayData.type === 'my-stay' && (
                     <>
-                      <ThemedText style={[styles.infoMain, { color: '#22c55e' }]}>
-                        Your stay · {selectedEstate?.name}
+                      <ThemedText style={[styles.infoMain, { color: cal.myStay }]}>
+                        {t('guestCalendar.yourStayLine', { name: selectedEstate?.name ?? '' })}
                       </ThemedText>
                       <ThemedText style={[styles.infoSub, { color: colors.icon }]}>
                         {formatDateRange(selectedDayData.stay.from, selectedDayData.stay.to)}
@@ -287,27 +390,28 @@ export default function CalendarScreen() {
                     </>
                   )}
                   {selectedDayData.type === 'blocked' && (
-                    <ThemedText style={[styles.infoMain, { color: '#ef4444' }]}>
-                      Not available — property occupied
+                    <ThemedText style={[styles.infoMain, { color: cal.booked }]}>
+                      {t('guestCalendar.blockedOccupied')}
                     </ThemedText>
                   )}
                   {selectedDayData.type === 'unavailable' && (
                     <ThemedText style={[styles.infoMain, { color: colors.icon }]}>
-                      Unavailable — this date has passed
+                      {t('guestCalendar.unavailablePast')}
                     </ThemedText>
                   )}
                   {selectedDayData.type === 'available' && (
                     <ThemedText style={[styles.infoMain, { color: colors.icon }]}>
-                      Available — no bookings on this date
+                      {t('guestCalendar.availableNoBookings')}
                     </ThemedText>
                   )}
                   {selectedDayEvents.length > 0 && (
                     <View style={styles.eventList}>
                       {selectedDayEvents.map((event) => {
                         const dotColor =
-                          isIssueTask(event) && (event.status === 'open' || event.status === 'in_progress')
-                            ? ISSUE_DUE_DOT
-                            : event.color ?? colors.primary;
+                          isIssueTask(event) &&
+                          (event.status === 'open' || event.status === 'in_progress')
+                            ? cal.issue
+                            : event.color ?? colors.tint;
                         const content = (
                           <>
                             <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
@@ -346,7 +450,11 @@ export default function CalendarScreen() {
                   )}
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setSelectedDay(null)} style={styles.infoDismiss}>
+              <TouchableOpacity
+                onPress={() => setSelectedDay(null)}
+                style={styles.infoDismiss}
+                accessibilityLabel={t('common.close')}
+              >
                 <IconSymbol name="xmark" size={13} color={colors.icon} />
               </TouchableOpacity>
             </View>
@@ -372,10 +480,14 @@ export default function CalendarScreen() {
             onPress={() => setLegendOpen((o) => !o)}
             activeOpacity={0.7}
           >
-            <ThemedText style={[styles.legendToggleLabel, { color: colors.textMuted }]}>
+            <ThemedText style={[styles.legendToggleLabel, { color: colors.textSecondary }]}>
               {t('guestCalendar.legend')}
             </ThemedText>
-            <IconSymbol name={legendOpen ? 'chevron.up' : 'chevron.down'} size={12} color={colors.icon} />
+            <IconSymbol
+              name={legendOpen ? 'chevron.up' : 'chevron.down'}
+              size={12}
+              color={colors.icon}
+            />
           </TouchableOpacity>
 
           {legendOpen && (
@@ -386,7 +498,7 @@ export default function CalendarScreen() {
               ]}
             >
               <View style={styles.legendRow}>
-                <View style={[styles.legendSwatch, { backgroundColor: '#22c55e' }]} />
+                <View style={[styles.legendSwatch, { backgroundColor: cal.myStay }]} />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendYourStay')}
                 </ThemedText>
@@ -395,11 +507,7 @@ export default function CalendarScreen() {
                 <View
                   style={[
                     styles.legendSwatch,
-                    {
-                      backgroundColor: '#16a34a14',
-                      borderWidth: 1,
-                      borderColor: '#16a34a44',
-                    },
+                    { backgroundColor: cal.availableFill, borderWidth: 1, borderColor: cal.availableBorder },
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
@@ -410,11 +518,7 @@ export default function CalendarScreen() {
                 <View
                   style={[
                     styles.legendSwatch,
-                    {
-                      backgroundColor: '#64748b18',
-                      borderWidth: 1,
-                      borderColor: '#64748b55',
-                    },
+                    { backgroundColor: colors.textSecondary + '18', borderWidth: 1, borderColor: colors.textSecondary + '55' },
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
@@ -425,11 +529,7 @@ export default function CalendarScreen() {
                 <View
                   style={[
                     styles.legendSwatch,
-                    {
-                      backgroundColor: '#ef444438',
-                      borderWidth: 1,
-                      borderColor: '#dc262688',
-                    },
+                    { backgroundColor: cal.bookedFill, borderWidth: 1, borderColor: cal.bookedBorder },
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
@@ -437,49 +537,134 @@ export default function CalendarScreen() {
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendSwatchRing, { borderColor: '#0a7ea4', borderWidth: 1.5 }]} />
+                <View
+                  style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 1.5 }]}
+                />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendToday')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendSwatchRing, { borderColor: colors.primary, borderWidth: 2.5 }]} />
+                <View
+                  style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 2.5 }]}
+                />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendSelectedDay')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+                <View style={[styles.legendDot, { backgroundColor: colors.tint }]} />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendPropertyEvent')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: ISSUE_DUE_DOT }]} />
+                <View style={[styles.legendDot, { backgroundColor: cal.issue }]} />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('ticketsHub.legendIssueDue')}
                 </ThemedText>
               </View>
             </View>
           )}
-        </ScrollView>
+        </ScreenScroll>
       )}
-    </ThemedView>
+
+      {segment === 'stays' &&
+        (managedStays.length === 0 && myUpcomingStays.length === 0 ? (
+          <EmptyState
+            icon="calendar"
+            title={t('calendarTab.staysEmptyTitle')}
+            subtitle={
+              managesAny ? t('calendarTab.staysEmptyHostSub') : t('calendarTab.staysEmptyGuestSub')
+            }
+            actionLabel={managesAny ? t('titles.blockDates') : t('titles.requestDates')}
+            onAction={() =>
+              router.push((managesAny ? blockDatesHref : requestDatesHref) as never)
+            }
+          />
+        ) : (
+          <ScreenScroll>
+            {managesAny && (
+              <>
+                <SectionLabel>{t('calendarTab.staysManagedSection')}</SectionLabel>
+                <StaysList mode="managed" estateId={scopedEstateId} hideWhenEmpty />
+                <FilledButton
+                  label={t('titles.blockDates')}
+                  icon="plus"
+                  onPress={() => router.push(blockDatesHref as never)}
+                />
+              </>
+            )}
+
+            {(guestsAnywhere || myUpcomingStays.length > 0) && (
+              <>
+                <SectionLabel marginTop={managesAny ? 20 : 0}>
+                  {t('calendarTab.staysMineSection')}
+                </SectionLabel>
+                <StaysList mode="mine" estateId={scopedEstateId} hideWhenEmpty />
+                {guestsAnywhere && (
+                  <OutlineButton
+                    label={t('titles.requestDates')}
+                    icon="plus"
+                    onPress={() => router.push(requestDatesHref as never)}
+                  />
+                )}
+              </>
+            )}
+          </ScreenScroll>
+        ))}
+
+      {segment === 'requests' &&
+        (incomingRequests.length === 0 && outgoingRequests.length === 0 ? (
+          <EmptyState
+            icon="tray.fill"
+            title={t('calendarTab.requestsEmptyTitle')}
+            subtitle={
+              managesAny
+                ? t('calendarTab.requestsEmptyHostSub')
+                : t('calendarTab.requestsEmptyGuestSub')
+            }
+            actionLabel={guestsAnywhere ? t('titles.requestDates') : undefined}
+            onAction={
+              guestsAnywhere ? () => router.push(requestDatesHref as never) : undefined
+            }
+          />
+        ) : (
+          <ScreenScroll>
+            {managesAny && incomingRequests.length > 0 && (
+              <>
+                <SectionLabel>{t('calendarTab.requestsIncomingSection')}</SectionLabel>
+                <StayRequestsList mode="incoming" estateId={scopedEstateId} hideWhenEmpty />
+              </>
+            )}
+
+            {outgoingRequests.length > 0 && (
+              <>
+                <SectionLabel
+                  marginTop={managesAny && incomingRequests.length > 0 ? 20 : 0}
+                >
+                  {t('calendarTab.requestsOutgoingSection')}
+                </SectionLabel>
+                <StayRequestsList mode="outgoing" estateId={scopedEstateId} hideWhenEmpty />
+              </>
+            )}
+          </ScreenScroll>
+        ))}
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingBottom: 8 },
-  back: { padding: 4 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  scroll: { paddingHorizontal: 20 },
-
   estateRow: { gap: 8, paddingVertical: 4, marginBottom: 16 },
   estatePill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   estatePillText: { fontSize: 13, fontWeight: '600' },
 
-  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  nav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
   navBtn: { padding: 8 },
   monthLabel: { fontSize: 18 },
 

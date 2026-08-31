@@ -9,7 +9,6 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,13 +16,18 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { GoogleLogo } from '@/components/auth/google-logo';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { radius, spacing } from '@/theme';
-import { useAppTheme } from '@/theme/useAppTheme';
+import { ThemedText } from '@/components/themed-text';
+import {
+  GroupedList,
+  OutlineButton,
+  ScreenFootnote,
+  ScreenScroll,
+  ScreenShell,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
 import {
   authRedirectUri,
   ensureProfileRowForAuthUser,
@@ -32,60 +36,40 @@ import {
   type ProfileRow,
 } from '@/lib/auth-linking';
 import { loadAllStores } from '@/lib/load-all-stores';
+import { LEGAL_ROUTES } from '@/lib/legal-routes';
+import { estateHrefAfterInviteAccept } from '@/lib/guest-landing';
 import { supabase } from '@/lib/supabase';
 import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { User } from '@/types';
-import { useTranslation } from 'react-i18next';
-
-// ─── Palette ─────────────────────────────────────────────────────────────────
-const A = {
-  bg:         '#F6F4EF',
-  bgDark:     '#131210',
-  card:       '#FFFCF9',
-  cardDark:   '#1F1D1A',
-  brown:      '#234536',
-  brownMid:   '#3D4A44',
-  creamDark:  '#262422',
-  creamDarkD: '#2C302E',
-  text:       '#252220',
-  textDark:   '#F4F1EB',
-  textMuted:  '#6E6862',
-  textMutedD: '#9C9690',
-  white:      '#FFFCF9',
-  whiteDark:  '#1F1D1A',
-  border:     '#DED9D0',
-  borderDark: '#3A3632',
-};
 
 type Mode = 'signin' | 'signup';
 
-// ─── FocusInput ──────────────────────────────────────────────────────────────
 interface FocusInputProps extends TextInputProps {
   label: string;
-  dark: boolean;
 }
 
-function FocusInput({ label, dark, style, ...props }: FocusInputProps) {
+function FocusInput({ label, style, ...props }: FocusInputProps) {
+  const { colors } = useScreenTheme();
   const [focused, setFocused] = useState(false);
   return (
     <View style={fi.wrap}>
-      <Text style={[fi.label, { color: A.textMuted }]}>{label}</Text>
+      <Text style={[fi.label, { color: colors.textSecondary }]}>{label}</Text>
       <TextInput
         style={[
           fi.input,
           {
-            borderColor: focused ? A.brown : (dark ? A.borderDark : A.border),
-            backgroundColor: dark ? A.whiteDark : A.white,
-            color: dark ? A.textDark : A.text,
-            shadowColor: A.brown,
+            borderColor: focused ? colors.tint : colors.border,
+            backgroundColor: colors.surface,
+            color: colors.text,
+            shadowColor: colors.tint,
             shadowOpacity: focused ? 0.14 : 0,
             shadowOffset: { width: 0, height: 0 },
             shadowRadius: 5,
           },
           style,
         ]}
-        placeholderTextColor={A.textMuted}
+        placeholderTextColor={colors.textSecondary}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         {...props}
@@ -95,21 +79,37 @@ function FocusInput({ label, dark, style, ...props }: FocusInputProps) {
 }
 
 const fi = StyleSheet.create({
-  wrap:  { gap: 6 },
+  wrap: { gap: 6 },
   label: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: 'Inter_700Bold' },
   input: { height: 50, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 16, fontSize: 15, fontFamily: 'Manrope_400Regular' },
 });
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
 const { height: SCREEN_H } = Dimensions.get('window');
+
+function AuthHeaderTitle() {
+  const { t } = useTranslation();
+  const { colors } = useScreenTheme();
+  return (
+    <View style={s.titleRow}>
+      <View style={[s.logoMark, { backgroundColor: colors.surface }]}>
+        <Image
+          source={require('../../assets/images/logo_green.png')}
+          style={s.logoMarkImage}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
+      </View>
+      <ThemedText type="title" style={s.title}>
+        {t('common.estateAid')}
+      </ThemedText>
+    </View>
+  );
+}
 
 export default function AuthScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const appTheme = useAppTheme();
-  const dark = colorScheme === 'dark';
+  const { colors, cardShadow, radius } = useScreenTheme();
   const { setUser, resetOnboarding, pendingInviteCode, setPendingInviteCode, completeOnboarding, setSkipOnboardingForInvite } = useAuthStore();
   const { redeemCode } = useInvitationStore();
 
@@ -121,7 +121,6 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingOAuth, setLoadingOAuth] = useState<'google' | 'apple' | null>(null);
 
-  // ── helpers ────────────────────────────────────────────────────────────────
   async function finishSignIn(profile: ProfileRow, userEmail: string) {
     const user: User = {
       id: profile.id,
@@ -142,7 +141,7 @@ export default function AuthScreen() {
       if (r.success && r.invitation) {
         completeOnboarding();
         setSkipOnboardingForInvite(false);
-        router.replace(`/(app)/estates/${r.invitation.estateId}` as never);
+        router.replace(estateHrefAfterInviteAccept(r.invitation) as never);
         return;
       }
       if (!r.success) {
@@ -170,9 +169,8 @@ export default function AuthScreen() {
     router.replace('/(app)/home' as never);
   }
 
-  // ── sign in ────────────────────────────────────────────────────────────────
   async function handleSignIn() {
-    if (!email || !password) { Alert.alert('Missing fields', 'Please enter your email and password.'); return; }
+    if (!email || !password) { Alert.alert(t('auth.missingFieldsTitle'), t('auth.missingFieldsSignIn')); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -189,14 +187,13 @@ export default function AuthScreen() {
         }
         profile = ensured.profile;
       }
-      if (!profile) { Alert.alert('Profile not found', 'Could not create your profile.'); return; }
+      if (!profile) { Alert.alert(t('auth.profileNotFound'), t('auth.profileNotFoundBody')); return; }
       await finishSignIn(profile, data.user.email!);
     } finally {
       setLoading(false);
     }
   }
 
-  // ── sign up ────────────────────────────────────────────────────────────────
   async function handleSignUp() {
     if (!name || !email || !password) {
       Alert.alert(t('auth.missingFieldsTitle'), t('auth.missingFieldsSignUp'));
@@ -230,7 +227,7 @@ export default function AuthScreen() {
       }
       const now = new Date().toISOString();
       const { error: profileError } = await supabase.from('profiles').insert({ id: data.user.id, name: name.trim(), created_at: now });
-      if (profileError) { Alert.alert('Profile setup failed', profileError.message); return; }
+      if (profileError) { Alert.alert(t('auth.profileSetupFailed'), profileError.message); return; }
       resetOnboarding();
       setUser({
         id: data.user.id,
@@ -246,7 +243,6 @@ export default function AuthScreen() {
     }
   }
 
-  // ── oauth ──────────────────────────────────────────────────────────────────
   async function handleOAuth(provider: 'google' | 'apple') {
     setLoadingOAuth(provider);
     try {
@@ -267,298 +263,236 @@ export default function AuthScreen() {
     }
   }
 
-  // ── palette shortcuts ──────────────────────────────────────────────────────
-  const bg        = dark ? A.bgDark       : A.bg;
-  const cardBg    = dark ? A.cardDark     : A.card;
-  const tabBg     = dark ? A.creamDarkD   : A.creamDark;
-  const inputBg   = dark ? A.whiteDark    : A.white;
-  const borderCol = dark ? A.borderDark   : A.border;
-  const textCol   = dark ? A.textDark     : A.text;
-
   const anyLoading = loading || !!loadingOAuth;
+  const oauthBg = colors.text;
+  const oauthFg = colors.surface;
 
   return (
-    <View style={[s.screen, { backgroundColor: bg, paddingTop: insets.top }]}>
+    <ScreenShell showBack={false} title={<AuthHeaderTitle />}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={[s.scroll, { minHeight: SCREEN_H - insets.top }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <ScreenScroll
+          contentContainerStyle={[s.scroll, { minHeight: SCREEN_H * 0.75 }]}
+          gap={16}
         >
-          <View
-            style={[
-              s.card,
-              { backgroundColor: cardBg, borderColor: appTheme.colors.border },
-              appTheme.shadows.md,
-            ]}
-          >
-            {/* ── Header ── */}
-            <View style={s.header}>
-              <View style={s.titleRow}>
-                <View style={[s.logoMark, { backgroundColor: cardBg }]}>
-                  <Image
-                    source={require('../../assets/images/logo_green.png')}
-                    style={s.logoMarkImage}
-                    resizeMode="contain"
-                    accessibilityIgnoresInvertColors
-                  />
-                </View>
-                <Text style={[s.title, { color: textCol }]}>{t('common.estateAid')}</Text>
-              </View>
-              <Text style={[s.subtitle, { color: A.textMuted }]}>
-                {mode === 'signin' ? t('auth.welcomeBack') : t('auth.createAccount')}
-              </Text>
-            </View>
+          <ScreenFootnote style={s.subtitle}>
+            {mode === 'signin' ? t('auth.welcomeBack') : t('auth.createAccount')}
+          </ScreenFootnote>
 
-            {/* ── Tab toggle ── */}
-            <View style={[s.tabs, { backgroundColor: tabBg }]}>
-              {(['signin', 'signup'] as Mode[]).map((m) => (
-                <TouchableOpacity
-                  key={m}
-                  style={[
-                    s.tab,
-                    mode === m && {
-                      backgroundColor: A.brown,
-                      shadowColor: A.brown,
-                      shadowOpacity: 0.22,
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowRadius: 6,
-                      elevation: 4,
-                    },
-                  ]}
-                  onPress={() => { setMode(m); setShowEmailForm(false); }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[s.tabText, { color: mode === m ? '#fff' : A.textMuted }]}>
-                    {m === 'signin' ? t('auth.signIn') : t('auth.signUp')}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* ── OAuth buttons ── */}
-            <View style={s.oauthGroup}>
+          <View style={[s.tabs, { backgroundColor: colors.surfaceMuted }]}>
+            {(['signin', 'signup'] as Mode[]).map((m) => (
               <TouchableOpacity
-                style={[s.oauthBtn, { backgroundColor: dark ? '#FDFAF7' : A.text, borderColor: 'transparent' }]}
-                onPress={() => void handleOAuth('google')}
+                key={m}
+                style={[
+                  s.tab,
+                  mode === m && {
+                    backgroundColor: colors.tint,
+                    shadowColor: colors.tint,
+                    shadowOpacity: 0.22,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowRadius: 6,
+                    elevation: 4,
+                  },
+                ]}
+                onPress={() => { setMode(m); setShowEmailForm(false); }}
+                activeOpacity={0.85}
+              >
+                <Text style={[s.tabText, { color: mode === m ? colors.textOnBrand : colors.textSecondary }]}>
+                  {m === 'signin' ? t('auth.signIn') : t('auth.signUp')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <GroupedList style={cardShadow}>
+            <TouchableOpacity
+              style={[s.oauthBtn, { backgroundColor: oauthBg }]}
+              onPress={() => void handleOAuth('google')}
+              disabled={anyLoading}
+              activeOpacity={0.85}
+            >
+              {loadingOAuth === 'google' ? (
+                <View style={s.oauthLoading}>
+                  <ActivityIndicator color={oauthFg} />
+                </View>
+              ) : (
+                <>
+                  <View style={s.oauthIconSlot}>
+                    <View style={s.oauthGlyphBox}>
+                      <GoogleLogo size={18} />
+                    </View>
+                  </View>
+                  <Text style={[s.oauthText, s.oauthLabel, { color: oauthFg }]}>
+                    {t('auth.continueGoogle')}
+                  </Text>
+                  <View style={s.oauthIconSlot} />
+                </>
+              )}
+            </TouchableOpacity>
+
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[s.oauthBtn, { backgroundColor: oauthBg, borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}
+                onPress={() => void handleOAuth('apple')}
                 disabled={anyLoading}
                 activeOpacity={0.85}
               >
-                {loadingOAuth === 'google' ? (
+                {loadingOAuth === 'apple' ? (
                   <View style={s.oauthLoading}>
-                    <ActivityIndicator color={textCol} />
+                    <ActivityIndicator color={oauthFg} />
                   </View>
                 ) : (
                   <>
                     <View style={s.oauthIconSlot}>
-                      <View style={s.oauthGlyphBox}>
-                        <GoogleLogo size={18} />
-                      </View>
+                      <Ionicons name="logo-apple" size={18} color={oauthFg} />
                     </View>
-                    <Text style={[s.oauthText, s.oauthLabel, { color: dark ? A.text : '#fff' }]}>
-                      {t('auth.continueGoogle')}
+                    <Text style={[s.oauthText, s.oauthLabel, { color: oauthFg }]}>
+                      {t('auth.continueApple')}
                     </Text>
                     <View style={s.oauthIconSlot} />
                   </>
                 )}
               </TouchableOpacity>
-
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity
-                  style={[s.oauthBtn, { backgroundColor: dark ? '#FDFAF7' : A.text, borderColor: 'transparent' }]}
-                  onPress={() => void handleOAuth('apple')}
-                  disabled={anyLoading}
-                  activeOpacity={0.85}
-                >
-                  {loadingOAuth === 'apple' ? (
-                    <View style={s.oauthLoading}>
-                      <ActivityIndicator color={dark ? A.text : '#fff'} />
-                    </View>
-                  ) : (
-                    <>
-                      <View style={s.oauthIconSlot}>
-                        <Ionicons name="logo-apple" size={18} color={dark ? A.text : '#fff'} />
-                      </View>
-                      <Text style={[s.oauthText, s.oauthLabel, { color: dark ? A.text : '#fff' }]}>
-                        {t('auth.continueApple')}
-                      </Text>
-                      <View style={s.oauthIconSlot} />
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* ── Continue with E-mail ── */}
-            {!showEmailForm ? (
-              <TouchableOpacity
-                style={[s.emailBtn, { borderColor: borderCol }]}
-                onPress={() => setShowEmailForm(true)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="mail-outline" size={18} color={textCol} />
-                <Text style={[s.emailBtnText, { color: textCol }]}>{t('auth.continueEmail')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                <View style={s.divRow}>
-                  <View style={[s.divLine, { backgroundColor: borderCol }]} />
-                  <Text style={[s.divText, { color: A.textMuted }]}>{t('auth.orWithEmail')}</Text>
-                  <View style={[s.divLine, { backgroundColor: borderCol }]} />
-                </View>
-
-                <View style={s.fields}>
-                  {mode === 'signup' && (
-                    <FocusInput
-                      label={t('auth.fullName')}
-                      dark={dark}
-                      placeholder={t('auth.placeholderName')}
-                      value={name}
-                      onChangeText={setName}
-                      autoCapitalize="words"
-                      autoComplete="name"
-                    />
-                  )}
-                  <FocusInput
-                    label={t('auth.email')}
-                    dark={dark}
-                    placeholder={t('auth.placeholderEmail')}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                  />
-                  <FocusInput
-                    label={t('auth.password')}
-                    dark={dark}
-                    placeholder={t('auth.placeholderPassword')}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                  />
-                </View>
-              </>
             )}
+          </GroupedList>
 
-            {/* ── CTA ── */}
-            {showEmailForm && (
+          {!showEmailForm ? (
+            <OutlineButton
+              label={t('auth.continueEmail')}
+              icon="envelope.fill"
+              onPress={() => setShowEmailForm(true)}
+            />
+          ) : (
+            <>
+              <View style={s.divRow}>
+                <View style={[s.divLine, { backgroundColor: colors.border }]} />
+                <Text style={[s.divText, { color: colors.textSecondary }]}>{t('auth.orWithEmail')}</Text>
+                <View style={[s.divLine, { backgroundColor: colors.border }]} />
+              </View>
+
+              <View style={s.fields}>
+                {mode === 'signup' && (
+                  <FocusInput
+                    label={t('auth.fullName')}
+                    placeholder={t('auth.placeholderName')}
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    autoComplete="name"
+                  />
+                )}
+                <FocusInput
+                  label={t('auth.email')}
+                  placeholder={t('auth.placeholderEmail')}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+                <FocusInput
+                  label={t('auth.password')}
+                  placeholder={t('auth.placeholderPassword')}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                />
+              </View>
+            </>
+          )}
+
+          {showEmailForm && (
             <TouchableOpacity
-              style={[s.ctaWrap, appTheme.shadows.md, anyLoading && { opacity: 0.7 }]}
+              style={[s.ctaWrap, cardShadow, anyLoading && { opacity: 0.7 }]}
               onPress={mode === 'signin' ? handleSignIn : handleSignUp}
               disabled={anyLoading}
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={['#2F5349', '#234536']}
+                colors={[colors.brownMid, colors.tint]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={s.cta}
+                style={[s.cta, { borderRadius: radius.md }]}
               >
                 {loading
-                  ? <ActivityIndicator color="#fff" />
+                  ? <ActivityIndicator color={colors.textOnBrand} />
                   : (
-                    <Text style={s.ctaText}>
+                    <Text style={[s.ctaText, { color: colors.textOnBrand }]}>
                       {mode === 'signin' ? t('auth.signIn') : t('auth.createAccountCta')}
                     </Text>
                   )
                 }
               </LinearGradient>
             </TouchableOpacity>
-            )}
+          )}
 
-            {/* ── Footer ── */}
-            {mode === 'signin' && (
-              <Text style={[s.footerText, { color: A.textMuted }]}>
-                <Text style={{ color: A.brownMid, fontWeight: '600' }}>{t('auth.forgotPassword')}</Text>
+          {mode === 'signin' && (
+            <ScreenFootnote>
+              <Text style={{ color: colors.brownMid, fontWeight: '600', textAlign: 'center' }}>
+                {t('auth.forgotPassword')}
               </Text>
-            )}
-            {mode === 'signup' && (
-              <Text style={[s.footerText, { color: A.textMuted }]}>
+            </ScreenFootnote>
+          )}
+          {mode === 'signup' && (
+            <ScreenFootnote>
+              <Text style={{ textAlign: 'center', color: colors.textSecondary }}>
                 {t('auth.termsPrefix')}{' '}
-                <Text style={{ color: A.brownMid }}>{t('auth.terms')}</Text>
+                <Text
+                  style={{ color: colors.brownMid }}
+                  onPress={() => router.push(LEGAL_ROUTES.terms as never)}
+                  accessibilityRole="link"
+                >
+                  {t('auth.terms')}
+                </Text>
                 {' '}
                 {t('auth.and')}{' '}
-                <Text style={{ color: A.brownMid }}>{t('auth.privacyLink')}</Text>
+                <Text
+                  style={{ color: colors.brownMid }}
+                  onPress={() => router.push(LEGAL_ROUTES.privacy as never)}
+                  accessibilityRole="link"
+                >
+                  {t('auth.privacyLink')}
+                </Text>
               </Text>
-            )}
-          </View>
-        </ScrollView>
+            </ScreenFootnote>
+          )}
+        </ScreenScroll>
       </KeyboardAvoidingView>
-    </View>
+    </ScreenShell>
   );
 }
 
 const s = StyleSheet.create({
-  screen:    { flex: 1 },
   scroll: {
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'center',
-    paddingVertical: spacing.section + 12,
-    paddingHorizontal: spacing.screen,
+    paddingVertical: 16,
   },
-  card: {
-    width: '100%',
-    maxWidth: 390,
-    borderRadius: radius.lg,
-    padding: spacing.section + 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 0,
-  },
-  // header
-  header:    { marginBottom: 28 },
-  titleRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  logoMark:  { width: 64, height: 64, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  /** Same raster as splash (`logo_green.svg` → `assets/images/logo_green.png`), viewBox 4960×3840 */
-  logoMarkImage: { width: 44, height: (44 * 3840) / 4960 },
-  title:     { fontSize: 26, fontWeight: '700', letterSpacing: -0.5, fontFamily: 'Manrope_700Bold' },
-  subtitle:  { fontSize: 14, marginLeft: 72, fontFamily: 'Manrope_400Regular' },
-  // tabs
-  tabs:      { flexDirection: 'row', borderRadius: 10, padding: 4, marginBottom: 24 },
-  tab:       { flex: 1, paddingVertical: 11, borderRadius: 8, alignItems: 'center' },
-  tabText:   { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
-  // oauth
-  oauthGroup: { gap: 10, marginBottom: spacing.xxl },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  logoMark: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  logoMarkImage: { width: 32, height: (32 * 3840) / 4960 },
+  title: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  subtitle: { marginLeft: 0, marginBottom: 4 },
+  tabs: { flexDirection: 'row', borderRadius: 10, padding: 4 },
+  tab: { flex: 1, paddingVertical: 11, borderRadius: 8, alignItems: 'center' },
+  tabText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
   oauthBtn: {
     minHeight: 44,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  /** Same width on Google + Apple so logos share one vertical axis; right slot balances label centering. */
-  oauthIconSlot: {
-    width: 28,
-    minHeight: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  /** Locks Google PNG + Apple glyph to the same box so their centers line up in the rail. */
-  oauthGlyphBox: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  oauthIconSlot: { width: 28, minHeight: 22, alignItems: 'center', justifyContent: 'center' },
+  oauthGlyphBox: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
   oauthLabel: { flex: 1, textAlign: 'center' },
   oauthLoading: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
   oauthText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
-  // divider
-  divRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
-  divLine:   { flex: 1, height: 1 },
-  divText:   { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.5 },
-  // fields
-  fields:    { gap: 14, marginBottom: 20 },
-  // email button
-  emailBtn:  { height: 50, borderRadius: 10, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 4 },
-  emailBtnText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
-  // cta
-  ctaWrap:   { borderRadius: radius.md, marginBottom: spacing.section - 4 },
-  cta:       { minHeight: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  ctaText:   { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'Manrope_700Bold', letterSpacing: 0.3 },
-  // footer
-  footerText: { textAlign: 'center', fontSize: 13, fontFamily: 'Manrope_400Regular', lineHeight: 20 },
+  divRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  divLine: { flex: 1, height: 1 },
+  divText: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.5 },
+  fields: { gap: 14 },
+  ctaWrap: { borderRadius: 14, marginTop: 4 },
+  cta: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  ctaText: { fontSize: 15, fontWeight: '700', fontFamily: 'Manrope_700Bold', letterSpacing: 0.3 },
 });

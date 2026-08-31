@@ -4,6 +4,7 @@ import { openUpgradePaywall, type UpgradeFeature } from '@/lib/maison-pro-upgrad
 /**
  * Host capability denied:
  * - Owner on someone else's uncovered property → sponsor_lapsed (never upgrade pitch).
+ * - Sponsor coverage lapsed → conversion sheet on next write (§6.2 / §7).
  * - Sponsor with no free slots on create → upgrade.
  * - Over-allocation → elect coverage (caller shows choose UI).
  */
@@ -17,6 +18,10 @@ export function openHostCapabilityDenied(
     if (coverage && !coverage.covered && coverage.actorRole === 'owner') {
       return 'sponsor_lapsed';
     }
+    if (coverage && !coverage.covered && coverage.actorRole === 'sponsor') {
+      openUpgradePaywall('coverage_lapse', returnTo);
+      return 'sponsor_lapsed';
+    }
     if (coverage?.sponsorOverAllocated && coverage.actorRole === 'sponsor') {
       return 'over_allocated';
     }
@@ -26,7 +31,8 @@ export function openHostCapabilityDenied(
     feature === 'estate.create' ||
     feature === 'estate.createAsCoOwner' ||
     feature === 'estate.createAdditional' ||
-    feature === 'generic'
+    feature === 'generic' ||
+    feature === 'coverage_lapse'
   ) {
     openUpgradePaywall(feature, returnTo);
     return 'upgrade_required';

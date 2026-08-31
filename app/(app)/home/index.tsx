@@ -1,32 +1,48 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { SettingsSheet, type SettingsDestination } from '@/components/settings/settings-sheet';
+import { ConversionCard } from '@/components/home/conversion-card';
+import { GuestHomeBody } from '@/components/home/guest-home';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { EmptyState } from '@/components/ui/empty-state';
 import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { OverAllocationChooser } from '@/components/ui/over-allocation-chooser';
 import { StatusBadge } from '@/components/ui/badge';
-import { SectionHeader } from '@/components/ui/section-header';
+import { ScreenScroll, ScreenShell, SectionHeader, useScreenTheme } from '@/components/ui/screen-layout';
 import { SurfaceCard } from '@/components/ui/surface-card';
+import { SetupChecklist } from '@/components/ui/setup-checklist';
 import { TrialStatusLine } from '@/components/ui/trial-status-line';
-import { Colors, EstateColors, Layout, Radius, type ThemeColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAccessTier } from '@/lib/access-tier';
-import { useCan } from '@/lib/entitlements/capabilities';
-import { getEstateActorRole } from '@/lib/estate-role';
-import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
+import { BootstrapErrorBanner } from '@/components/ui/bootstrap-error-banner';
+import { EstateColors, Layout, Radius, PriorityColors, type ThemeColors } from '@/constants/theme';
+import { trialDaysRemaining } from '@/lib/access-tier-core';
+import { useAccountContext, useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
+import { openEstateCreatePaywall, openUpgradePaywall } from '@/lib/maison-pro-upgrade';
 import { homeEmphasisFor, type OnboardingUseCase } from '@/lib/onboarding-starters';
 import { fetchProfileUseCase } from '@/lib/use-case-profile';
+import { setPushMasterEnabled } from '@/lib/notifications';
+import {
+  daysBlockedFromStays,
+  fetchInviteConversionSeen,
+  hostHasAcceptedInvite,
+  inventoryIsEmpty,
+  isDay11Window,
+  markInviteConversionSeen,
+  pickConversionKind,
+  type ConversionInventory,
+  type ConversionKind,
+} from '@/lib/conversion-moments';
 import { addDays, formatDate, formatDateRange, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
 import { useAuthStore } from '@/store/auth-store';
+import { useContactStore } from '@/store/contact-store';
+import { useDocumentStore } from '@/store/document-store';
+import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
@@ -45,12 +61,7 @@ const PRIORITY_ORDER: Record<IssuePriority, number> = {
   low: 3,
 };
 
-const PRIORITY_BAR: Record<IssuePriority, string> = {
-  low: '#94a3b8',
-  normal: '#0a7ea4',
-  high: '#f59e0b',
-  urgent: '#ef4444',
-};
+const PRIORITY_BAR = PriorityColors;
 
 function getMaintenanceRelativeLabel(
   nextDate: string,
@@ -92,19 +103,20 @@ export default function HomeDashboard() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const scheme = colorScheme === 'dark' ? 'dark' : 'light';
-  const colors = Colors[scheme];
+  const { colors } = useScreenTheme();
 
-  function getStayRelativeLabel(from: string, to: string, todayStr: string): string {
-    if (from === todayStr) return t('stayRelative.arrivingToday');
-    if (to === todayStr) return t('stayRelative.departingToday');
-    if (from <= todayStr && to >= todayStr) return t('stayRelative.activeStay');
-    const diffMs = new Date(from).getTime() - new Date(todayStr).getTime();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays === 1) return t('stayRelative.tomorrow');
-    return t('stayRelative.inDays', { count: diffDays });
-  }
+  const getStayRelativeLabel = useCallback(
+    (from: string, to: string, todayStr: string): string => {
+      if (from === todayStr) return t('stayRelative.arrivingToday');
+      if (to === todayStr) return t('stayRelative.departingToday');
+      if (from <= todayStr && to >= todayStr) return t('stayRelative.activeStay');
+      const diffMs = new Date(from).getTime() - new Date(todayStr).getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) return t('stayRelative.tomorrow');
+      return t('stayRelative.inDays', { count: diffDays });
+    },
+    [t]
+  );
 
   const currentUser = useAuthStore((s) => s.currentUser);
   const {
@@ -112,72 +124,43 @@ export default function HomeDashboard() {
     setThemePreference,
     signOut,
     notificationsEnabled,
-    setNotificationsEnabled,
   } = useAuthStore();
   const isDark = themePreference === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const allEstates = useEstateStore((s) => s.estates);
   const allStayRequests = useStayStore((s) => s.stayRequests);
   const allStays = useStayStore((s) => s.stays);
   const allMaintenanceEvents = useEventStore((s) => s.events);
   const allInvitations = useInvitationStore((s) => s.invitations);
   const todayStr = today();
   const profileById = useProfileStore((s) => s.byId);
-  const accessTier = useAccessTier();
+  const account = useAccountContext();
   const can = useCan();
-  const hostEstateIds = useMemo(() => {
-    if (!currentUser) return [] as string[];
-    return allEstates
-      .filter((e) => {
-        const role = getEstateActorRole(
-          allEstates,
-          allInvitations,
-          e.id,
-          currentUser.id,
-          currentUser.email
-        );
-        return role === 'sponsor' || role === 'owner';
-      })
-      .map((e) => e.id);
-  }, [allEstates, allInvitations, currentUser]);
+  const { estates, estateIds, roleById } = useManagedEstates();
+  const allEstates = useEstateStore((s) => s.estates);
+  const coverageById = useEstateCoverageStore((s) => s.byId);
+  const allDocuments = useDocumentStore((s) => s.documents);
+  const allContacts = useContactStore((s) => s.contacts);
 
-  const canInvite = hostEstateIds.some((id) => can('guests.invite', id));
-  const canApprove = hostEstateIds.some((id) => can('stays.approve', id));
-  const canWriteEvents = hostEstateIds.some((id) => can('events.write', id));
+  const canInvite = estateIds.some((id) => can('guests.invite', id));
+  const canApprove = estateIds.some((id) => can('stays.approve', id));
+  const canWriteEvents = estateIds.some((id) => can('events.write', id));
   const canAddEstate = can('property.create');
-  const isCoOwnerElsewhere = useMemo(() => {
-    if (!currentUser) return false;
-    return allEstates.some((e) => {
-      const role = getEstateActorRole(allEstates, allInvitations, e.id, currentUser.id, currentUser.email);
-      return role === 'owner';
-    });
-  }, [allEstates, allInvitations, currentUser]);
+  const isCoOwnerElsewhere = useMemo(
+    () => Object.values(roleById).some((role) => role === 'owner'),
+    [roleById]
+  );
   const [useCase, setUseCase] = useState<OnboardingUseCase | null>(null);
+  const [inviteSeen, setInviteSeen] = useState(true);
+  const [conversionKind, setConversionKind] = useState<ConversionKind | 'checklist' | null>(null);
 
   useEffect(() => {
     if (!currentUser?.id) return;
     void fetchProfileUseCase(currentUser.id).then(setUseCase);
+    void fetchInviteConversionSeen(currentUser.id).then(setInviteSeen);
   }, [currentUser?.id]);
 
   const useCaseTip = homeEmphasisFor(useCase);
-
-  const estates = useMemo(
-    () =>
-      allEstates.filter((e) => {
-        if (!currentUser) return false;
-        const role = getEstateActorRole(
-          allEstates,
-          allInvitations,
-          e.id,
-          currentUser.id,
-          currentUser.email
-        );
-        return role === 'sponsor' || role === 'owner';
-      }),
-    [allEstates, allInvitations, currentUser]
-  );
-  const estateIds = useMemo(() => estates.map((e) => e.id), [estates]);
 
   const estateColorMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -307,38 +290,89 @@ export default function HomeDashboard() {
     currentUser?.name,
     profileById,
     colors.tint,
+    getStayRelativeLabel,
     t,
   ]);
 
   const firstName = currentUser?.name?.split(' ')[0] ?? '';
 
+  const guestEstates = useMemo(
+    () => allEstates.filter((e) => roleById[e.id] === 'guest'),
+    [allEstates, roleById]
+  );
+  const isGuestOnly = estateIds.length === 0 && guestEstates.length > 0;
+
+  const inventory: ConversionInventory = useMemo(
+    () => ({
+      documents: allDocuments.filter((d) => estateIds.includes(d.estateId)).length,
+      contacts: allContacts.filter((c) => estateIds.includes(c.estateId)).length,
+      guests: guestsCount,
+      daysBlocked: daysBlockedFromStays(allStays, estateIds),
+    }),
+    [allDocuments, allContacts, estateIds, guestsCount, allStays]
+  );
+
+  const coverageLapsed = useMemo(() => {
+    return estates.some((e) => {
+      const cov = coverageById[e.id];
+      return cov && !cov.covered && cov.actorRole === 'sponsor';
+    });
+  }, [estates, coverageById]);
+
+  const trialDays = trialDaysRemaining(currentUser?.trialEndsAt);
+  const pitchEstateName = estates[0]?.name ?? guestEstates[0]?.name ?? 'Maison';
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const kind = pickConversionKind({
+      guestOnly: isGuestOnly,
+      coverageLapsed,
+      inviteAcceptedOnce: hostHasAcceptedInvite(allInvitations, currentUser.id),
+      inviteSeen,
+      day11: isDay11Window(trialDays),
+      inventoryEmpty: inventoryIsEmpty(inventory),
+    });
+    setConversionKind(kind);
+  }, [
+    currentUser,
+    isGuestOnly,
+    coverageLapsed,
+    allInvitations,
+    inviteSeen,
+    trialDays,
+    inventory,
+  ]);
+
   const dynamicSubtitle = useMemo(() => {
     if (heroIssues.length > 0) {
       const urgentCount = heroIssues.filter((ev) => ev.priority === 'urgent').length;
-      if (urgentCount > 0)
-        return `${urgentCount} urgent issue${urgentCount > 1 ? 's' : ''} need attention`;
-      return `${heroIssues.length} thing${heroIssues.length > 1 ? 's' : ''} need${heroIssues.length === 1 ? 's' : ''} your attention`;
+      if (urgentCount > 0) return t('ownerHome.urgentIssues', { count: urgentCount });
+      return t('ownerHome.thingsNeedAttention', { count: heroIssues.length });
     }
     const arrivingToday = upcomingItems.find(
       (i) => i.kind === 'stay' && i.stay.from === todayStr
     );
-    if (arrivingToday) return 'Guest arriving today';
-    return 'Everything looks good today';
-  }, [heroIssues, upcomingItems, todayStr]);
+    if (arrivingToday) return t('ownerHome.guestArrivingToday');
+    return t('ownerHome.everythingLooksGood');
+  }, [heroIssues, upcomingItems, todayStr, t]);
 
   return (
-    <ThemedView style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+    <ScreenShell
+      showBack={false}
+      title={
         <View style={{ flex: 1 }}>
           <ThemedText type="title" style={styles.greeting}>
-            Hello, {firstName}
+            {t('ownerHome.hello', { name: firstName })}
           </ThemedText>
-          <ThemedText type="caption" style={[styles.sub, { color: heroIssues.length > 0 ? colors.warning : colors.success }]}>
-            {dynamicSubtitle}
+          <ThemedText type="caption" style={[styles.sub, { color: heroIssues.length > 0 && !isGuestOnly ? colors.warning : colors.success }]}>
+            {isGuestOnly
+              ? t('guestHome.subtitleEmpty')
+              : dynamicSubtitle}
           </ThemedText>
-          <TrialStatusLine />
+          {!isGuestOnly ? <TrialStatusLine /> : null}
         </View>
+      }
+      headerRight={
         <TouchableOpacity
           onPress={() => setMenuOpen(true)}
           style={[
@@ -351,11 +385,13 @@ export default function HomeDashboard() {
           ]}
           activeOpacity={0.7}
           hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={t('ownerHome.settingsMenu')}
         >
           <IconSymbol name="line.3.horizontal" size={22} color={colors.tint} />
         </TouchableOpacity>
-      </View>
-
+      }
+    >
       <SettingsSheet
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -364,25 +400,51 @@ export default function HomeDashboard() {
         currentUser={
           currentUser ? { name: currentUser.name, email: currentUser.email } : null
         }
-        accessTier={accessTier}
+        slotCount={account.slotCount}
+        propertiesSponsored={account.propertiesSponsored}
         isDark={isDark}
         notificationsOn={notificationsEnabled}
         onToggleDark={(v: boolean) => setThemePreference(v ? 'dark' : 'light')}
-        onToggleNotifications={setNotificationsEnabled}
+        onToggleNotifications={(v: boolean) => {
+          if (currentUser) void setPushMasterEnabled(currentUser.id, v);
+        }}
         onNavigate={(dest: SettingsDestination) => navigateToSettingsSection(router, dest)}
         onSignOut={() => {
           void signOut().then(() => router.replace('/(auth)' as never));
         }}
       />
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingBottom: insets.bottom + Layout.sectionGap + 12 },
-        ]}
-        showsVerticalScrollIndicator={false}
+      <BootstrapErrorBanner />
+
+      {isGuestOnly ? (
+        <GuestHomeBody
+          estates={guestEstates}
+          stays={allStays}
+          userId={currentUser?.id ?? ''}
+        />
+      ) : (
+      <ScreenScroll
+        contentContainerStyle={{ paddingBottom: Layout.sectionGap + 12 }}
       >
         <OverAllocationChooser />
+        {conversionKind && conversionKind !== 'checklist' ? (
+          <ConversionCard
+            kind={conversionKind}
+            inventory={inventory}
+            propertyName={pitchEstateName}
+            onChoosePlan={() => openUpgradePaywall('coverage_lapse', '/(app)/home')}
+            onDismiss={
+              conversionKind === 'invite_accepted' && currentUser
+                ? () => {
+                    void markInviteConversionSeen(currentUser.id);
+                    setInviteSeen(true);
+                  }
+                : undefined
+            }
+          />
+        ) : conversionKind === 'checklist' && estates[0] ? (
+          <SetupChecklist estateId={estates[0].id} />
+        ) : null}
         {/* ── Needs Attention (hero) ─────────────────────────────── */}
         {hasAttentionItems && (
           <View style={styles.attentionHeader}>
@@ -427,7 +489,7 @@ export default function HomeDashboard() {
           >
             <IconSymbol name="checkmark.circle.fill" size={16} color={colors.success} />
             <ThemedText style={[styles.allClearText, { color: colors.success }]}>
-              Nothing needs attention right now
+              {t('ownerHome.allClear')}
             </ThemedText>
           </View>
         )}
@@ -476,7 +538,7 @@ export default function HomeDashboard() {
               locked={false}
               showLock={!canApprove}
               feature="stays.approve"
-              onPress={() => router.push('/(app)/stays' as never)}
+              onPress={() => router.push('/(app)/calendar?segment=requests' as never)}
               style={styles.overviewStatWrap}
             >
               <View style={styles.overviewStatContent}>
@@ -493,7 +555,7 @@ export default function HomeDashboard() {
             <View style={[styles.overviewDivider, { backgroundColor: colors.border }]} />
 
             <TouchableOpacity
-              onPress={() => router.push('/(app)/calendar' as never)}
+              onPress={() => router.push('/(app)/maintenance' as never)}
               style={[styles.overviewStatWrap, styles.overviewStatContent]}
               activeOpacity={0.75}
             >
@@ -516,14 +578,14 @@ export default function HomeDashboard() {
             style={styles.quickActionTouchable}
           >
             <View style={[styles.quickActionCard, { backgroundColor: colors.tint }]}>
-              <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                <IconSymbol name="calendar.badge.plus" size={18} color="#fff" />
+              <View style={[styles.quickActionIconWrap, { backgroundColor: colors.textOnBrand + '26' }]}>
+                <IconSymbol name="calendar.badge.plus" size={18} color={colors.textOnBrand} />
               </View>
-              <ThemedText style={styles.quickActionTitle} numberOfLines={1}>
-                {t('ownerHome.planStay')}
+              <ThemedText style={[styles.quickActionTitle, { color: colors.textOnBrand }]} numberOfLines={1}>
+                {t('ownerHome.blockDates')}
               </ThemedText>
-              <ThemedText style={styles.quickActionSub} numberOfLines={2}>
-                {t('ownerHome.planStaySub')}
+              <ThemedText style={[styles.quickActionSub, { color: colors.textOnBrand }]} numberOfLines={2}>
+                {t('ownerHome.blockDatesSub')}
               </ThemedText>
             </View>
           </HostProLockTouchable>
@@ -536,13 +598,13 @@ export default function HomeDashboard() {
             style={styles.quickActionTouchable}
           >
             <View style={[styles.quickActionCard, { backgroundColor: colors.tint }]}>
-              <View style={[styles.quickActionIconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                <IconSymbol name="wrench.fill" size={18} color="#fff" />
+              <View style={[styles.quickActionIconWrap, { backgroundColor: colors.textOnBrand + '26' }]}>
+                <IconSymbol name="wrench.fill" size={18} color={colors.textOnBrand} />
               </View>
-              <ThemedText style={styles.quickActionTitle} numberOfLines={1}>
+              <ThemedText style={[styles.quickActionTitle, { color: colors.textOnBrand }]} numberOfLines={1}>
                 {t('maintenanceOverview.screenTitle')}
               </ThemedText>
-              <ThemedText style={styles.quickActionSub} numberOfLines={2}>
+              <ThemedText style={[styles.quickActionSub, { color: colors.textOnBrand }]} numberOfLines={2}>
                 {t('ownerHome.maintenanceQuickSub')}
               </ThemedText>
             </View>
@@ -554,7 +616,6 @@ export default function HomeDashboard() {
           title={t('ownerHome.upcoming')}
           actionLabel={t('ownerHome.seeAll')}
           onAction={() => router.push('/(app)/calendar' as never)}
-          actionHostLocked={false}
         />
 
         {estates.length === 0 ? (
@@ -571,7 +632,7 @@ export default function HomeDashboard() {
                 openEstateCreatePaywall({ isCoOwnerElsewhere: true, returnTo: '/(app)/estates/new' });
                 return;
               }
-              router.push('/(app)/stays?tab=redeem' as never);
+              router.push('/(app)/estates/join' as never);
             }}
             actionLabel={
               canAddEstate
@@ -598,7 +659,7 @@ export default function HomeDashboard() {
                   <HostProLockTouchable
                     key={item.stay.id}
                     locked={false}
-                    onPress={() => router.push('/(app)/stays' as never)}
+                    onPress={() => router.push('/(app)/calendar?segment=stays' as never)}
                     style={styles.upcomingRowOuter}
                   >
                     <SurfaceCard
@@ -694,8 +755,9 @@ export default function HomeDashboard() {
             })}
           </View>
         )}
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+      )}
+    </ScreenShell>
   );
 }
 
@@ -720,6 +782,7 @@ function NextActionCard({
   colors,
   onPress,
 }: NextActionCardProps) {
+  const { t } = useTranslation();
   const bgTint = isUrgent
     ? colors.error + '16'
     : isHigh
@@ -751,19 +814,21 @@ function NextActionCard({
           </ThemedText>
           {isUrgent && (
             <View style={[styles.urgentChip, { backgroundColor: colors.error + '20', borderColor: colors.error + '50' }]}>
-              <ThemedText style={[styles.urgentChipText, { color: colors.error }]}>URGENT</ThemedText>
+              <ThemedText style={[styles.urgentChipText, { color: colors.error }]}>
+                {t('ownerHome.urgentChip')}
+              </ThemedText>
             </View>
           )}
         </View>
         <ThemedText style={[styles.nextActionMeta, { color: colors.textSecondary }]} numberOfLines={1}>
           {estateName}
-          {issue.date ? ` · Due ${formatDate(issue.date)}` : ''}
+          {issue.date ? ` · ${t('ownerHome.dueDate', { date: formatDate(issue.date) })}` : ''}
         </ThemedText>
       </View>
       <View style={styles.nextActionRight}>
         <StatusBadge status={issue.status ?? 'open'} />
         <View style={[styles.openBtn, { borderColor: colors.border }]}>
-          <ThemedText style={[styles.openBtnText, { color: colors.tint }]}>Open</ThemedText>
+          <ThemedText style={[styles.openBtnText, { color: colors.tint }]}>{t('common.open')}</ThemedText>
           <IconSymbol name="chevron.right" size={11} color={colors.tint} />
         </View>
       </View>
@@ -774,15 +839,6 @@ function NextActionCard({
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: 12,
-    gap: 12,
-  },
   menuBtn: {
     width: Layout.touchMin,
     height: Layout.touchMin,
@@ -792,8 +848,6 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 30, fontWeight: '700', letterSpacing: -0.8 },
   sub: { marginTop: 4 },
-
-  scroll: { paddingHorizontal: Layout.screenPaddingX },
 
   // Hero / Needs Attention
   attentionHeader: { marginTop: 6 },
@@ -902,11 +956,10 @@ const styles = StyleSheet.create({
   quickActionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
   },
   quickActionSub: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.68)',
+    opacity: 0.68,
     lineHeight: 16,
     minHeight: 32,
   },

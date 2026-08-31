@@ -84,28 +84,10 @@ export default function AppTabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="maintenance/index"
-        options={{
-          title: t('tabs.maintenance'),
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol name={focused ? 'wrench.fill' : 'wrench'} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="stays"
-        options={{
-          title: t('tabs.stays'),
-          tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'suitcase.fill' : 'suitcase'} color={color} />,
-        }}
-      />
-      <Tabs.Screen name="invitations/index" options={{ href: null }} />
+      {/* Reachable from Home and deep links, but not a tab of its own. */}
+      <Tabs.Screen name="maintenance/index" options={{ href: null }} />
+      <Tabs.Screen name="stays" options={{ href: null }} />
       <Tabs.Screen name="guests" options={{ href: null }} />
-      <Tabs.Screen name="plan-stay" options={{ href: null }} />
-      <Tabs.Screen name="invite" options={{ href: null }} />
-      <Tabs.Screen name="requests/index" options={{ href: null }} />
-      <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );

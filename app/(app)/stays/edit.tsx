@@ -1,15 +1,19 @@
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, EstateColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  FilledButton,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { EstateColors } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useStayStore } from '@/store/stay-store';
@@ -20,9 +24,7 @@ export default function GuestEditStay() {
   const { t } = useTranslation();
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const { stayRequests, stays, updateRequest, requestStay, cancelRequest } = useStayStore();
@@ -43,7 +45,6 @@ export default function GuestEditStay() {
   );
   const dotColor = EstateColors[estateIndex >= 0 ? estateIndex % EstateColors.length : 0];
 
-  // For approved edits exclude the guest's own current stay so they can extend/shrink freely
   const blockedRanges = useMemo(() => {
     if (!req) return [];
     const isPendingReq = req.status === 'pending';
@@ -61,17 +62,11 @@ export default function GuestEditStay() {
 
   if (!req) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>{t('titles.editStay')}</ThemedText>
-        </View>
+      <ScreenShell title={t('titles.editStay')}>
         <View style={styles.center}>
           <ThemedText style={{ opacity: 0.5 }}>Request not found.</ThemedText>
         </View>
-      </ThemedView>
+      </ScreenShell>
     );
   }
 
@@ -111,20 +106,10 @@ export default function GuestEditStay() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.editStay')}</ThemedText>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
-        keyboardShouldPersistTaps="handled"
-      >
+    <ScreenShell title={t('titles.editStay')}>
+      <ScreenScroll gap={24} contentContainerStyle={styles.scroll}>
         <View style={styles.section}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Property</ThemedText>
+          <SectionLabel>Property</SectionLabel>
           <View
             style={[
               styles.estatePill,
@@ -148,7 +133,7 @@ export default function GuestEditStay() {
         )}
 
         <View style={styles.section}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Dates</ThemedText>
+          <SectionLabel>Dates</SectionLabel>
           <View style={[styles.pickerWrap, { borderColor: colors.icon + '33', backgroundColor: colors.background }]}>
             <DateRangePicker
               from={from}
@@ -165,17 +150,12 @@ export default function GuestEditStay() {
           )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.submitBtn, { backgroundColor: colors.tint }, !canSubmit && styles.disabled]}
+        <FilledButton
+          label={isPending ? 'Update Request' : 'Send New Request'}
+          icon="checkmark"
           onPress={() => void submit()}
           disabled={!canSubmit}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="checkmark" size={18} color="#fff" />
-          <ThemedText style={styles.submitText}>
-            {isPending ? 'Update Request' : 'Send New Request'}
-          </ThemedText>
-        </TouchableOpacity>
+        />
 
         {isPending && (
           <TouchableOpacity
@@ -195,20 +175,15 @@ export default function GuestEditStay() {
             <ThemedText style={[styles.cancelText, { color: colors.error }]}>Cancel Request</ThemedText>
           </TouchableOpacity>
         )}
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { paddingHorizontal: 20, gap: 24, paddingTop: 4 },
+  scroll: { paddingTop: 4 },
   section: { gap: 10 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   estatePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, alignSelf: 'flex-start' },
   dot: { width: 8, height: 8, borderRadius: 4 },
   pillText: { fontSize: 14 },
@@ -216,9 +191,6 @@ const styles = StyleSheet.create({
   noticeText: { flex: 1, fontSize: 13, lineHeight: 18 },
   pickerWrap: { padding: 16, borderRadius: 16, borderWidth: 1 },
   summary: { padding: 14, borderRadius: 12, borderWidth: 1, gap: 4 },
-  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 18, borderRadius: 14, marginTop: 8 },
-  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  disabled: { opacity: 0.45 },
   cancelBtn: { alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, marginTop: 4 },
   cancelText: { fontSize: 15, fontWeight: '600' },
 });

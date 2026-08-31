@@ -36,7 +36,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   },
   fetchFromSupabase: async () => {
     const { data, error } = await supabase.from('profiles').select('id, name, push_token');
-    if (error || data == null) return;
+    if (error) throw new Error(error.message);
+    if (data == null) return;
     const rows: ProfileRow[] = data.map((row) => ({
       id: row.id as string,
       name: (row.name as string) ?? '',

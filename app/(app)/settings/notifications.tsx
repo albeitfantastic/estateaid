@@ -1,97 +1,95 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Switch } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  GroupedList,
+  GroupedRow,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { Layout } from '@/constants/theme';
 import {
   getNotificationCategoryPrefs,
   setNotificationCategoryPref,
+  setPushMasterEnabled,
   type NotificationCategory,
 } from '@/lib/notifications';
 import { useAuthStore } from '@/store/auth-store';
-import { clearPushToken, registerPushToken } from '@/lib/notifications';
 
-const ROWS: { key: NotificationCategory; label: string; body: string }[] = [
-  { key: 'stay_requests', label: 'Stay requests', body: 'When a guest requests dates' },
-  { key: 'stay_decisions', label: 'Stay decisions', body: 'Approved, declined, or alternate dates' },
-  { key: 'stay_reminders', label: 'Stay reminders', body: 'Stay starts tomorrow' },
-  { key: 'maintenance', label: 'Maintenance', body: 'New issues on your properties' },
-  { key: 'invites', label: 'Invites', body: 'When someone accepts an invite' },
+const ROWS: { key: NotificationCategory; labelKey: string; bodyKey: string }[] = [
+  { key: 'stay_requests', labelKey: 'notificationsSettings.stayRequests', bodyKey: 'notificationsSettings.stayRequestsBody' },
+  { key: 'stay_decisions', labelKey: 'notificationsSettings.stayDecisions', bodyKey: 'notificationsSettings.stayDecisionsBody' },
+  { key: 'stay_reminders', labelKey: 'notificationsSettings.stayReminders', bodyKey: 'notificationsSettings.stayRemindersBody' },
+  { key: 'maintenance', labelKey: 'notificationsSettings.maintenance', bodyKey: 'notificationsSettings.maintenanceBody' },
+  { key: 'invites', labelKey: 'notificationsSettings.invites', bodyKey: 'notificationsSettings.invitesBody' },
 ];
 
 export default function NotificationSettingsScreen() {
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
+  const { colors } = useScreenTheme();
   const notificationsEnabled = useAuthStore((s) => s.notificationsEnabled);
-  const setNotificationsEnabled = useAuthStore((s) => s.setNotificationsEnabled);
   const userId = useAuthStore((s) => s.currentUser?.id);
   const [prefs, setPrefs] = useState<Record<NotificationCategory, boolean> | null>(null);
 
   useEffect(() => {
-    void getNotificationCategoryPrefs().then(setPrefs);
-  }, []);
+    void getNotificationCategoryPrefs(userId).then(setPrefs);
+  }, [userId]);
 
   async function toggleMaster(v: boolean) {
-    setNotificationsEnabled(v);
     if (!userId) return;
-    if (v) await registerPushToken(userId);
-    else await clearPushToken(userId);
+    await setPushMasterEnabled(userId, v);
   }
 
   async function toggleCategory(key: NotificationCategory, v: boolean) {
-    await setNotificationCategoryPref(key, v);
+    await setNotificationCategoryPref(key, v, userId);
     setPrefs((p) => (p ? { ...p, [key]: v } : p));
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 24 }}>
-        <View style={[styles.row, { borderBottomColor: colors.border }]}>
-          <View style={{ flex: 1 }}>
-            <ThemedText type="defaultSemiBold">Push notifications</ThemedText>
-            <ThemedText style={{ color: colors.icon, fontSize: 13 }}>
-              Master switch for this device
-            </ThemedText>
-          </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={(v) => void toggleMaster(v)}
-            trackColor={{ false: colors.border, true: colors.tint }}
-            thumbColor="#fff"
-          />
-        </View>
-        {prefs &&
-          ROWS.map((r) => (
-            <View key={r.key} style={[styles.row, { borderBottomColor: colors.border }]}>
-              <View style={{ flex: 1 }}>
-                <ThemedText type="defaultSemiBold">{r.label}</ThemedText>
-                <ThemedText style={{ color: colors.icon, fontSize: 13 }}>{r.body}</ThemedText>
-              </View>
+    <ScreenShell title={t('notificationsSettings.title')}>
+      <ScreenScroll contentContainerStyle={styles.scroll}>
+        <SectionLabel>{t('notificationsSettings.device')}</SectionLabel>
+        <GroupedList>
+          <GroupedRow
+            title={t('notificationsSettings.master')}
+            subtitle={t('notificationsSettings.masterSub')}
+            trailing={
               <Switch
-                value={prefs[r.key]}
-                disabled={!notificationsEnabled}
-                onValueChange={(v) => void toggleCategory(r.key, v)}
+                value={notificationsEnabled}
+                onValueChange={(v) => void toggleMaster(v)}
                 trackColor={{ false: colors.border, true: colors.tint }}
-                thumbColor="#fff"
+                thumbColor={colors.textOnBrand}
               />
-            </View>
-          ))}
-      </ScrollView>
-    </ThemedView>
+            }
+            isLast={!prefs}
+          />
+          {prefs &&
+            ROWS.map((r, i) => (
+              <GroupedRow
+                key={r.key}
+                title={t(r.labelKey)}
+                subtitle={t(r.bodyKey)}
+                trailing={
+                  <Switch
+                    value={prefs[r.key]}
+                    disabled={!notificationsEnabled}
+                    onValueChange={(v) => void toggleCategory(r.key, v)}
+                    trackColor={{ false: colors.border, true: colors.tint }}
+                    thumbColor={colors.textOnBrand}
+                  />
+                }
+                isLast={i === ROWS.length - 1}
+              />
+            ))}
+        </GroupedList>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
+  scroll: { paddingTop: Layout.sectionGap - 8 },
 });

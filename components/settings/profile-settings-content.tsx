@@ -1,21 +1,25 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, StyleSheet, TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, Layout } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  FilledButton,
+  GroupedList,
+  GroupedRow,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { Layout } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
 import { useProfileStore } from '@/store/profile-store';
 
 export function ProfileSettingsContent() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const patchUser = useAuthStore((s) => s.patchUser);
   const [name, setName] = useState(currentUser?.name ?? '');
@@ -48,67 +52,48 @@ export function ProfileSettingsContent() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.inner, { paddingBottom: insets.bottom + 24 }]}>
-        <ThemedText style={[styles.label, { color: colors.icon }]}>Email</ThemedText>
-        <ThemedText style={styles.readonly}>{currentUser?.email ?? '—'}</ThemedText>
+    <ScreenShell title="Profile">
+      <ScreenScroll contentContainerStyle={styles.scroll}>
+        <SectionLabel>Email</SectionLabel>
+        <GroupedList>
+          <GroupedRow title={currentUser?.email ?? '—'} isLast />
+        </GroupedList>
 
-        <ThemedText style={[styles.label, { color: colors.icon, marginTop: 20 }]}>Display name</ThemedText>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              color: colors.text,
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-            },
-          ]}
-          value={name}
-          onChangeText={setName}
-          placeholder={t('profileSettings.placeholderName')}
-          placeholderTextColor={colors.icon}
-          autoCapitalize="words"
-          editable={!saving}
-        />
-        <ThemedText style={[styles.hint, { color: colors.icon }]}>
+        <SectionLabel marginTop={Layout.sectionGap}>Display name</SectionLabel>
+        <GroupedList>
+          <GroupedRow
+            title={
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                value={name}
+                onChangeText={setName}
+                placeholder={t('profileSettings.placeholderName')}
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="words"
+                editable={!saving}
+              />
+            }
+            isLast
+          />
+        </GroupedList>
+        <ThemedText style={[styles.hint, { color: colors.textSecondary }]}>
           This name is shown to hosts, guests, and in messages.
         </ThemedText>
 
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: colors.tint }]}
+        <FilledButton
+          label={t('common.save')}
           onPress={() => void save()}
           disabled={saving}
-          activeOpacity={0.85}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <ThemedText style={styles.saveBtnText}>{t('common.save')}</ThemedText>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ThemedView>
+          loading={saving}
+          style={{ marginTop: 24 }}
+        />
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  inner: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 16 },
-  label: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
-  readonly: { fontSize: 16 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
+  scroll: { paddingTop: Layout.sectionGap - 8 },
+  input: { fontSize: 16, padding: 0, minHeight: 22 },
   hint: { fontSize: 13, marginTop: 8, lineHeight: 18 },
-  saveBtn: {
-    marginTop: 28,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

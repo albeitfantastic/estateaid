@@ -48,7 +48,8 @@ export const useActivityLogStore = create<ActivityLogState>()(
       setEntries: (entries) => set({ entries }),
       fetchFromSupabase: async () => {
         const { data, error } = await supabase.from('estate_activity_log').select('*');
-        if (!error && data != null) {
+        if (error) throw new Error(error.message);
+        if (data != null) {
           set({ entries: dedupeById(data).map(fromDb) });
         }
       },

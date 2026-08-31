@@ -2,15 +2,16 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/paywall/ui/PrimaryButton';
+import { useScreenTheme } from '@/components/ui/screen-layout';
 import { useAccountContext } from '@/lib/entitlements/capabilities';
 import { supabase } from '@/lib/supabase';
 import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useAuthStore } from '@/store/auth-store';
-import { MC } from '@/components/paywall/paywall-tokens';
 
 /** When slotCount < propertiesSponsored, sponsor must choose which estates keep coverage. */
 export function OverAllocationChooser() {
+  const { colors } = useScreenTheme();
   const account = useAccountContext();
   const currentUserId = useAuthStore((s) => s.currentUser?.id);
   const estates = useEstateStore((s) => s.estates);
@@ -54,9 +55,9 @@ export function OverAllocationChooser() {
   }
 
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.title}>Choose which properties to keep covered</Text>
-      <Text style={styles.body}>
+    <View style={[styles.wrap, { backgroundColor: colors.surface }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Choose which properties to keep covered</Text>
+      <Text style={[styles.body, { color: colors.textSecondary }]}>
         Your plan covers {account.slotCount}{' '}
         {account.slotCount === 1 ? 'property' : 'properties'}. Pick up to {account.slotCount}. Nothing
         will be deleted.
@@ -67,10 +68,14 @@ export function OverAllocationChooser() {
           <Pressable
             key={e.id}
             onPress={() => toggle(e.id)}
-            style={[styles.row, on && styles.rowOn]}
+            style={[
+              styles.row,
+              { borderColor: colors.border },
+              on && { borderColor: colors.tint, backgroundColor: colors.tintMuted },
+            ]}
           >
-            <Text style={styles.rowText}>{e.name}</Text>
-            <Text style={styles.check}>{on ? '✓' : ''}</Text>
+            <Text style={[styles.rowText, { color: colors.text }]}>{e.name}</Text>
+            <Text style={[styles.check, { color: colors.tint }]}>{on ? '✓' : ''}</Text>
           </Pressable>
         );
       })}
@@ -88,12 +93,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 12,
     padding: 16,
-    backgroundColor: MC.bg,
     borderRadius: 12,
     gap: 10,
   },
-  title: { fontSize: 17, fontWeight: '700', color: MC.text },
-  body: { fontSize: 14, color: MC.textSecondary, lineHeight: 20 },
+  title: { fontSize: 17, fontWeight: '700' },
+  body: { fontSize: 14, lineHeight: 20 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -101,9 +105,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: MC.border,
   },
-  rowOn: { borderColor: MC.brand, backgroundColor: 'rgba(35,69,54,0.06)' },
-  rowText: { fontSize: 15, color: MC.text, flex: 1 },
-  check: { fontSize: 16, color: MC.brand, fontWeight: '700', width: 24, textAlign: 'right' },
+  rowText: { fontSize: 15, flex: 1 },
+  check: { fontSize: 16, fontWeight: '700', width: 24, textAlign: 'right' },
 });

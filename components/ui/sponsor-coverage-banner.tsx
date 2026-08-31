@@ -1,10 +1,10 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { PrimaryButton } from '@/components/paywall/ui/PrimaryButton';
 import { SecondaryButton } from '@/components/paywall/ui/SecondaryButton';
-import { useAccessTier } from '@/lib/access-tier';
 import { useAccountContext } from '@/lib/entitlements/capabilities';
 import {
   openUpgradePaywall,
@@ -28,6 +28,7 @@ export function SponsorCoverageBanner({
   estateId,
   sponsorUpgradeFeature = 'generic',
 }: Props) {
+  const { t } = useTranslation();
   const colors = useAppTheme().colors;
   const account = useAccountContext();
   const coverage = useEstateCoverageStore((s) => s.byId[estateId]);
@@ -59,31 +60,30 @@ export function SponsorCoverageBanner({
     <View style={[styles.banner, { backgroundColor: colors.borderSoft, borderColor: colors.border }]}>
       {isSponsor ? (
         <>
-          <ThemedText style={styles.title}>Management is paused</ThemedText>
+          <ThemedText style={styles.title}>{t('coverageBanner.pausedTitle')}</ThemedText>
           <ThemedText style={[styles.body, { color: colors.textMuted }]}>
-            Your subscription no longer covers this property. Everything you added is still here.
-            Choose a plan with enough slots, or elect which properties to keep covered.
+            {t('coverageBanner.sponsorBody')}
           </ThemedText>
-          <SecondaryButton
-            label="Choose a plan"
+          <PrimaryButton
+            label={t('coverageBanner.choosePlan')}
             onPress={() => openUpgradePaywall(sponsorUpgradeFeature)}
           />
         </>
       ) : (
         <>
-          <ThemedText style={styles.title}>Management is paused</ThemedText>
+          <ThemedText style={styles.title}>{t('coverageBanner.pausedTitle')}</ThemedText>
           <ThemedText style={[styles.body, { color: colors.textMuted }]}>
-            {coverage.sponsorDisplayName}&apos;s subscription has ended. Everything you added is still
-            here. Writes are blocked until sponsorship is restored.
-          </ThemedText>          {canTransfer ? (
+            {t('coverageBanner.ownerBody', { name: coverage.sponsorDisplayName })}
+          </ThemedText>
+          {canTransfer ? (
             busy ? (
               <ActivityIndicator color={colors.primary} />
             ) : (
-              <PrimaryButton label="Take over sponsorship" onPress={onTransfer} />
+              <PrimaryButton label={t('coverageBanner.takeOver')} onPress={onTransfer} />
             )
           ) : (
             <SecondaryButton
-              label="Upgrade to take over"
+              label={t('coverageBanner.upgradeToTakeOver')}
               onPress={() => openUpgradePaywall('generic')}
             />
           )}

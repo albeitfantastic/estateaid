@@ -1,15 +1,18 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
+import { useScreenTheme } from '@/components/ui/screen-layout';
 import { trialDaysRemaining } from '@/lib/access-tier-core';
 import { APP_TRIAL_DAYS } from '@/lib/subscription-config';
 import { useAuthStore } from '@/store/auth-store';
 import { useSubscription } from '@/providers/subscription-provider';
-import { MC } from '@/components/paywall/paywall-tokens';
 
-/** Quiet home status: “Maison · N days left” (§6.1). Emphasised from day 11. */
+/** Quiet home status: “Maison Pro · N days left” (§6.1). Emphasised from day 11. */
 export function TrialStatusLine() {
+  const { t } = useTranslation();
   const router = useRouter();
+  const { colors } = useScreenTheme();
   const trialEndsAt = useAuthStore((s) => s.currentUser?.trialEndsAt);
   const { slotCount, primaryRow } = useSubscription();
   const days = trialDaysRemaining(trialEndsAt);
@@ -22,28 +25,36 @@ export function TrialStatusLine() {
           onPress={() => router.push('/(app)/settings/subscription' as never)}
           style={styles.row}
         >
-          <Text style={styles.neutral}>Maison · {slotCount} slot{slotCount === 1 ? '' : 's'}</Text>
+          <Text style={[styles.neutral, { color: colors.textSecondary }]}>
+            {t('subscriptionSettings.slotsLine', { count: slotCount })}
+          </Text>
         </Pressable>
       );
     }
     return null;
   }
 
-  const emphasise = days <= APP_TRIAL_DAYS - 10; // days 11–14 of a 14-day trial
+  const emphasise = days <= APP_TRIAL_DAYS - 10;
   return (
     <Pressable
       onPress={() => router.push('/(app)/settings/subscription' as never)}
       style={styles.row}
     >
-      <Text style={emphasise ? styles.emph : styles.neutral}>
-        Maison · {days} day{days === 1 ? '' : 's'} left
+      <Text
+        style={
+          emphasise
+            ? [styles.emph, { color: colors.tint }]
+            : [styles.neutral, { color: colors.textSecondary }]
+        }
+      >
+        {t('subscriptionSettings.trialLine', { count: days })}
       </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { paddingHorizontal: 20, paddingVertical: 6 },
-  neutral: { fontSize: 13, color: MC.textSecondary },
-  emph: { fontSize: 13, color: MC.brand, fontWeight: '700' },
+  row: { paddingVertical: 6 },
+  neutral: { fontSize: 13 },
+  emph: { fontSize: 13, fontWeight: '700' },
 });

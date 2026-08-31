@@ -1,14 +1,11 @@
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ScreenScroll, ScreenShell, SectionLabel, useScreenTheme } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFaqStore } from '@/store/faq-store';
 import { isRequired } from '@/lib/validators';
 
@@ -16,9 +13,7 @@ export default function EditFaq() {
   const { t } = useTranslation();
   const { faqId } = useLocalSearchParams<{ faqId: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const { faqs, updateFaq } = useFaqStore();
   const faq = faqs.find((f) => f.id === faqId);
 
@@ -35,38 +30,31 @@ export default function EditFaq() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.editFaq')}</ThemedText>
+    <ScreenShell
+      title={t('titles.editFaq')}
+      headerRight={
         <TouchableOpacity onPress={submit}>
           <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
         </TouchableOpacity>
-      </View>
-      <ScrollView contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
+      }
+    >
+      <ScreenScroll contentContainerStyle={styles.form} gap={20} keyboardShouldPersistTaps="handled">
         <View style={styles.field}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Question *</ThemedText>
+          <SectionLabel>Question *</SectionLabel>
           <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]} value={question} onChangeText={setQuestion} multiline numberOfLines={2} textAlignVertical="top" />
         </View>
         <View style={styles.field}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Answer *</ThemedText>
+          <SectionLabel>Answer *</SectionLabel>
           <TextInput style={[styles.input, styles.answerInput, { color: colors.text, borderColor: colors.icon + '44' }]} value={answer} onChangeText={setAnswer} multiline numberOfLines={6} textAlignVertical="top" />
         </View>
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
-  form: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
+  form: { paddingTop: 8, gap: 20 },
   field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, paddingTop: 12 },
   answerInput: { height: 140 },
 });

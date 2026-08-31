@@ -1,13 +1,21 @@
-import { Alert, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, Layout } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAccessTier } from '@/lib/access-tier';
+import {
+  GroupedList,
+  GroupedRow,
+  OutlineButton,
+  FilledButton,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { Layout, Radius } from '@/constants/theme';
+import { trialDaysRemaining } from '@/lib/access-tier-core';
+import { useAccountContext } from '@/lib/entitlements/capabilities';
 import { formatDate } from '@/lib/date-utils';
 import { isRevenueCatConfigured } from '@/lib/revenuecat-client';
 import { isRevenueCatUiAvailable } from '@/lib/revenuecat-ui';
@@ -18,12 +26,10 @@ import { useAuthStore } from '@/store/auth-store';
 
 export function SubscriptionSettingsContent() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
-  const accessTier = useAccessTier();
+  const { slotCount, propertiesSponsored } = useAccountContext();
   const {
     isPro,
     sdkMaisonProActive,
@@ -35,18 +41,32 @@ export function SubscriptionSettingsContent() {
 
   const plan = MAISON_PRO_DISPLAY_NAME;
   const storeLooksActive = isPro || sdkMaisonProActive;
+  const hasSlots = slotCount > 0;
+  const trialActive = trialDaysRemaining(currentUser?.trialEndsAt) != null;
 
   const trialEndLabel =
     currentUser?.trialEndsAt && currentUser.trialEndsAt.length >= 10
       ? formatDate(currentUser.trialEndsAt.slice(0, 10))
       : '—';
 
-  const planLine =
-    accessTier === 'trial'
-      ? t('subscriptionSettings.planTrial', { date: trialEndLabel })
-      : accessTier === 'pro'
-        ? t('subscriptionSettings.planProActive', { plan })
-        : t('subscriptionSettings.planStandard');
+  const planLine = hasSlots
+    ? t('subscriptionSettings.slotsHeld', { count: slotCount })
+    : t('subscriptionSettings.noSlots');
+
+  /** §6.1: state the trial length, the end date, and that nothing is charged or renews. */
+  const subtitleLines = [
+    hasSlots
+      ? t('subscriptionSettings.slotsInUse', { used: propertiesSponsored, total: slotCount })
+      : t('subscriptionSettings.noSlotsSub'),
+    trialActive ? t('subscriptionSettings.trialUntil', { date: trialEndLabel }) : undefined,
+    trialActive ? t('subscriptionSettings.trialNoPayment') : undefined,
+    sdkMaisonProActive && !primaryRow ? t('subscriptionSettings.storeWaiting') : undefined,
+    !trialActive && primaryRow?.expires_at
+      ? t('subscriptionSettings.renewsEnds', {
+          date: formatDate(primaryRow.expires_at.slice(0, 10)),
+        })
+      : undefined,
+  ].filter(Boolean) as string[];
 
   async function openManageSubscriptions() {
     if (!isRevenueCatConfigured()) {
@@ -121,49 +141,26 @@ export function SubscriptionSettingsContent() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.inner, { paddingBottom: insets.bottom + 24 }]}>
-        <ThemedText style={[styles.sectionTitle, { color: colors.icon }]}>
-          {t('subscriptionSettings.currentPlan')}
-        </ThemedText>
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <ThemedText type="defaultSemiBold" style={styles.planText}>
-            {planLine}
-            {loading ? t('subscriptionSettings.loadingSuffix') : ''}
-          </ThemedText>
-          {(accessTier === 'trial' || accessTier === 'pro') && (
-            <ThemedText style={[styles.sub, { color: colors.icon }]}>
-              {isPro
-                ? t('subscriptionSettings.proConfirmed', { plan })
-                : sdkMaisonProActive && !isPro
-                  ? t('subscriptionSettings.storeWaiting')
-                  : accessTier === 'trial'
-                    ? t('subscriptionSettings.trialSub', { plan })
-                    : t('subscriptionSettings.starterDefault', { plan })}
-            </ThemedText>
-          )}
-          {isPro && primaryRow?.expires_at && (
-            <ThemedText style={[styles.sub, { color: colors.icon, marginTop: 6 }]}>
-              {t('subscriptionSettings.renewsEnds', {
-                date: formatDate(primaryRow.expires_at.slice(0, 10)),
-              })}
-            </ThemedText>
-          )}
-        </View>
+    <ScreenShell title={t('settingsHub.manageSubscription')}>
+      <ScreenScroll contentContainerStyle={styles.scroll}>
+        <SectionLabel>{t('subscriptionSettings.currentPlan')}</SectionLabel>
+        <GroupedList>
+          <GroupedRow
+            title={planLine + (loading ? t('subscriptionSettings.loadingSuffix') : '')}
+            subtitle={subtitleLines.join('\n') || undefined}
+            isLast
+          />
+        </GroupedList>
 
-        {accessTier === 'standard' && (
+        {!hasSlots && (
           <>
-            <ThemedText style={[styles.sectionTitle, { color: colors.icon, marginTop: 24 }]}>
-              {t('subscriptionSettings.upgradeSection')}
-            </ThemedText>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.tint }]}
+            <SectionLabel marginTop={Layout.sectionGap}>{t('subscriptionSettings.upgradeSection')}</SectionLabel>
+            <FilledButton
+              tone="accent"
+              label={t('subscriptionSettings.startTrialFlow')}
               onPress={() => router.push('./paywall-trust' as never)}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.primaryBtnText}>{t('subscriptionSettings.startTrialFlow')}</ThemedText>
-            </TouchableOpacity>
-            <ThemedText style={[styles.sub, { color: colors.icon, marginTop: 8 }]}>
+            />
+            <ThemedText style={[styles.sub, { color: colors.textSecondary, marginTop: 8 }]}>
               {t('subscriptionSettings.standardUpgradeHint')}
             </ThemedText>
           </>
@@ -171,53 +168,33 @@ export function SubscriptionSettingsContent() {
 
         {!isPro && (
           <>
-            <ThemedText style={[styles.sectionTitle, { color: colors.icon, marginTop: 28 }]}>
+            <SectionLabel marginTop={Layout.sectionGap}>
               {t('subscriptionSettings.maisonSection', { plan })}
-            </ThemedText>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.tint }]}
+            </SectionLabel>
+            <FilledButton
+              tone="accent"
+              label={t('subscriptionSettings.viewPaywall')}
               onPress={() => router.push('./paywall' as never)}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.primaryBtnText}>{t('subscriptionSettings.viewPaywall')}</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.outlineBtn, { borderColor: colors.tint, marginTop: 10 }]}
-              onPress={() => void syncPurchasesAndRefetch()}
-              activeOpacity={0.8}
-            >
-              <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{t('subscriptionSettings.syncStore')}</ThemedText>
-            </TouchableOpacity>
+            />
+            <OutlineButton label={t('subscriptionSettings.syncStore')} onPress={() => void syncPurchasesAndRefetch()} />
           </>
         )}
 
-        <ThemedText style={[styles.sectionTitle, { color: colors.icon, marginTop: 28 }]}>
-          {t('subscriptionSettings.manageSection')}
-        </ThemedText>
+        <SectionLabel marginTop={Layout.sectionGap}>{t('subscriptionSettings.manageSection')}</SectionLabel>
         {storeLooksActive && isRevenueCatUiAvailable() && (
-          <TouchableOpacity
-            style={[styles.outlineBtn, { borderColor: colors.tint }]}
+          <OutlineButton
+            label={t('subscriptionSettings.customerCenter')}
             onPress={() => router.push('./customer-center' as never)}
-            activeOpacity={0.8}
-          >
-            <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>
-              {t('subscriptionSettings.customerCenter')}
-            </ThemedText>
-          </TouchableOpacity>
+          />
         )}
         {storeLooksActive && isPro && (
-          <TouchableOpacity
-            style={[styles.outlineBtn, { borderColor: colors.tint, marginTop: 10 }]}
+          <OutlineButton
+            label={t('subscriptionSettings.systemSubSettings')}
             onPress={() => void openManageSubscriptions()}
-            activeOpacity={0.8}
-          >
-            <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>
-              {t('subscriptionSettings.systemSubSettings')}
-            </ThemedText>
-          </TouchableOpacity>
+          />
         )}
         <TouchableOpacity
-          style={[styles.outlineBtn, { borderColor: colors.error, marginTop: 10 }]}
+          style={[styles.dangerOutline, { borderColor: colors.error }]}
           onPress={cancelOrManage}
           activeOpacity={0.8}
         >
@@ -225,25 +202,19 @@ export function SubscriptionSettingsContent() {
             {isPro ? t('subscriptionSettings.cancelOrChange') : t('subscriptionSettings.cancelSub')}
           </ThemedText>
         </TouchableOpacity>
-      </View>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  inner: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  card: { borderRadius: 14, borderWidth: 1, padding: 16 },
-  planText: { fontSize: 18 },
+  scroll: { paddingTop: Layout.sectionGap - 8 },
   sub: { fontSize: 14, marginTop: 8, lineHeight: 20 },
-  primaryBtn: { marginTop: 4, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  outlineBtn: {
+  dangerOutline: {
     marginTop: 8,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: Radius.md,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
 });

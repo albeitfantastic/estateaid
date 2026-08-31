@@ -1,6 +1,7 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { CalendarColors } from '@/constants/theme';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 export interface DotData {
@@ -23,6 +24,7 @@ interface DayCellProps {
 export function DayCell({ day, isToday, isPast, dots, availability, selected, onPress }: DayCellProps) {
   const t = useAppTheme();
   const colors = t.colors;
+  const cal = CalendarColors[t.scheme === 'dark' ? 'dark' : 'light'];
 
   const blocked = availability === 'blocked';
   const myStay = availability === 'my-stay';
@@ -54,10 +56,22 @@ export function DayCell({ day, isToday, isPast, dots, availability, selected, on
       <View
         style={[
           styles.circle,
-          unavailable && styles.unavailableCircle,
-          open && styles.availableCircle,
-          myStay && styles.myStayCircle,
-          blocked && styles.blockedCircle,
+          open && {
+            backgroundColor: cal.availableFill,
+            borderWidth: 1,
+            borderColor: cal.availableBorder,
+          },
+          unavailable && {
+            backgroundColor: colors.textSecondary + '18',
+            borderWidth: 1,
+            borderColor: colors.textSecondary + '55',
+          },
+          myStay && { backgroundColor: cal.myStay },
+          blocked && {
+            backgroundColor: cal.bookedFill,
+            borderWidth: 1,
+            borderColor: cal.bookedBorder,
+          },
           todayRing,
           selectedRing,
         ]}
@@ -69,10 +83,10 @@ export function DayCell({ day, isToday, isPast, dots, availability, selected, on
             ownerMode && isToday && !selected && { color: colors.primary, fontWeight: '700' as const },
             ownerMode && selected && { color: colors.primary, fontWeight: '700' as const },
             !ownerMode && selected && !myStay && !blocked && { color: colors.primary, fontWeight: '700' as const },
-            open && !isToday && styles.availableText,
-            unavailable && styles.unavailableText,
-            myStay && styles.myStayText,
-            blocked && styles.blockedText,
+            open && !isToday && { color: cal.available, fontWeight: '600' as const },
+            unavailable && { color: colors.textSecondary, fontWeight: '600' as const },
+            myStay && { color: colors.textOnBrand, fontWeight: '700' as const },
+            blocked && { color: cal.booked, fontWeight: '600' as const },
           ]}
         >
           {day}
@@ -104,32 +118,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  availableCircle: {
-    backgroundColor: '#16a34a14',
-    borderWidth: 1,
-    borderColor: '#16a34a44',
-  },
-  unavailableCircle: {
-    backgroundColor: '#64748b18',
-    borderWidth: 1,
-    borderColor: '#64748b55',
-  },
-  myStayCircle: { backgroundColor: '#22c55e' },
-  blockedCircle: {
-    backgroundColor: '#ef444438',
-    borderWidth: 1,
-    borderColor: '#dc262688',
-  },
   dayText: {
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Manrope_600SemiBold',
   },
   past: { opacity: 0.4 },
-  availableText: { color: '#15803d', fontWeight: '600' },
-  unavailableText: { color: '#475569', fontWeight: '600' },
-  myStayText: { color: '#fff', fontWeight: '700' },
-  blockedText: { color: '#dc2626', fontWeight: '600' },
   dotsRow: {
     flexDirection: 'row',
     gap: 3,

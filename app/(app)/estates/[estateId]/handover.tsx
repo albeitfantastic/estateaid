@@ -1,31 +1,37 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, StyleSheet, TextInput } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  GroupedList,
+  GroupedRow,
+  ScreenFootnote,
+  ScreenScroll,
+  ScreenShell,
+  FilledButton,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
 import { addDays, today } from '@/lib/date-utils';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { useEstateActorRole } from '@/lib/estate-role';
 import { DEFAULT_HANDOVER_ITEMS } from '@/lib/onboarding-starters';
+import { useActivityLogStore } from '@/store/activity-log-store';
 import { useAuthStore } from '@/store/auth-store';
-import { useEstateStore } from '@/store/estate-store';
 import { useHandoverStore } from '@/store/handover-store';
 import { useStayStore } from '@/store/stay-store';
-import { useActivityLogStore } from '@/store/activity-log-store';
 
 export default function HandoverScreen() {
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
+  const { t } = useTranslation();
   const currentUser = useAuthStore((s) => s.currentUser);
-  const estates = useEstateStore((s) => s.estates);
-  const estate = useMemo(() => estates.find((e) => e.id === estateId), [estates, estateId]);
-  const isOwner = !!estate && estate.ownerId === currentUser?.id;
+  const can = useCan();
+  const role = useEstateActorRole(estateId);
+  const isHost = role === 'sponsor' || role === 'owner';
+  const canManageTemplate = can('property.edit', estateId);
   const templates = useHandoverStore((s) => s.templates);
   const completions = useHandoverStore((s) => s.completions);
   const setTemplateItems = useHandoverStore((s) => s.setTemplateItems);
@@ -34,12 +40,12 @@ export default function HandoverScreen() {
   const todayStr = today();
 
   const items = useMemo(() => {
-    const t = templates.find((x) => x.estateId === estateId);
-    return t?.items?.length ? t.items : DEFAULT_HANDOVER_ITEMS;
+    const template = templates.find((x) => x.estateId === estateId);
+    return template?.items?.length ? template.items : DEFAULT_HANDOVER_ITEMS;
   }, [templates, estateId]);
 
   const activeGuestStay = useMemo(() => {
-    if (!currentUser || isOwner) return null;
+    if (!currentUser || isHost) return null;
     return (
       stays.find(
         (s) =>
@@ -49,7 +55,7 @@ export default function HandoverScreen() {
           todayStr <= addDays(s.to, 1)
       ) ?? null
     );
-  }, [stays, estateId, currentUser, isOwner, todayStr]);
+  }, [stays, estateId, currentUser, isHost, todayStr]);
 
   const completion = useMemo(
     () =>
@@ -60,115 +66,91 @@ export default function HandoverScreen() {
   );
   const [draft, setDraft] = useState(() => items.join('\n'));
 
-  function saveTemplate() {
+  async function saveTemplate() {
     const next = draft
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean);
-    setTemplateItems(estateId, next.length ? next : items);
+    const { error } = await setTemplateItems(estateId, next.length ? next : items);
+    if (error) {
+      Alert.alert(t('handover.saveFailedTitle'), error);
+    }
   }
 
-  function onToggle(item: string) {
+  async function onToggle(item: string) {
     if (!activeGuestStay || !currentUser) return;
-    toggleItem({
+    const { error } = await toggleItem({
       estateId,
       stayId: activeGuestStay.id,
       guestId: currentUser.id,
       item,
     });
+    if (error) {
+      Alert.alert(t('errors.saveFailedTitle'), error);
+      return;
+    }
     useActivityLogStore.getState().logActivity(estateId, currentUser.id, 'estate_updated', {
       handoverItem: item,
     });
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>
-          Handover
-        </ThemedText>
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
-        {isOwner ? (
+    <ScreenShell title={t('handover.title')}>
+      <ScreenScroll gap={12}>
+        {isHost ? (
           <>
-            <ThemedText style={[styles.hint, { color: colors.icon }]}>
-              Guests see this checklist on the last day of their stay and the day after. One item per
-              line.
-            </ThemedText>
+            <ScreenFootnote>{t('handover.hostFootnote')}</ScreenFootnote>
             <TextInput
               style={[styles.area, { borderColor: colors.border, color: colors.text }]}
               multiline
               value={draft}
               onChangeText={setDraft}
               textAlignVertical="top"
+              editable={canManageTemplate}
             />
-            <TouchableOpacity
-              style={[styles.save, { backgroundColor: colors.tint }]}
+            <FilledButton
+              label={t('handover.saveChecklist')}
               onPress={saveTemplate}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.saveText}>Save checklist</ThemedText>
-            </TouchableOpacity>
+              disabled={!canManageTemplate}
+            />
           </>
         ) : activeGuestStay ? (
           <>
-            <ThemedText style={[styles.hint, { color: colors.icon }]}>
-              Before you leave — tick each item when done.
-            </ThemedText>
-            {items.map((item) => {
-              const checked = !!completion?.checked[item];
-              return (
-                <TouchableOpacity
-                  key={item}
-                  style={[styles.row, { borderColor: colors.border }]}
-                  onPress={() => onToggle(item)}
-                  activeOpacity={0.75}
-                >
-                  <IconSymbol
-                    name={checked ? 'checkmark.circle.fill' : 'circle'}
-                    size={22}
-                    color={checked ? colors.tint : colors.icon}
+            <ScreenFootnote>{t('handover.guestFootnote')}</ScreenFootnote>
+            <GroupedList>
+              {items.map((item, i) => {
+                const checked = !!completion?.checked[item];
+                return (
+                  <GroupedRow
+                    key={item}
+                    title={item}
+                    trailing={
+                      <IconSymbol
+                        name={checked ? 'checkmark.circle.fill' : 'circle'}
+                        size={22}
+                        color={checked ? colors.tint : colors.icon}
+                      />
+                    }
+                    onPress={() => onToggle(item)}
+                    isLast={i === items.length - 1}
                   />
-                  <ThemedText style={{ flex: 1 }}>{item}</ThemedText>
-                </TouchableOpacity>
-              );
-            })}
+                );
+              })}
+            </GroupedList>
           </>
         ) : (
-          <ThemedText style={{ color: colors.icon }}>
-            Handover appears on the last day of your stay and the day after.
-          </ThemedText>
+          <ThemedText style={{ color: colors.icon }}>{t('handover.unavailable')}</ThemedText>
         )}
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 8 },
-  back: { padding: 8, marginRight: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
-  hint: { fontSize: 13, marginBottom: 12 },
   area: {
     minHeight: 180,
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
-    marginBottom: 12,
-  },
-  save: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  saveText: { color: '#fff', fontWeight: '700' },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
   },
 });

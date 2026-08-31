@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { FilledButton, useScreenTheme } from '@/components/ui/screen-layout';
 import { openInviteShareChannel } from '@/lib/invite-share-channels';
 import { inviteHttpsLink } from '@/lib/invite-messages';
 
@@ -38,8 +37,7 @@ export function InviteShareChannelsModal({
   previewItems = [],
 }: Props) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
 
   function openEmail() {
     const url = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(shareBody)}`;
@@ -160,9 +158,7 @@ export function InviteShareChannelsModal({
             {t('ownerInvite.messengerHint')}
           </ThemedText>
 
-          <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: colors.tint }]}>
-            <ThemedText style={styles.doneBtnText}>{t('ownerInvite.done')}</ThemedText>
-          </TouchableOpacity>
+          <FilledButton label={t('ownerInvite.done')} onPress={onClose} />
           </ScrollView>
         </View>
       </View>
@@ -223,11 +219,4 @@ const styles = StyleSheet.create({
   },
   cellLabel: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
   messengerHint: { fontSize: 11, lineHeight: 15, textAlign: 'center', marginTop: 4 },
-  doneBtn: {
-    marginTop: 8,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

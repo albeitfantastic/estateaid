@@ -1,15 +1,19 @@
-﻿import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { InviteShareChannelsModal } from '@/components/invite-share-channels-modal';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import {
+  OutlineButton,
+  FilledButton,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { OWNER_CAP, OWNER_INVITE_CAP } from '@/lib/entitlements/constants';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
@@ -31,9 +35,7 @@ export default function InviteGuest() {
   const { estateId } = useLocalSearchParams<{ estateId: string }>();
   const router = useRouter();
   const can = useCan();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const { sendInvitation } = useInvitationStore();
   const { getEstateById } = useEstateStore();
@@ -126,32 +128,17 @@ export default function InviteGuest() {
 
   if (!allowed) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity onPress={() => router.replace(guestsListPath as never)} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>
-            {t('titles.invite')}
-          </ThemedText>
-        </View>
-      </ThemedView>
+      <ScreenShell title={t('titles.invite')} onBack={() => router.replace(guestsListPath as never)}>
+        <View />
+      </ScreenShell>
     );
   }
 
   if (!estate) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>
-            {t('titles.invite')}
-          </ThemedText>
-        </View>
+      <ScreenShell title={t('titles.invite')}>
         <ThemedText style={{ padding: 24 }}>Estate not found.</ThemedText>
-      </ThemedView>
+      </ScreenShell>
     );
   }
 
@@ -162,7 +149,18 @@ export default function InviteGuest() {
       : null;
 
   return (
-    <ThemedView style={styles.container}>
+    <ScreenShell
+      title={t('titles.invite')}
+      headerRight={
+        createdCode ? (
+          <TouchableOpacity onPress={() => router.back()}>
+            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>
+              {t('ownerInvite.done')}
+            </ThemedText>
+          </TouchableOpacity>
+        ) : undefined
+      }
+    >
       <InviteShareChannelsModal
         visible={shareModalVisible}
         onClose={() => setShareModalVisible(false)}
@@ -174,26 +172,7 @@ export default function InviteGuest() {
         previewItems={createdCode && estate ? [{ estateName: estate.name, inviteCode: createdCode }] : []}
       />
 
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>
-          {t('titles.invite')}
-        </ThemedText>
-        {createdCode && (
-          <TouchableOpacity onPress={() => router.back()}>
-            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>
-              {t('ownerInvite.done')}
-            </ThemedText>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScreenScroll contentContainerStyle={styles.form} gap={20} keyboardShouldPersistTaps="handled">
         {!createdCode ? (
           <>
             <View style={[styles.infoBox, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}>
@@ -202,7 +181,7 @@ export default function InviteGuest() {
             </View>
 
             <View style={styles.field}>
-              <ThemedText style={[styles.label, { color: colors.icon }]}>Role</ThemedText>
+              <SectionLabel>Role</SectionLabel>
               <View style={styles.roleRow}>
                 {([
                   { value: 'guest' as const, label: t('ownerInvite.estateRoleGuestLabel'), disabled: false },
@@ -248,7 +227,7 @@ export default function InviteGuest() {
             </View>
 
             <View style={styles.field}>
-              <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ownerInvite.inviteeLabel')}</ThemedText>
+              <SectionLabel>{t('ownerInvite.inviteeLabel')}</SectionLabel>
               <TextInput
                 style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
                 placeholder={t('ownerInvite.inviteePlaceholder')}
@@ -261,7 +240,7 @@ export default function InviteGuest() {
             </View>
 
             <View style={styles.field}>
-              <ThemedText style={[styles.label, { color: colors.icon }]}>{t('ownerInvite.noteLabel')}</ThemedText>
+              <SectionLabel>{t('ownerInvite.noteLabel')}</SectionLabel>
               <TextInput
                 style={[styles.input, styles.multiline, { color: colors.text, borderColor: colors.icon + '44' }]}
                 placeholder={t('ownerInvite.notePlaceholder')}
@@ -274,14 +253,11 @@ export default function InviteGuest() {
               />
             </View>
 
-            <TouchableOpacity
-              style={[styles.createBtn, { backgroundColor: colors.tint }]}
+            <FilledButton
+              label={t('ownerInvite.sendInvitation')}
+              icon="paperplane.fill"
               onPress={() => void createInvite()}
-              activeOpacity={0.85}
-            >
-              <IconSymbol name="paperplane.fill" size={18} color="#fff" />
-              <ThemedText style={styles.createBtnText}>{t('ownerInvite.sendInvitation')}</ThemedText>
-            </TouchableOpacity>
+            />
           </>
         ) : (
           <>
@@ -313,15 +289,10 @@ export default function InviteGuest() {
               <ThemedText style={[styles.codeHint, { color: colors.icon }]}>{t('ownerInvite.codeHint')}</ThemedText>
             </View>
 
-            <TouchableOpacity
-              style={[styles.secondaryBtn, { borderColor: colors.tint }]}
+            <OutlineButton
+              label={t('ownerInvite.shareAgain')}
               onPress={() => setShareModalVisible(true)}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={[styles.secondaryBtnText, { color: colors.tint }]}>
-                {t('ownerInvite.shareAgain')}
-              </ThemedText>
-            </TouchableOpacity>
+            />
 
             <TouchableOpacity
               onPress={() => {
@@ -339,21 +310,16 @@ export default function InviteGuest() {
             </TouchableOpacity>
           </>
         )}
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
-  form: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
+  form: { paddingTop: 8, gap: 20 },
   infoBox: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, alignItems: 'flex-start' },
   infoText: { flex: 1, fontSize: 13, lineHeight: 18 },
   field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
   multiline: { height: 100, paddingTop: 12 },
   roleRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
@@ -364,16 +330,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   capHint: { fontSize: 12, marginTop: 4 },
-  createBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderRadius: 14,
-    paddingVertical: 18,
-    marginTop: 8,
-  },
-  createBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   previewLabel: {
     fontSize: 11,
     fontWeight: '700',
@@ -387,12 +343,4 @@ const styles = StyleSheet.create({
   codeCard: { borderRadius: 20, borderWidth: 1.5, padding: 24, alignItems: 'center', gap: 8 },
   code: { fontSize: 36, fontWeight: '800', letterSpacing: 8 },
   codeHint: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
-  secondaryBtn: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  secondaryBtnText: { fontSize: 16, fontWeight: '700' },
 });

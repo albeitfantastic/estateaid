@@ -52,7 +52,8 @@ export const useContactStore = create<ContactState>()(
       contacts: [],
       setContacts: (contacts) => set({ contacts }),
       fetchFromSupabase: async () => {
-        const { data } = await supabase.from('estate_contacts').select('*');
+        const { data, error } = await supabase.from('estate_contacts').select('*');
+        if (error) throw new Error(error.message);
         if (data) set({ contacts: dedupeById(data).map(fromDb) });
       },
       addContact: async (contact) => {

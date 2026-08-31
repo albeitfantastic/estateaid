@@ -1,8 +1,10 @@
 import { addDays, today } from '@/lib/date-utils';
-import { getPushToken, sendCategorizedPush } from '@/lib/notifications';
+import { hostUserIdsForEstate } from '@/lib/estate-host-ids';
+import { sendCategorizedPush, sendCategorizedPushToMany } from '@/lib/notifications';
 import { useEstateStore } from '@/store/estate-store';
 import { useStayStore } from '@/store/stay-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import i18n from 'i18next';
 
 const KEY = 'maison.stay_reminder_sent';
 
@@ -23,16 +25,18 @@ export async function maybeSendStayTomorrowReminders(): Promise<void> {
   for (const stay of stays) {
     if (sent.includes(stay.id)) continue;
     const estate = useEstateStore.getState().getEstateById(stay.estateId);
-    const body = estate ? `${estate.name} starts tomorrow` : 'Your stay starts tomorrow';
+    const body = estate
+      ? i18n.t('pushCopy.stayTomorrowBody', { name: estate.name })
+      : i18n.t('pushCopy.stayTomorrowBodyGeneric');
     const data = { type: 'stay_reminder', estateId: stay.estateId };
-    void getPushToken(stay.guestId).then((token) =>
-      sendCategorizedPush('stay_reminders', token, 'Stay tomorrow', body, data)
+    void sendCategorizedPush('stay_reminders', stay.guestId, i18n.t('pushCopy.stayTomorrowTitle'), body, data);
+    void sendCategorizedPushToMany(
+      'stay_reminders',
+      hostUserIdsForEstate(stay.estateId).filter((id) => id !== stay.guestId),
+      i18n.t('pushCopy.stayTomorrowTitle'),
+      body,
+      data
     );
-    if (estate?.ownerId) {
-      void getPushToken(estate.ownerId).then((token) =>
-        sendCategorizedPush('stay_reminders', token, 'Stay tomorrow', body, data)
-      );
-    }
     sent.push(stay.id);
   }
   await AsyncStorage.setItem(KEY, JSON.stringify(sent.slice(-200)));

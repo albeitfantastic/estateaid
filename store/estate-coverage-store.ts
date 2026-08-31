@@ -54,9 +54,8 @@ export const useEstateCoverageStore = create<CoverageState>((set, get) => ({
     const ids = [...new Set(estateIds.filter(Boolean))];
     if (ids.length === 0) return;
     const { data, error } = await supabase.rpc('estate_coverage_for_ids', { p_ids: ids });
-    if (error || !data) {
-      return;
-    }
+    if (error) throw new Error(error.message);
+    if (!data) return;
     const next = { ...get().byId };
     let changed = false;
     for (const row of data as Record<string, unknown>[]) {

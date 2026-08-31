@@ -33,7 +33,7 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: Emp
           onPress={onAction}
           activeOpacity={0.8}
         >
-          <ThemedText style={styles.btnText}>{actionLabel}</ThemedText>
+          <ThemedText style={[styles.btnText, { color: colors.textOnBrand }]}>{actionLabel}</ThemedText>
         </TouchableOpacity>
       )}
     </View>
@@ -81,7 +81,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnText: {
-    color: '#fff',
     fontWeight: '600',
     fontSize: 15,
     fontFamily: 'Manrope_600SemiBold',

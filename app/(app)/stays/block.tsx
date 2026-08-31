@@ -1,17 +1,23 @@
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, EstateColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  FilledButton,
+  GroupedList,
+  GroupedRow,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { EstateColors } from '@/constants/theme';
+import { useManagedEstates } from '@/lib/entitlements/capabilities';
 import { useAuthStore } from '@/store/auth-store';
-import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
@@ -34,20 +40,15 @@ export default function BlockStay() {
   const router = useRouter();
   const params = useLocalSearchParams<{ estateId?: string | string[] }>();
   const paramEstateId = paramString(params.estateId);
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const profileById = useProfileStore((s) => s.byId);
-  const allEstates = useEstateStore((s) => s.estates);
   const { createDirectStay, getBlockedRanges, hasConflict } = useStayStore();
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
   const { getInvitationsByEstate } = useInvitationStore();
 
-  const estates = useMemo(
-    () => allEstates.filter((e) => e.ownerId === currentUser?.id || e.sponsorUserId === currentUser?.id),
-    [allEstates, currentUser?.id]
-  );
+  /** Invited hosts block dates too (spec §3), so resolve the set through the shared selector. */
+  const { estates } = useManagedEstates();
 
   const [selectedEstateId, setSelectedEstateId] = useState<string | null>(() => {
     if (paramEstateId && estates.some((e) => e.id === paramEstateId)) return paramEstateId;
@@ -64,10 +65,9 @@ export default function BlockStay() {
     selectedEstateId && from && violatesMaxAdvance(availabilityRules, selectedEstateId, from)
   );
 
-  // Build guest options: owner first, then accepted guests of the selected estate
   const guestOptions = useMemo(() => {
     const ownerEntry = currentUser
-      ? [{ id: currentUser.id, name: `${currentUser.name} (you)`, email: currentUser.email }]
+      ? [{ id: currentUser.id, name: t('blockDates.youSuffix', { name: currentUser.name }), email: currentUser.email }]
       : [];
     if (!selectedEstateId) return ownerEntry;
     const accepted = getInvitationsByEstate(selectedEstateId).filter(
@@ -83,7 +83,7 @@ export default function BlockStay() {
       };
     });
     return [...ownerEntry, ...guests];
-  }, [selectedEstateId, currentUser, getInvitationsByEstate, profileById]);
+  }, [selectedEstateId, currentUser, getInvitationsByEstate, profileById, t]);
 
   function pickEstate(id: string) {
     setSelectedEstateId(id);
@@ -99,19 +99,19 @@ export default function BlockStay() {
   }
 
   async function submit() {
-    if (!selectedEstateId) { Alert.alert('Required', 'Please select a property.'); return; }
-    if (selectedGuestIds.length === 0) { Alert.alert('Required', 'Please select at least one guest.'); return; }
-    if (!from || !to) { Alert.alert('Required', 'Please select check-in and check-out dates.'); return; }
+    if (!selectedEstateId) { Alert.alert(t('common.required'), t('blockDates.requiredProperty')); return; }
+    if (selectedGuestIds.length === 0) { Alert.alert(t('common.required'), t('blockDates.requiredGuest')); return; }
+    if (!from || !to) { Alert.alert(t('common.required'), t('blockDates.requiredDates')); return; }
     if (hasConflict(selectedEstateId, from, to)) {
-      Alert.alert('Dates unavailable', 'These dates overlap another stay or a closed period.');
+      Alert.alert(t('blockDates.datesUnavailable'), t('blockDates.datesUnavailable'));
       return;
     }
     if (maxAdvanceBreak) {
       Alert.alert(
-        'Booking window',
+        t('blockDates.bookingWindowTitle'),
         effMaxAdvance != null
-          ? `Check-in must be within ${effMaxAdvance} days from today.`
-          : 'Those dates are outside the allowed booking window.'
+          ? t('blockDates.bookingWindowDays', { count: effMaxAdvance })
+          : t('blockDates.bookingWindowGeneric')
       );
       return;
     }
@@ -126,13 +126,16 @@ export default function BlockStay() {
         to,
       });
       if (error) {
-        Alert.alert('Could not save stay', error);
+        Alert.alert(t('blockDates.saveFailed'), error);
         return;
       }
     }
 
     const count = selectedGuestIds.length;
-    Alert.alert('Stay Planned', `${count} stay${count > 1 ? 's' : ''} added to the calendar.`);
+    Alert.alert(
+      t('blockDates.savedTitle'),
+      t('blockDates.savedBody', { count })
+    );
     router.back();
   }
 
@@ -145,21 +148,10 @@ export default function BlockStay() {
     !(selectedEstateId && from && to && hasConflict(selectedEstateId, from, to));
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.planStay')}</ThemedText>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Estate picker */}
+    <ScreenShell title={t('titles.blockDates')}>
+      <ScreenScroll gap={24} contentContainerStyle={styles.scroll}>
         <View style={styles.section}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Property</ThemedText>
+          <SectionLabel>{t('blockDates.property')}</SectionLabel>
           <View style={styles.pillRow}>
             {estates.map((e, i) => {
               const selected = e.id === selectedEstateId;
@@ -187,59 +179,44 @@ export default function BlockStay() {
           </View>
         </View>
 
-        {/* Guest multi-select */}
         {selectedEstateId && (
           <View style={styles.section}>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>
-              Guests{selectedGuestIds.length > 0 ? ` · ${selectedGuestIds.length} selected` : ''}
-            </ThemedText>
-            <View style={styles.guestList}>
-              {guestOptions.map((g) => {
+            <SectionLabel>
+              {selectedGuestIds.length > 0
+                ? t('blockDates.guestsSelected', { count: selectedGuestIds.length })
+                : t('blockDates.guests')}
+            </SectionLabel>
+            <GroupedList>
+              {guestOptions.map((g, i) => {
                 const selected = selectedGuestIds.includes(g.id);
                 return (
-                  <TouchableOpacity
+                  <GroupedRow
                     key={g.id}
-                    style={[
-                      styles.guestRow,
-                      {
-                        backgroundColor: selected ? colors.tint + '12' : colors.background,
-                        borderColor: selected ? colors.tint : colors.icon + '33',
-                      },
-                    ]}
+                    title={g.name}
+                    subtitle={g.email}
                     onPress={() => toggleGuest(g.id)}
-                    activeOpacity={0.75}
-                  >
-                    <View style={[styles.avatar, { backgroundColor: colors.tint + '22' }]}>
-                      <ThemedText style={[styles.avatarText, { color: colors.tint }]}>
-                        {g.name.charAt(0).toUpperCase()}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.guestInfo}>
-                      <ThemedText style={[styles.guestName, selected && { color: colors.tint }]}>
-                        {g.name}
-                      </ThemedText>
-                      <ThemedText style={[styles.guestEmail, { color: colors.icon }]}>{g.email}</ThemedText>
-                    </View>
-                    <View style={[
-                      styles.checkbox,
-                      {
-                        backgroundColor: selected ? colors.tint : 'transparent',
-                        borderColor: selected ? colors.tint : colors.icon + '55',
-                      },
-                    ]}>
-                      {selected && <IconSymbol name="checkmark" size={12} color="#fff" />}
-                    </View>
-                  </TouchableOpacity>
+                    isLast={i === guestOptions.length - 1}
+                    trailing={
+                      <View style={[
+                        styles.checkbox,
+                        {
+                          backgroundColor: selected ? colors.tint : 'transparent',
+                          borderColor: selected ? colors.tint : colors.icon + '55',
+                        },
+                      ]}>
+                        {selected && <IconSymbol name="checkmark" size={12} color={colors.textOnBrand} />}
+                      </View>
+                    }
+                  />
                 );
               })}
-            </View>
+            </GroupedList>
           </View>
         )}
 
-        {/* Date picker */}
         {selectedEstateId && (
           <View style={styles.section}>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>Dates</ThemedText>
+            <SectionLabel>{t('blockDates.dates')}</SectionLabel>
             <View style={[styles.pickerWrap, { borderColor: colors.icon + '33', backgroundColor: colors.background }]}>
               <DateRangePicker
                 from={from}
@@ -251,49 +228,31 @@ export default function BlockStay() {
             {from && to && (
               <View style={[styles.summary, { backgroundColor: colors.tint + '11', borderColor: colors.tint + '33' }]}>
                 <ThemedText type="defaultSemiBold">{formatDateRange(from, to)}</ThemedText>
-                <ThemedText style={{ color: colors.icon }}>{nightCount(from, to)} nights</ThemedText>
+                <ThemedText style={{ color: colors.icon }}>{t('common.nights', { count: nightCount(from, to) })}</ThemedText>
               </View>
             )}
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.submitBtn, { backgroundColor: colors.tint }, !canSubmit && styles.disabled]}
+        <FilledButton
+          label={t('blockDates.confirmCta')}
+          icon="calendar.badge.plus"
           onPress={() => void submit()}
           disabled={!canSubmit}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="calendar.badge.plus" size={18} color="#fff" />
-          <ThemedText style={styles.submitText}>Confirm Stay</ThemedText>
-        </TouchableOpacity>
-      </ScrollView>
-    </ThemedView>
+        />
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
-  scroll: { paddingHorizontal: 20, gap: 24, paddingTop: 4 },
+  scroll: { paddingTop: 4 },
   section: { gap: 10 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   pillText: { fontSize: 14 },
-  guestList: { gap: 8 },
-  guestRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1.5 },
-  avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 16, fontWeight: '700' },
-  guestInfo: { flex: 1, gap: 2 },
-  guestName: { fontSize: 15, fontWeight: '500' },
-  guestEmail: { fontSize: 12 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   pickerWrap: { padding: 16, borderRadius: 16, borderWidth: 1 },
   summary: { padding: 14, borderRadius: 12, borderWidth: 1, gap: 4 },
-  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 18, borderRadius: 14, marginTop: 8 },
-  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  disabled: { opacity: 0.45 },
 });

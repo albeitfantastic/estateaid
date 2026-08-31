@@ -4,6 +4,22 @@ export type OnboardingUseCase =
   | 'rental_property'
   | 'managing_for_other';
 
+export const ONBOARDING_USE_CASES: OnboardingUseCase[] = [
+  'holiday_home',
+  'primary_residence',
+  'rental_property',
+  'managing_for_other',
+];
+
+export function isOnboardingUseCase(v: unknown): v is OnboardingUseCase {
+  return (
+    v === 'holiday_home' ||
+    v === 'primary_residence' ||
+    v === 'rental_property' ||
+    v === 'managing_for_other'
+  );
+}
+
 export function homeEmphasisFor(useCase: OnboardingUseCase | null | undefined): {
   tipTitle: string;
   tipBody: string;
@@ -34,6 +50,22 @@ export function homeEmphasisFor(useCase: OnboardingUseCase | null | undefined): 
         tipTitle: 'Start with one property',
         tipBody: 'Create your first estate to unlock calendars, FAQ, and contacts.',
       };
+  }
+}
+
+/** Hub tile `route` keys to emphasise for this use case (spec §11.2). */
+export function hubEmphasisRoutes(useCase: OnboardingUseCase | null | undefined): string[] {
+  switch (useCase) {
+    case 'holiday_home':
+      return ['faq', 'stays'];
+    case 'primary_residence':
+      return ['events', 'documents'];
+    case 'rental_property':
+      return ['stays', 'availability'];
+    case 'managing_for_other':
+      return ['guests', 'contacts'];
+    default:
+      return [];
   }
 }
 
@@ -76,7 +108,7 @@ export const MAINTENANCE_TEMPLATES: {
   id: string;
   title: string;
   body: string;
-  recurrence: 'monthly' | 'yearly';
+  recurrence: 'monthly' | 'quarterly' | 'semi_annual' | 'yearly';
 }[] = [
   { id: 'boiler', title: 'Boiler service', body: 'Annual boiler / heating service', recurrence: 'yearly' },
   { id: 'chimney', title: 'Chimney sweep', body: 'Sweep and safety check', recurrence: 'yearly' },
@@ -85,6 +117,9 @@ export const MAINTENANCE_TEMPLATES: {
   { id: 'winter', title: 'Winterisation', body: 'Drain pipes / set heating for empty periods', recurrence: 'yearly' },
   { id: 'water', title: 'Water shut-off check', body: 'Locate and test main shut-off valve', recurrence: 'yearly' },
 ];
+
+/** Templates seeded onto a new primary-residence property. */
+export const PRIMARY_RESIDENCE_SEED_TEMPLATE_IDS = ['boiler', 'smoke', 'water'] as const;
 
 export const DEFAULT_HANDOVER_ITEMS = [
   'Close all windows',

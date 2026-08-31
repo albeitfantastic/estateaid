@@ -1,12 +1,13 @@
+import { useRouter } from 'expo-router';
 import { useMemo, useState, useEffect } from 'react';
-import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useScreenTheme } from '@/components/ui/screen-layout';
 import { formatDate } from '@/lib/date-utils';
+import { estateHrefAfterInviteAccept } from '@/lib/guest-landing';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
@@ -15,8 +16,8 @@ import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 /** Redeem invite code + pending invitations to accept/decline (guest side). */
 export function GuestInvitationsReceivePanel({ initialCode }: { initialCode?: string } = {}) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const router = useRouter();
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const getPendingInvitationsForGuest = useInvitationStore((s) => s.getPendingInvitationsForGuest);
   const respondToInvitation = useInvitationStore((s) => s.respondToInvitation);
@@ -48,7 +49,9 @@ export function GuestInvitationsReceivePanel({ initialCode }: { initialCode?: st
   }, [invitations, profileById]);
 
   function accept(id: string) {
+    const inv = invitations.find((i) => i.id === id);
     respondToInvitation(id, 'accepted', currentUser?.id);
+    if (inv) router.replace(estateHrefAfterInviteAccept(inv) as never);
   }
   function decline(id: string) {
     respondToInvitation(id, 'declined');
@@ -58,13 +61,9 @@ export function GuestInvitationsReceivePanel({ initialCode }: { initialCode?: st
     if (!currentUser) return;
     const result = await redeemCode(codeInput, currentUser.id);
     if (result.success) {
-      const estate = getEstateById(result.invitation!.estateId);
       setCodeInput('');
       setRedeemError('');
-      Alert.alert(
-        t('guestInvitations.accessGrantedTitle'),
-        t('guestInvitations.accessGrantedBody', { name: estate?.name ?? t('guestInvitations.defaultAccessName') })
-      );
+      router.replace(estateHrefAfterInviteAccept(result.invitation!) as never);
     } else if (result.reason === 'fetch_error') {
       setRedeemError(t('guestInvitations.errFetch'));
     } else if (result.reason === 'update_failed') {
@@ -105,7 +104,7 @@ export function GuestInvitationsReceivePanel({ initialCode }: { initialCode?: st
             disabled={codeInput.length !== 8}
             activeOpacity={0.85}
           >
-            <ThemedText style={[styles.redeemBtnText, { color: codeInput.length === 8 ? '#fff' : colors.icon }]}>
+            <ThemedText style={[styles.redeemBtnText, { color: codeInput.length === 8 ? colors.textOnBrand : colors.icon }]}>
               {t('actions.redeem')}
             </ThemedText>
           </TouchableOpacity>
@@ -149,7 +148,7 @@ export function GuestInvitationsReceivePanel({ initialCode }: { initialCode?: st
                       onPress={() => accept(inv.id)}
                       activeOpacity={0.8}
                     >
-                      <ThemedText style={styles.btnText}>{t('actions.accept')}</ThemedText>
+                      <ThemedText style={[styles.btnText, { color: colors.textOnBrand }]}>{t('actions.accept')}</ThemedText>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.btn, styles.btnOutline, { borderColor: colors.icon + '55' }]}
@@ -216,5 +215,5 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, marginTop: 10 },
   btn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
   btnOutline: { backgroundColor: 'transparent', borderWidth: 1 },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  btnText: { fontWeight: '600', fontSize: 14 },
 });

@@ -2,19 +2,25 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, Fonts, Layout, Radius, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import {
+  GroupedList,
+  GroupedRow,
+  OutlineButton,
+  ScreenFootnote,
+  ScreenScroll,
+  ScreenShell,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { Colors } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { estateHrefAfterInviteAccept } from '@/lib/guest-landing';
 import { useAuthStore } from '@/store/auth-store';
 import { useInvitationStore } from '@/store/invitation-store';
 
@@ -29,10 +35,7 @@ export default function InviteDeepLink() {
   const { code } = useLocalSearchParams<{ code?: string }>();
   const c = typeof code === 'string' ? code.trim().toUpperCase() : '';
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const scheme = colorScheme === 'dark' ? 'dark' : 'light';
-  const colors = Colors[scheme];
+  const { colors, cardShadow } = useScreenTheme();
 
   const currentUser = useAuthStore((s) => s.currentUser);
   const isHydrated = useAuthStore((s) => s.isHydrated);
@@ -100,7 +103,7 @@ export default function InviteDeepLink() {
         completeOnboarding();
         setSkipOnboardingForInvite(false);
         setPendingInviteCode(null);
-        router.replace(`/(app)/estates/${r.invitation.estateId}` as never);
+        router.replace(estateHrefAfterInviteAccept(r.invitation) as never);
         return;
       }
       setError('Could not accept this invite. It may be used or invalid.');
@@ -120,35 +123,41 @@ export default function InviteDeepLink() {
 
   if (!c) {
     return (
-      <ThemedView style={[styles.center, { paddingTop: insets.top }]}>
-        <ThemedText>Invalid invite link.</ThemedText>
-        <TouchableOpacity onPress={() => router.replace('/' as never)} style={styles.linkBtn}>
-          <ThemedText style={{ color: colors.tint }}>Go home</ThemedText>
-        </TouchableOpacity>
-      </ThemedView>
+      <ScreenShell showBack={false} title="Invalid invite">
+        <ScreenScroll contentContainerStyle={styles.center}>
+          <ScreenFootnote>Invalid invite link.</ScreenFootnote>
+          <OutlineButton label="Go home" onPress={() => router.replace('/' as never)} />
+        </ScreenScroll>
+      </ScreenShell>
     );
   }
 
   if (!isHydrated || (currentUser && busy && !error)) {
     return (
-      <ThemedView style={styles.center}>
-        <ActivityIndicator color={colors.tint} />
-        <ThemedText style={[styles.muted, { color: colors.icon }]}>Opening invite…</ThemedText>
-      </ThemedView>
+      <ScreenShell showBack={false} title="Opening invite">
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.tint} />
+          <ThemedText style={{ color: colors.textSecondary }}>Opening invite…</ThemedText>
+        </View>
+      </ScreenShell>
     );
   }
 
   if (currentUser && error) {
     return (
-      <ThemedView style={[styles.center, { paddingHorizontal: Layout.screenPaddingX }]}>
-        <ThemedText style={styles.error}>{error}</ThemedText>
-        <TouchableOpacity
-          style={[styles.cta, { backgroundColor: colors.tint }]}
-          onPress={() => router.replace(`/(app)/stays?tab=redeem&code=${encodeURIComponent(c)}` as never)}
-        >
-          <Text style={styles.ctaText}>Enter code manually</Text>
-        </TouchableOpacity>
-      </ThemedView>
+      <ScreenShell showBack={false} title="Invite error">
+        <ScreenScroll contentContainerStyle={styles.center} gap={16}>
+          <ThemedText style={styles.error}>{error}</ThemedText>
+          <TouchableOpacity
+            style={[styles.cta, { backgroundColor: colors.tint }, cardShadow]}
+            onPress={() =>
+              router.replace(`/(app)/estates/join?code=${encodeURIComponent(c)}` as never)
+            }
+          >
+            <ThemedText style={styles.ctaText}>Enter code manually</ThemedText>
+          </TouchableOpacity>
+        </ScreenScroll>
+      </ScreenShell>
     );
   }
 
@@ -157,85 +166,92 @@ export default function InviteDeepLink() {
   const inviter = preview?.inviterName;
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.xl }]}>
-      <View style={styles.hero}>
+    <ScreenShell showBack={false} title="You're invited">
+      <ScreenScroll contentContainerStyle={styles.scroll} gap={16}>
         <View style={[styles.iconWrap, { backgroundColor: colors.tintMuted }]}>
           <IconSymbol name="envelope.fill" size={28} color={colors.tint} />
         </View>
-        <ThemedText type="title" style={styles.title}>
-          You're invited
-        </ThemedText>
-        <ThemedText style={[styles.body, { color: colors.icon }]}>
+
+        <ScreenFootnote>
           {inviter
             ? `${inviter} invited you to ${estateName} on Maison.`
             : `Join ${estateName} on Maison.`}
-        </ThemedText>
-        {location ? (
-          <View style={styles.locRow}>
-            <IconSymbol name="map.fill" size={13} color={colors.icon} />
-            <ThemedText style={[styles.loc, { color: colors.icon }]}>{location}</ThemedText>
-          </View>
-        ) : null}
-        {!preview && previewTried ? (
-          <ThemedText style={[styles.codeHint, { color: colors.icon }]}>
-            Invite code: {c}
-          </ThemedText>
-        ) : null}
-        <ThemedText style={[styles.means, { color: colors.icon }]}>
-          Accepting gives you access to this property — no subscription needed.
-        </ThemedText>
-      </View>
+        </ScreenFootnote>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.lg }]}>
+        <GroupedList>
+          {[
+            location
+              ? { key: 'loc', icon: 'map.fill' as const, title: location, subtitle: 'Location' }
+              : null,
+            !preview && previewTried
+              ? { key: 'code', icon: 'number' as const, title: c, subtitle: 'Invite code' }
+              : null,
+            {
+              key: 'access',
+              icon: 'checkmark.seal.fill' as const,
+              title: 'No subscription needed',
+              subtitle: 'Accepting gives you access to this property.',
+            },
+          ]
+            .filter(Boolean)
+            .map((row, i, arr) => (
+              <GroupedRow
+                key={row!.key}
+                icon={row!.icon}
+                title={row!.title}
+                subtitle={row!.subtitle}
+                isLast={i === arr.length - 1}
+              />
+            ))}
+        </GroupedList>
+
         <TouchableOpacity
-          style={[styles.cta, { backgroundColor: colors.tint }]}
+          style={[styles.cta, { backgroundColor: colors.tint }, cardShadow]}
           onPress={onSignUpToAccept}
           activeOpacity={0.85}
         >
-          <Text style={styles.ctaText}>Sign up to accept</Text>
+          <ThemedText style={styles.ctaText}>Sign up to accept</ThemedText>
         </TouchableOpacity>
-        <TouchableOpacity
+
+        <OutlineButton
+          label="I already have an account"
           onPress={() => {
             setPendingInviteCode(c);
             setSkipOnboardingForInvite(true);
             router.replace('/(auth)' as never);
           }}
-          style={styles.secondary}
-        >
-          <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>I already have an account</ThemedText>
-        </TouchableOpacity>
-      </View>
-    </ThemedView>
+        />
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: Layout.screenPaddingX, justifyContent: 'space-between' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  hero: { gap: 12, paddingTop: Spacing.xl },
+  center: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingTop: 24,
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingTop: 8,
+  },
   iconWrap: {
     width: 56,
     height: 56,
-    borderRadius: Radius.lg,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
-  title: { fontSize: 28, fontFamily: Fonts.heading },
-  body: { fontSize: 16, lineHeight: 24 },
-  means: { fontSize: 14, lineHeight: 20, marginTop: 4 },
-  locRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  loc: { fontSize: 13 },
-  codeHint: { fontSize: 13, fontFamily: 'Manrope_600SemiBold', marginTop: 4 },
-  muted: { fontSize: 14, marginTop: 8 },
-  error: { fontSize: 15, textAlign: 'center', marginBottom: 8 },
-  footer: { gap: 14 },
+  error: { fontSize: 15, textAlign: 'center' },
   cta: {
-    borderRadius: Radius.lg,
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
+    marginTop: 8,
   },
-  ctaText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  secondary: { alignItems: 'center', paddingVertical: 8 },
-  linkBtn: { marginTop: 8 },
+  ctaText: { color: Colors.light.textOnBrand, fontWeight: '700', fontSize: 16 },
 });

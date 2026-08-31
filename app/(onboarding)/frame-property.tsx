@@ -1,41 +1,65 @@
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 
-import { ThemedView } from '@/components/themed-view';
-import { PrimaryButton } from '@/components/paywall/ui/PrimaryButton';
-import { useAppTheme } from '@/theme/useAppTheme';
+import { ThemedText } from '@/components/themed-text';
+import {
+  ScreenFootnote,
+  ScreenScroll,
+  ScreenShell,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
 
 /** Framing before property creation (§5.3). */
 export default function FramePropertyScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const theme = useAppTheme();
+  const { colors, cardShadow } = useScreenTheme();
 
   return (
-    <ThemedView style={styles.root}>
-      <View style={styles.copy}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>
-          {t('onboarding.frameTitle', { defaultValue: 'Your property, in one calm place' })}
-        </Text>
-        <Text style={[styles.body, { color: theme.colors.textMuted }]}>
+    <ScreenShell
+      title={t('onboarding.frameTitle', { defaultValue: 'Your property, in one calm place' })}
+      showBack
+    >
+      <ScreenScroll contentContainerStyle={styles.scroll} gap={20}>
+        <ScreenFootnote>
           {t('onboarding.frameBody', {
             defaultValue:
               'Add a name and optional location. You can fill in the rest whenever you are ready.',
           })}
-        </Text>
-      </View>
-      <PrimaryButton
-        label={t('onboarding.frameCta', { defaultValue: 'Add your property' })}
-        onPress={() => router.push('/(app)/estates/new?fromOnboarding=1' as never)}
-      />
-    </ThemedView>
+        </ScreenFootnote>
+
+        <TouchableOpacity
+          style={[styles.cta, { backgroundColor: colors.tint }, cardShadow]}
+          onPress={() => router.push('/(app)/estates/new?fromOnboarding=1' as never)}
+          activeOpacity={0.85}
+        >
+          <ThemedText style={styles.ctaText}>
+            {t('onboarding.frameCta', { defaultValue: 'Add your property' })}
+          </ThemedText>
+        </TouchableOpacity>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, padding: 24, justifyContent: 'space-between', paddingBottom: 48 },
-  copy: { flex: 1, justifyContent: 'center', gap: 12 },
-  title: { fontSize: 28, fontWeight: '700' },
-  body: { fontSize: 16, lineHeight: 24 },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingTop: 8,
+  },
+  cta: {
+    borderRadius: 14,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    marginTop: 8,
+  },
+  ctaText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

@@ -1,24 +1,24 @@
 /**
  * Maison paywall design tokens.
- * Deliberately separate from the app's teal palette — Maison uses a warmer,
- * more parchment-and-forest feel for the purchase flow.
+ * Canvas and chrome match the app (cream + forest). The subscribe CTA uses
+ * `colors.accent` (terracotta) via PrimaryButton — not `MC.brand`.
  */
 export const MC = {
-  // Backgrounds (aligned with app warm stone canvas)
-  bg: '#F6F4EF',
-  surface: '#FFFCF9',
+  // Backgrounds — same cream canvas as the app
+  bg: '#F5F1E8',
+  surface: '#FBF8F2',
 
-  // Text (warm ink + stone)
-  text: '#252220',
-  textSecondary: '#6E6862',
+  // Text (charcoal + stone)
+  text: '#1C1B18',
+  textSecondary: '#5C5852',
 
-  // Brand
-  brand: '#234536',   // deep forest green — CTAs, accents, selected states
-  tint: '#E8EBE7',    // soft sage-stone — selected card bg, subtle fills
+  // Brand chrome — forest green. Terracotta is the subscribe CTA only (`colors.accent`).
+  brand: '#1F4D3D',
+  tint: '#E3EDE8',
 
   // Borders
-  border: '#DED9D0',
-  borderStrong: '#234536',
+  border: '#DDD4C6',
+  borderStrong: '#1F4D3D',
 
   // Spacing
   hPad: 24,

@@ -1,15 +1,17 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
 
 import { SlotPackPicker } from '@/components/paywall/slot-pack-picker';
 import type { SlotPackId } from '@/lib/subscription-config';
 import { APP_TRIAL_DAYS } from '@/lib/subscription-config';
-import { PaywallHeader } from '../ui/PaywallHeader';
-import { ProofCard } from '../ui/ProofCard';
 import { PrimaryButton } from '../ui/PrimaryButton';
+import { PaywallCloseButton, PaywallHeaderSpacer } from '../ui/PaywallHeader';
 import { MC } from '../paywall-tokens';
-import { TESTIMONIALS, TRUST_BODY, TRUST_TITLE } from '../paywall-mock-data';
+import { BENEFITS, TRUST_BODY, TRUST_TITLE } from '../paywall-mock-data';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
+import { Layout } from '@/constants/theme';
 
 interface TrustScreenProps {
   onContinue: () => void;
@@ -18,20 +20,19 @@ interface TrustScreenProps {
 
 export function TrustScreen({ onContinue, onClose }: TrustScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useScreenTheme();
   const [pack, setPack] = useState<SlotPackId>('family');
   const [billing, setBilling] = useState<'annual' | 'monthly'>('annual');
 
   return (
-    <View style={styles.root}>
-      <PaywallHeader onClose={onClose} topInset={insets.top} />
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.title}>{TRUST_TITLE}</Text>
-        <Text style={styles.body}>{TRUST_BODY}</Text>
+    <ScreenShell
+      title=" "
+      showBack={false}
+      headerRight={onClose ? <PaywallCloseButton onPress={onClose} /> : <PaywallHeaderSpacer />}
+    >
+      <ScreenScroll contentContainerStyle={styles.content} gap={Layout.sectionGap}>
+        <Text style={[styles.title, { color: colors.text }]}>{TRUST_TITLE}</Text>
+        <Text style={[styles.body, { color: colors.textSecondary }]}>{TRUST_BODY}</Text>
 
         <SlotPackPicker
           selected={pack}
@@ -40,65 +41,60 @@ export function TrustScreen({ onContinue, onClose }: TrustScreenProps) {
           onSelectBilling={setBilling}
         />
 
-        <Text style={styles.trialNote}>
+        <Text style={[styles.trialNote, { color: colors.textSecondary }]}>
           No payment during the {APP_TRIAL_DAYS}-day trial. Nothing renews until you choose a plan.
         </Text>
 
-        <View style={styles.cards}>
-          {TESTIMONIALS.map((t, i) => (
-            <ProofCard key={i} quote={t.quote} />
+        <View style={styles.benefits}>
+          {BENEFITS.map((benefit) => (
+            <View key={benefit.label} style={styles.benefitRow}>
+              <IconSymbol name="checkmark.circle.fill" size={17} color={colors.tint} />
+              <Text style={[styles.benefitLabel, { color: colors.text }]}>{benefit.label}</Text>
+            </View>
           ))}
         </View>
-      </ScrollView>
+      </ScreenScroll>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <PrimaryButton label="Choose a plan" onPress={onContinue} />
       </View>
-    </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: MC.bg,
-  },
-  scroll: {
-    flex: 1,
-  },
   content: {
-    paddingHorizontal: MC.hPad,
     paddingTop: 8,
     paddingBottom: 24,
-    gap: MC.sectionGap,
   },
   title: {
     fontSize: MC.sectionTitle,
     fontWeight: '700',
-    color: MC.text,
     lineHeight: 36,
     letterSpacing: -0.3,
     fontFamily: 'Manrope_700Bold',
   },
   body: {
     fontSize: MC.body,
-    color: MC.textSecondary,
     lineHeight: 26,
     fontFamily: 'Manrope_400Regular',
-    marginTop: -MC.sectionGap + MC.titleBodyGap,
+    marginTop: -Layout.sectionGap + MC.titleBodyGap,
   },
   trialNote: {
     fontSize: 13,
-    color: MC.textSecondary,
     lineHeight: 18,
     fontFamily: 'Manrope_400Regular',
   },
-  cards: {
-    gap: MC.cardGap,
+  benefits: { gap: 10 },
+  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  benefitLabel: {
+    flex: 1,
+    fontSize: MC.body,
+    lineHeight: 22,
+    fontFamily: 'Manrope_400Regular',
   },
   footer: {
-    paddingHorizontal: MC.hPad,
+    paddingHorizontal: Layout.screenPaddingX,
     paddingTop: MC.aboveCta,
-    backgroundColor: MC.bg,
   },
 });

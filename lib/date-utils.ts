@@ -63,6 +63,16 @@ export function addDays(dateStr: string, n: number): string {
   return toISODate(d);
 }
 
+/** Add N calendar months, clamping the day to the end of the target month. */
+export function addMonths(dateStr: string, months: number): string {
+  const src = parseDateStr(dateStr);
+  const day = src.getDate();
+  const d = new Date(src.getFullYear(), src.getMonth() + months, 1);
+  const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, dim));
+  return toISODate(d);
+}
+
 /** Number of nights between two date strings */
 export function nightCount(from: string, to: string): number {
   const diff = parseDateStr(to).getTime() - parseDateStr(from).getTime();

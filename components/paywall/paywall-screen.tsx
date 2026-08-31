@@ -1,19 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { PurchasesOffering } from 'react-native-purchases';
 
-import { MC } from '@/components/paywall/paywall-tokens';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { GroupedList, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
+import { Layout } from '@/constants/theme';
 import { Purchases, isRevenueCatConfigured, isEntitlementActiveInCustomerInfo } from '@/lib/revenuecat-client';
 import {
   EXIT_OFFERING_ID,
@@ -58,7 +56,7 @@ export function PaywallScreen({
 }: PaywallScreenProps = {}) {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { colors } = useScreenTheme();
   const refreshProfile = useAuthStore((s) => s.refreshProfileFromSupabase);
   const { refetch, syncPurchasesAndRefetch, isPro, loading: subLoading } = useSubscription();
   const plan = MAISON_PRO_DISPLAY_NAME;
@@ -172,8 +170,6 @@ export function PaywallScreen({
     }
   }, [leaveOnSuccess, pollMirrorUntilActive, refreshProfile, syncPurchasesAndRefetch, t, plan]);
 
-  const disabled = confirming || subLoading;
-
   const rcConfigured = isRevenueCatConfigured();
   const embeddedPaywall = isEmbeddedRevenueCatPaywallAvailable();
 
@@ -182,69 +178,56 @@ export function PaywallScreen({
     [offering]
   );
 
-  const chromeHeader = (
-    <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-      <TouchableOpacity onPress={() => leaveOnDismiss()} style={styles.back} disabled={disabled}>
-        <IconSymbol name="arrow.left" size={22} color={MC.brand} />
-      </TouchableOpacity>
-      <Text style={styles.title}>{MAISON_PRO_DISPLAY_NAME}</Text>
-      <View style={{ width: 44 }} />
-    </View>
+  const shell = (body: ReactNode) => (
+    <ScreenShell title={MAISON_PRO_DISPLAY_NAME} onBack={() => leaveOnDismiss()} showBack>
+      {body}
+    </ScreenShell>
   );
 
   if (!rcConfigured) {
-    return (
-      <View style={styles.container}>
-        {chromeHeader}
-        <View style={styles.fallback}>
-          <Text style={styles.fallbackText}>
-            {t('paywall.envHint', {
-              monthly: RC_PRODUCT_IDS.monthly,
-              yearly: RC_PRODUCT_IDS.yearly,
-              entitlement: PRIMARY_ENTITLEMENT_ID,
-            })}
-          </Text>
-        </View>
+    return shell(
+      <View style={styles.fallback}>
+        <Text style={[styles.fallbackText, { color: colors.textSecondary }]}>
+          {t('paywall.envHint', {
+            monthly: RC_PRODUCT_IDS.monthly,
+            yearly: RC_PRODUCT_IDS.yearly,
+            entitlement: PRIMARY_ENTITLEMENT_ID,
+          })}
+        </Text>
       </View>
     );
   }
 
   if (!embeddedPaywall) {
-    return (
-      <View style={styles.container}>
-        {chromeHeader}
-        <View style={styles.fallback}>
-          <Text style={styles.fallbackText}>{t('paywall.nativeOnlyHint')}</Text>
-        </View>
+    return shell(
+      <View style={styles.fallback}>
+        <Text style={[styles.fallbackText, { color: colors.textSecondary }]}>{t('paywall.nativeOnlyHint')}</Text>
       </View>
     );
   }
 
   if (!offeringReady) {
-    return (
-      <View style={styles.container}>
-        {chromeHeader}
-        <View style={styles.fallback}>
-          <ActivityIndicator color={MC.brand} />
-        </View>
+    return shell(
+      <View style={styles.fallback}>
+        <ActivityIndicator color={colors.tint} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {chromeHeader}
-
+    <ScreenShell title={MAISON_PRO_DISPLAY_NAME} onBack={() => leaveOnDismiss()} showBack>
       {isPro && (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>{t('paywall.alreadyHave', { plan })}</Text>
-        </View>
+        <GroupedList style={styles.banner}>
+          <View style={styles.bannerInner}>
+            <Text style={[styles.bannerText, { color: colors.tint }]}>{t('paywall.alreadyHave', { plan })}</Text>
+          </View>
+        </GroupedList>
       )}
 
       {confirming && (
-        <View style={styles.confirmRow}>
-          <ActivityIndicator color={MC.brand} />
-          <Text style={styles.confirmText}>{t('paywall.syncing')}</Text>
+        <View style={[styles.confirmRow, { backgroundColor: colors.surface }]}>
+          <ActivityIndicator color={colors.tint} />
+          <Text style={[styles.confirmText, { color: colors.textSecondary }]}>{t('paywall.syncing')}</Text>
         </View>
       )}
 
@@ -253,70 +236,39 @@ export function PaywallScreen({
         options={paywallOptions}
         onPurchaseStarted={() => {
           suppressDismissRef.current = true;
-                  }}
+        }}
         onRestoreStarted={() => {
           suppressDismissRef.current = true;
-                  }}
+        }}
         onPurchaseCompleted={() => {
-                    void onCompletedFlow();
+          void onCompletedFlow();
         }}
         onRestoreCompleted={() => {
-                    void onCompletedFlow();
+          void onCompletedFlow();
         }}
         onPurchaseCancelled={() => {
           suppressDismissRef.current = false;
-                  }}
+        }}
         onPurchaseError={({ error }) => {
           suppressDismissRef.current = false;
-                    Alert.alert(t('paywall.purchaseErrorTitle'), error.message ?? t('paywall.purchaseErrorFallback'));
+          Alert.alert(t('paywall.purchaseErrorTitle'), error.message ?? t('paywall.purchaseErrorFallback'));
         }}
         onRestoreError={({ error }) => {
           suppressDismissRef.current = false;
-                    Alert.alert(t('paywall.restoreErrorTitle'), error.message ?? t('paywall.restoreErrorBody'));
+          Alert.alert(t('paywall.restoreErrorTitle'), error.message ?? t('paywall.restoreErrorBody'));
         }}
         onDismiss={() => {
-                    leaveOnDismiss();
+          leaveOnDismiss();
         }}
       />
-    </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: MC.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: MC.hPad,
-    paddingBottom: 12,
-    gap: 8,
-    backgroundColor: MC.bg,
-  },
-  back: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: MC.text,
-    fontFamily: 'Manrope_700Bold',
-    textAlign: 'center',
-  },
-  banner: {
-    marginHorizontal: MC.hPad,
-    marginBottom: 12,
-    padding: 14,
-    borderRadius: MC.cardRadius,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: MC.brand + '44',
-    backgroundColor: MC.tint,
-  },
+  banner: { marginHorizontal: Layout.screenPaddingX, marginBottom: 12 },
+  bannerInner: { padding: 14 },
   bannerText: {
-    color: MC.brand,
     fontWeight: '600',
     fontFamily: 'Manrope_600SemiBold',
   },
@@ -324,23 +276,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: MC.hPad,
-    backgroundColor: MC.surface,
+    paddingHorizontal: Layout.screenPaddingX,
   },
   confirmText: {
-    color: MC.textSecondary,
     marginLeft: 10,
     fontFamily: 'Manrope_400Regular',
   },
   paywall: { flex: 1 },
   fallback: {
     flex: 1,
-    paddingHorizontal: MC.hPad,
-    paddingVertical: MC.sectionGap,
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingVertical: Layout.sectionGap,
     justifyContent: 'center',
   },
   fallbackText: {
-    color: MC.textSecondary,
     lineHeight: 22,
     fontFamily: 'Manrope_400Regular',
   },

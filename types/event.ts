@@ -1,6 +1,14 @@
 export type EventType = 'task' | 'recurring';
 
-export type RecurrenceFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export type RecurrenceFrequency =
+  | 'daily'
+  | 'weekly'
+  | 'biweekly'
+  | 'monthly'
+  | 'quarterly'
+  | 'semi_annual'
+  | 'yearly'
+  | 'custom';
 
 /** One-time maintenance vs guest/owner issue thread (former tickets). */
 export type TaskKind = 'calendar' | 'issue';
@@ -33,10 +41,16 @@ export interface EstateEvent {
   recurrence?: {
     frequency: RecurrenceFrequency;
     dayOfWeek?: number; // 0=Sun..6=Sat (for weekly/biweekly)
-    dayOfMonth?: number; // 1-31 (for monthly)
+    dayOfMonth?: number; // 1-31 (for monthly / yearly / quarterly / custom months)
+    /** Custom cadence in months (frequency === 'custom'). */
+    intervalMonths?: number;
+    /** Custom cadence in days (frequency === 'custom'). */
+    intervalDays?: number;
     startDate: string;
     endDate?: string;
   };
+  /** Days before the next occurrence to send a reminder push. */
+  reminderLeadDays?: number;
   color?: string;
   createdAt: string;
   /** Issue tasks (`taskKind === 'issue'`) */

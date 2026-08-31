@@ -1,8 +1,14 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { useAppTheme } from '@/theme/useAppTheme';
+import { ThemedText } from '@/components/themed-text';
+import {
+  GroupedList,
+  GroupedRow,
+  ScreenScroll,
+  ScreenShell,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
 
 interface OnboardingQuestionProps {
   step: number;
@@ -13,6 +19,23 @@ interface OnboardingQuestionProps {
   selectedIndex: number | null;
   onSelect: (index: number) => void;
   onContinue: () => void;
+}
+
+function ProgressHeader({ step, total }: { step: number; total: number }) {
+  const { colors } = useScreenTheme();
+  return (
+    <View style={styles.progressRow}>
+      {Array.from({ length: total }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.progressSegment,
+            { backgroundColor: i < step ? colors.tint : colors.border },
+          ]}
+        />
+      ))}
+    </View>
+  );
 }
 
 export function OnboardingQuestion({
@@ -26,155 +49,104 @@ export function OnboardingQuestion({
   onContinue,
 }: OnboardingQuestionProps) {
   const { t } = useTranslation();
-  const appTheme = useAppTheme();
-  const colors = appTheme.colors;
+  const { colors, cardShadow } = useScreenTheme();
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <View style={styles.progressRow}>
-        {Array.from({ length: total }).map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.progressSegment,
-              { backgroundColor: i < step ? colors.primary : colors.border },
-            ]}
-          />
-        ))}
-      </View>
+    <ScreenShell showBack={false} title={<ProgressHeader step={step} total={total} />}>
+      <ScreenScroll contentContainerStyle={styles.scroll} gap={16}>
+        <ThemedText style={[styles.stepLabel, { color: colors.textSecondary }]}>
+          {t('onboardingUi.stepOf', { step, total })}
+        </ThemedText>
+        <ThemedText type="title" style={styles.question}>
+          {question}
+        </ThemedText>
+        {hint ? (
+          <ThemedText style={[styles.hint, { color: colors.textSecondary }]}>{hint}</ThemedText>
+        ) : null}
 
-      <View style={styles.content}>
-        <Text style={[styles.stepLabel, { color: colors.textMuted }]}>{t('onboardingUi.stepOf', { step, total })}</Text>
-        <Text style={[styles.question, { color: colors.text }]}>{question}</Text>
-        {hint && <Text style={[styles.hint, { color: colors.textMuted }]}>{hint}</Text>}
-
-        <View style={styles.options}>
+        <GroupedList style={cardShadow}>
           {options.map((label, i) => {
             const selected = selectedIndex === i;
             return (
-              <TouchableOpacity
+              <GroupedRow
                 key={i}
-                style={[
-                  styles.option,
-                  { borderColor: colors.border, backgroundColor: colors.card },
-                  appTheme.shadows.sm,
-                  selected && {
-                    borderColor: colors.primary,
-                    borderWidth: 1.5,
-                    backgroundColor: colors.primarySoft,
-                  },
-                ]}
+                title={label}
                 onPress={() => onSelect(i)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    { color: colors.text },
-                    selected && { color: colors.primary, fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
-                  ]}
-                >
-                  {label}
-                </Text>
-                <View
-                  style={[
-                    styles.radio,
-                    { borderColor: colors.border },
-                    selected && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-                  ]}
-                >
-                  {selected && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
-                </View>
-              </TouchableOpacity>
+                isLast={i === options.length - 1}
+                trailing={
+                  <View
+                    style={[
+                      styles.radio,
+                      { borderColor: colors.border },
+                      selected && { borderColor: colors.tint, backgroundColor: colors.tint + '12' },
+                    ]}
+                  >
+                    {selected ? (
+                      <View style={[styles.radioInner, { backgroundColor: colors.tint }]} />
+                    ) : null}
+                  </View>
+                }
+              />
             );
           })}
-        </View>
-      </View>
+        </GroupedList>
 
-      <View style={styles.footer}>
         <TouchableOpacity
           style={[
             styles.btn,
             {
-              backgroundColor: selectedIndex === null ? colors.surface : colors.primary,
+              backgroundColor: selectedIndex === null ? colors.surfaceMuted : colors.tint,
             },
-            selectedIndex === null ? styles.btnDisabled : appTheme.shadows.md,
+            selectedIndex !== null && cardShadow,
           ]}
           onPress={onContinue}
           disabled={selectedIndex === null}
           activeOpacity={0.82}
         >
-          <Text style={[styles.btnText, selectedIndex === null && { color: colors.textMuted }]}>
+          <ThemedText
+            style={[
+              styles.btnText,
+              selectedIndex === null && { color: colors.textSecondary },
+            ]}
+          >
             {t('onboardingUi.continue')}
-          </Text>
+          </ThemedText>
         </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
   progressRow: {
     flexDirection: 'row',
     gap: 6,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 8,
+    flex: 1,
   },
   progressSegment: {
     flex: 1,
     height: 3,
     borderRadius: 999,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 36,
+  scroll: {
+    paddingTop: 24,
+    flexGrow: 1,
   },
   stepLabel: {
     fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Manrope_400Regular',
-    letterSpacing: 0.8,
+    fontWeight: '600',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    marginBottom: 16,
-    opacity: 0.9,
   },
   question: {
     fontSize: 28,
-    fontWeight: '700',
     lineHeight: 36,
     letterSpacing: -0.5,
-    fontFamily: 'Manrope_700Bold',
-    marginBottom: 8,
   },
   hint: {
     fontSize: 15,
     lineHeight: 22,
-    fontFamily: 'Manrope_400Regular',
-    marginBottom: 32,
-  },
-  options: {
-    marginTop: 28,
-    gap: 10,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  optionText: {
-    flex: 1,
-    fontSize: 16,
-    lineHeight: 22,
-    fontFamily: 'Manrope_400Regular',
+    marginBottom: 8,
   },
   radio: {
     width: 22,
@@ -189,29 +161,18 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 999,
   },
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-  },
   btn: {
-    borderRadius: 20,
+    borderRadius: 14,
     minHeight: 44,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  btnDisabled: {
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+    marginTop: 8,
   },
   btnText: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
-    fontFamily: 'Manrope_700Bold',
     letterSpacing: 0.1,
   },
 });

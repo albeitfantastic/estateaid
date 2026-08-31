@@ -26,7 +26,7 @@ export type NotificationCategory =
 const PREFS_KEY = 'maison.notification.categories';
 const ASKED_KEY = 'maison.notification.asked';
 
-const DEFAULT_PREFS: Record<NotificationCategory, boolean> = {
+export const DEFAULT_NOTIFICATION_PREFS: Record<NotificationCategory, boolean> = {
   stay_requests: true,
   stay_decisions: true,
   stay_reminders: true,
@@ -34,23 +34,74 @@ const DEFAULT_PREFS: Record<NotificationCategory, boolean> = {
   invites: true,
 };
 
-export async function getNotificationCategoryPrefs(): Promise<Record<NotificationCategory, boolean>> {
+function mergePrefs(raw: unknown): Record<NotificationCategory, boolean> {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_NOTIFICATION_PREFS };
+  return { ...DEFAULT_NOTIFICATION_PREFS, ...(raw as Record<string, boolean>) };
+}
+
+export async function getNotificationCategoryPrefs(
+  userId?: string
+): Promise<Record<NotificationCategory, boolean>> {
+  if (userId) {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('notification_prefs')
+        .eq('id', userId)
+        .maybeSingle();
+      if (data?.notification_prefs != null) {
+        const prefs = mergePrefs(data.notification_prefs);
+        await AsyncStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+        return prefs;
+      }
+    } catch {
+      /* fall through to local cache */
+    }
+  }
   try {
     const raw = await AsyncStorage.getItem(PREFS_KEY);
-    if (!raw) return { ...DEFAULT_PREFS };
-    return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+    if (!raw) return { ...DEFAULT_NOTIFICATION_PREFS };
+    return mergePrefs(JSON.parse(raw));
   } catch {
-    return { ...DEFAULT_PREFS };
+    return { ...DEFAULT_NOTIFICATION_PREFS };
   }
 }
 
 export async function setNotificationCategoryPref(
   category: NotificationCategory,
-  enabled: boolean
+  enabled: boolean,
+  userId?: string
 ): Promise<void> {
-  const prefs = await getNotificationCategoryPrefs();
+  const prefs = await getNotificationCategoryPrefs(userId);
   prefs[category] = enabled;
   await AsyncStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  const uid = userId ?? (await currentUserId());
+  if (!uid) return;
+  try {
+    await supabase.from('profiles').update({ notification_prefs: prefs }).eq('id', uid);
+  } catch {
+    /* best-effort */
+  }
+}
+
+async function currentUserId(): Promise<string | null> {
+  try {
+    const { useAuthStore } = await import('@/store/auth-store');
+    return useAuthStore.getState().currentUser?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Master device toggle: persist locally, register or clear the Expo push token.
+ * Used by both the settings hub and the dedicated notifications screen.
+ */
+export async function setPushMasterEnabled(userId: string, enabled: boolean): Promise<void> {
+  const { useAuthStore } = await import('@/store/auth-store');
+  useAuthStore.getState().setNotificationsEnabled(enabled);
+  if (enabled) await registerPushToken(userId);
+  else await clearPushToken(userId);
 }
 
 /**
@@ -130,17 +181,43 @@ export async function sendPush(
   }
 }
 
-/** Category-aware push; respects Settings toggles on the sender device (prefs are local). */
+/**
+ * Category-aware push. Checks the **recipient's** server-side category prefs
+ * (and their push token) so opt-out actually applies to the person receiving it.
+ */
 export async function sendCategorizedPush(
   category: NotificationCategory,
-  token: string | null,
+  recipientUserId: string,
   title: string,
   body: string,
   data?: Record<string, unknown>
 ): Promise<void> {
-  const prefs = await getNotificationCategoryPrefs();
-  if (!prefs[category]) return;
-  await sendPush(token, title, body, { ...data, category });
+  if (!recipientUserId) return;
+  try {
+    const { data: row } = await supabase
+      .from('profiles')
+      .select('push_token, notification_prefs')
+      .eq('id', recipientUserId)
+      .maybeSingle();
+    const prefs = mergePrefs(row?.notification_prefs);
+    if (!prefs[category]) return;
+    const token = (row?.push_token as string | null) ?? null;
+    await sendPush(token, title, body, { ...data, category });
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Fan a category-aware push out to several recipients (sponsor + hosts, etc.). */
+export async function sendCategorizedPushToMany(
+  category: NotificationCategory,
+  recipientUserIds: string[],
+  title: string,
+  body: string,
+  data?: Record<string, unknown>
+): Promise<void> {
+  const unique = [...new Set(recipientUserIds.filter(Boolean))];
+  await Promise.all(unique.map((id) => sendCategorizedPush(category, id, title, body, data)));
 }
 
 export function pathForNotificationData(data: Record<string, unknown> | undefined): string | null {
@@ -153,11 +230,13 @@ export function pathForNotificationData(data: Record<string, unknown> | undefine
     case 'stay_request':
       return estateId && requestId
         ? `/(app)/estates/${estateId}/stays/${requestId}`
-        : '/(app)/stays';
+        : '/(app)/calendar?segment=requests';
     case 'stay_decision':
-      return '/(app)/stays?tab=requests';
+      // Recipient is the guest. The Requests segment shows their own requests alongside
+      // any they administer, so hosts who are guests elsewhere land correctly too.
+      return '/(app)/calendar?segment=requests';
     case 'stay_reminder':
-      return estateId ? `/(app)/estates/${estateId}` : '/(app)/stays';
+      return estateId ? `/(app)/estates/${estateId}` : '/(app)/calendar?segment=stays';
     case 'maintenance':
       return estateId && eventId
         ? `/(app)/estates/${estateId}/events/${eventId}`

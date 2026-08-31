@@ -1,15 +1,18 @@
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useMemo } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, EstateColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  FilledButton,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { EstateColors } from '@/constants/theme';
 import { acceptedInvitedEstateIds } from '@/lib/accepted-invited-estates';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
@@ -34,9 +37,7 @@ export default function GuestPlanStay() {
   const router = useRouter();
   const params = useLocalSearchParams<{ estateId?: string | string[] }>();
   const paramEstateId = paramString(params.estateId);
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
@@ -86,7 +87,7 @@ export default function GuestPlanStay() {
   );
   const limitHint =
     maxAdvanceBreak && effMaxAdvance != null
-      ? `Check-in must be within ${effMaxAdvance} days from today.`
+      ? t('blockDates.bookingWindowDays', { count: effMaxAdvance })
       : '';
 
   function pickEstate(id: string) {
@@ -99,10 +100,10 @@ export default function GuestPlanStay() {
     if (!selectedEstateId || !from || !to) return;
     if (maxAdvanceBreak) {
       Alert.alert(
-        'Booking window',
+        t('blockDates.bookingWindowTitle'),
         effMaxAdvance != null
-          ? `Check-in must be within ${effMaxAdvance} days from today.`
-          : 'Those dates are outside the allowed booking window.'
+          ? t('blockDates.bookingWindowDays', { count: effMaxAdvance })
+          : t('blockDates.bookingWindowGeneric')
       );
       return;
     }
@@ -118,10 +119,10 @@ export default function GuestPlanStay() {
       updatedAt: new Date().toISOString(),
     });
     if (error) {
-      Alert.alert('Could not send request', error);
+      Alert.alert(t('requestDates.sendFailed'), error);
       return;
     }
-    Alert.alert('Request Sent', 'Your stay request has been sent to the host.');
+    Alert.alert(t('requestDates.sentTitle'), t('requestDates.sentBody'));
     router.back();
   }
 
@@ -129,20 +130,10 @@ export default function GuestPlanStay() {
     !!selectedEstateId && !!from && !!to && !maxAdvanceBreak;
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.requestDates')}</ThemedText>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
-        keyboardShouldPersistTaps="handled"
-      >
+    <ScreenShell title={t('titles.requestDates')}>
+      <ScreenScroll gap={24} contentContainerStyle={styles.scroll}>
         <View style={styles.section}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Property</ThemedText>
+          <SectionLabel>{t('requestDates.property')}</SectionLabel>
           <View style={styles.pillRow}>
             {(paramLocked
               ? acceptedEstates.filter((e) => e.id === paramEstateId)
@@ -178,7 +169,7 @@ export default function GuestPlanStay() {
 
         {selectedEstateId && (
           <View style={styles.section}>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>Dates</ThemedText>
+            <SectionLabel>{t('requestDates.dates')}</SectionLabel>
             <View style={[styles.pickerWrap, { borderColor: colors.icon + '33', backgroundColor: colors.background }]}>
               <DateRangePicker
                 from={from}
@@ -190,19 +181,19 @@ export default function GuestPlanStay() {
             {from && to && (
               <View style={[styles.summary, { backgroundColor: colors.tint + '11', borderColor: colors.tint + '33' }]}>
                 <ThemedText type="defaultSemiBold">{formatDateRange(from, to)}</ThemedText>
-                <ThemedText style={{ color: colors.icon }}>{nightCount(from, to)} nights</ThemedText>
+                <ThemedText style={{ color: colors.icon }}>{t('common.nights', { count: nightCount(from, to) })}</ThemedText>
               </View>
             )}
             {conflictWarning && (
-              <View style={[styles.warnBanner, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
-                <ThemedText style={[styles.warnText, { color: '#f59e0b' }]}>
-                  These dates overlap another stay or a closed period. You can still send a request for the host to review.
+              <View style={[styles.warnBanner, { backgroundColor: colors.warning + '18', borderColor: colors.warning + '55' }]}>
+                <ThemedText style={[styles.warnText, { color: colors.warning }]}>
+                  {t('requestDates.conflictStillSend')}
                 </ThemedText>
               </View>
             )}
             {maxAdvanceBreak && limitHint.length > 0 && (
-              <View style={[styles.warnBanner, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
-                <ThemedText style={[styles.warnText, { color: '#f59e0b' }]}>{limitHint}</ThemedText>
+              <View style={[styles.warnBanner, { backgroundColor: colors.warning + '18', borderColor: colors.warning + '55' }]}>
+                <ThemedText style={[styles.warnText, { color: colors.warning }]}>{limitHint}</ThemedText>
               </View>
             )}
           </View>
@@ -210,10 +201,10 @@ export default function GuestPlanStay() {
 
         {selectedEstateId && (
           <View style={styles.section}>
-            <ThemedText style={[styles.label, { color: colors.icon }]}>Message to Host</ThemedText>
+            <SectionLabel>{t('requestDates.noteLabel')}</SectionLabel>
             <TextInput
               style={[styles.noteInput, { color: colors.text, borderColor: colors.icon + '44' }]}
-              placeholder="Optional — reason for your stay, number of guests, etc."
+              placeholder={t('requestDates.notePlaceholder')}
               placeholderTextColor={colors.icon}
               value={note}
               onChangeText={setNote}
@@ -224,28 +215,20 @@ export default function GuestPlanStay() {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.submitBtn, { backgroundColor: colors.tint }, !canSubmit && styles.disabled]}
+        <FilledButton
+          label="Send Request"
+          icon="calendar.badge.plus"
           onPress={() => void submit()}
           disabled={!canSubmit}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="calendar.badge.plus" size={18} color="#fff" />
-          <ThemedText style={styles.submitText}>Send Request</ThemedText>
-        </TouchableOpacity>
-      </ScrollView>
-    </ThemedView>
+        />
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
-  scroll: { paddingHorizontal: 20, gap: 24, paddingTop: 4 },
+  scroll: { paddingTop: 4 },
   section: { gap: 10 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5 },
   dot: { width: 8, height: 8, borderRadius: 4 },
@@ -255,7 +238,4 @@ const styles = StyleSheet.create({
   warnBanner: { padding: 12, borderRadius: 12, borderWidth: 1 },
   warnText: { fontSize: 13, lineHeight: 18 },
   noteInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, height: 80, paddingTop: 12 },
-  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 18, borderRadius: 14, marginTop: 8 },
-  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  disabled: { opacity: 0.45 },
 });

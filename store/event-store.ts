@@ -1,8 +1,9 @@
 import { dedupeById } from '@/lib/dedup-by-id';
 import { isIssueTask, messagesToDb, normalizeEventMessages } from '@/lib/issue-task';
-import { getPushToken, sendCategorizedPush, sendPush } from '@/lib/notifications';
+import { getPushToken, sendPush } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
-import { useEstateStore } from '@/store/estate-store';
+import { reportWriteFailure } from '@/lib/write-failure';
+import i18n from 'i18next';
 import type {
     EstateEvent,
     EstateEventMessage,
@@ -34,9 +35,11 @@ function fromDb(row: Record<string, unknown>): EstateEvent {
     description: (row.description as string | undefined) || undefined,
     type,
     taskKind: effectiveTaskKind,
-    date: row.date as string | undefined,
-    recurrence: row.recurrence as EstateEvent['recurrence'] | undefined,
-    color: row.color as string | undefined,
+        date: row.date as string | undefined,
+        recurrence: row.recurrence as EstateEvent['recurrence'] | undefined,
+        reminderLeadDays:
+          typeof row.reminder_lead_days === 'number' ? row.reminder_lead_days : undefined,
+        color: row.color as string | undefined,
     createdAt: (row.created_at ?? '') as string,
     guestId: effectiveTaskKind === 'issue' ? (row.guest_id as string) : undefined,
     status: effectiveTaskKind === 'issue' ? statusFromDb(row.status) : undefined,
@@ -64,9 +67,10 @@ function toDb(e: EstateEvent) {
     description: e.description ?? null,
     type: e.type,
     task_kind: taskKind,
-    date: e.date ?? null,
-    recurrence: e.recurrence ?? null,
-    color: e.color ?? null,
+        date: e.date ?? null,
+        recurrence: e.recurrence ?? null,
+        reminder_lead_days: e.reminderLeadDays ?? null,
+        color: e.color ?? null,
     created_at: e.createdAt,
     guest_id: e.guestId ?? null,
     status: isIssueTask(e) ? e.status ?? 'open' : null,
@@ -105,10 +109,7 @@ export const useEventStore = create<EventState>()(
       setEvents: (events) => set({ events }),
       fetchFromSupabase: async () => {
         const { data, error } = await supabase.from('estate_events').select('*');
-        if (error) {
-          console.warn('event-store fetchFromSupabase:', error.message);
-          return;
-        }
+        if (error) throw new Error(error.message);
         if (!data) return;
         set({ events: dedupeById(data).map(fromDb) });
       },
@@ -129,27 +130,25 @@ export const useEventStore = create<EventState>()(
           return { error: error.message };
         }
         if (isIssueTask(normalized)) {
-          const estate = useEstateStore.getState().getEstateById(normalized.estateId);
-          if (estate?.ownerId) {
-            void getPushToken(estate.ownerId).then((token) =>
-              sendCategorizedPush(
-                'maintenance',
-                token,
-                'New maintenance issue',
-                normalized.title,
-                {
-                  type: 'maintenance',
-                  estateId: normalized.estateId,
-                  eventId: normalized.id,
-                }
-              )
-            );
-          }
+          const { hostUserIdsForEstate } = await import('@/lib/estate-host-ids');
+          const { sendCategorizedPushToMany } = await import('@/lib/notifications');
+          void sendCategorizedPushToMany(
+            'maintenance',
+            hostUserIdsForEstate(normalized.estateId),
+            i18n.t('pushCopy.issueTitle'),
+            normalized.title,
+            {
+              type: 'maintenance',
+              estateId: normalized.estateId,
+              eventId: normalized.id,
+            }
+          );
         }
         return { error: null };
       },
       updateEvent: async (id, patch) => {
         const updatedAt = new Date().toISOString();
+        const previous = get().events;
         set((s) => ({
           events: s.events.map((e) =>
             e.id === id ? { ...e, ...patch, updatedAt: patch.updatedAt ?? updatedAt } : e
@@ -163,6 +162,7 @@ export const useEventStore = create<EventState>()(
         if (patch.taskKind !== undefined) dbPatch.task_kind = patch.taskKind;
         if (patch.date !== undefined) dbPatch.date = patch.date;
         if (patch.recurrence !== undefined) dbPatch.recurrence = patch.recurrence;
+        if (patch.reminderLeadDays !== undefined) dbPatch.reminder_lead_days = patch.reminderLeadDays;
         if (patch.color !== undefined) dbPatch.color = patch.color;
         if (patch.guestId !== undefined) dbPatch.guest_id = patch.guestId;
         if (patch.status !== undefined) dbPatch.status = patch.status;
@@ -172,17 +172,27 @@ export const useEventStore = create<EventState>()(
           dbPatch.messages = messagesToDb(patch.messages);
         dbPatch.updated_at = ev?.updatedAt ?? updatedAt;
         if (Object.keys(dbPatch).length > 0) {
-          await supabase.from('estate_events').update(dbPatch).eq('id', id);
+          const { error } = await supabase.from('estate_events').update(dbPatch).eq('id', id);
+          if (error) {
+            set({ events: previous });
+            reportWriteFailure(error.message);
+          }
         }
       },
       deleteEvent: async (id) => {
+        const previous = get().events;
         set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
-        await supabase.from('estate_events').delete().eq('id', id);
+        const { error } = await supabase.from('estate_events').delete().eq('id', id);
+        if (error) {
+          set({ events: previous });
+          reportWriteFailure(error.message);
+        }
       },
       getEventsByEstate: (estateId) => get().events.filter((e) => e.estateId === estateId),
 
       addIssueMessage: async (eventId, message) => {
         const updatedAt = new Date().toISOString();
+        const previous = get().events;
         set((s) => ({
           events: s.events.map((e) =>
             e.id === eventId && isIssueTask(e)
@@ -192,7 +202,7 @@ export const useEventStore = create<EventState>()(
         }));
         const ev = get().events.find((x) => x.id === eventId);
         if (ev && isIssueTask(ev)) {
-          await supabase
+          const { error } = await supabase
             .from('estate_events')
             .update({
               messages: messagesToDb(ev.messages ?? []),
@@ -200,10 +210,24 @@ export const useEventStore = create<EventState>()(
               date: ev.date ?? null,
             })
             .eq('id', eventId);
-          const estate = useEstateStore.getState().estates.find((e) => e.id === ev.estateId);
-          const recipientId = message.authorId === estate?.ownerId ? ev.guestId : estate?.ownerId;
-          if (recipientId) {
-            void getPushToken(recipientId).then((token) =>
+          if (error) {
+            set({ events: previous });
+            reportWriteFailure(error.message);
+            return;
+          }
+          const fromGuest = Boolean(ev.guestId && message.authorId === ev.guestId);
+          if (fromGuest) {
+            const { hostUserIdsForEstate } = await import('@/lib/estate-host-ids');
+            const { sendCategorizedPushToMany } = await import('@/lib/notifications');
+            void sendCategorizedPushToMany(
+              'maintenance',
+              hostUserIdsForEstate(ev.estateId).filter((id) => id !== message.authorId),
+              `New message: ${ev.title}`,
+              message.body.slice(0, 120),
+              { type: 'maintenance', estateId: ev.estateId, eventId }
+            );
+          } else if (ev.guestId) {
+            void getPushToken(ev.guestId).then((token) =>
               sendPush(token, `New message: ${ev.title}`, message.body.slice(0, 120), {
                 estateId: ev.estateId,
                 eventId,
@@ -214,6 +238,7 @@ export const useEventStore = create<EventState>()(
       },
       updateIssueMessage: async (eventId, messageId, patch) => {
         const updatedAt = new Date().toISOString();
+        const previous = get().events;
         set((s) => ({
           events: s.events.map((e) => {
             if (e.id !== eventId || !isIssueTask(e)) return e;
@@ -237,7 +262,7 @@ export const useEventStore = create<EventState>()(
         }));
         const ev = get().events.find((x) => x.id === eventId);
         if (ev && isIssueTask(ev)) {
-          await supabase
+          const { error } = await supabase
             .from('estate_events')
             .update({
               messages: messagesToDb(ev.messages ?? []),
@@ -245,10 +270,15 @@ export const useEventStore = create<EventState>()(
               date: ev.date ?? null,
             })
             .eq('id', eventId);
+          if (error) {
+            set({ events: previous });
+            reportWriteFailure(error.message);
+          }
         }
       },
       updateIssueFields: async (eventId, patch) => {
         const updatedAt = new Date().toISOString();
+        const previous = get().events;
         set((s) => ({
           events: s.events.map((e) => {
             if (e.id !== eventId || !isIssueTask(e)) return e;
@@ -276,19 +306,28 @@ export const useEventStore = create<EventState>()(
           if (e) dbPatch.title = e.title;
         }
         if (patch.priority !== undefined) dbPatch.priority = patch.priority;
-        await supabase.from('estate_events').update(dbPatch).eq('id', eventId);
+        const { error } = await supabase.from('estate_events').update(dbPatch).eq('id', eventId);
+        if (error) {
+          set({ events: previous });
+          reportWriteFailure(error.message);
+        }
       },
       updateIssueStatus: async (eventId, status) => {
         const updatedAt = new Date().toISOString();
+        const previous = get().events;
         set((s) => ({
           events: s.events.map((e) =>
             e.id === eventId && isIssueTask(e) ? { ...e, status, updatedAt } : e
           ),
         }));
-        await supabase
+        const { error } = await supabase
           .from('estate_events')
           .update({ status, updated_at: updatedAt })
           .eq('id', eventId);
+        if (error) {
+          set({ events: previous });
+          reportWriteFailure(error.message);
+        }
       },
     }),
     {

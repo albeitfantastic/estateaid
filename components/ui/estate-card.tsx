@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from './icon-symbol';
+import { Radius } from '@/constants/theme';
 import { useAppTheme } from '@/theme/useAppTheme';
 import { Estate } from '@/types';
 
@@ -73,7 +74,7 @@ export function EstateCard({ estate, onPress, badge }: EstateCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 28,
+    borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     marginBottom: 16,
     overflow: 'hidden',

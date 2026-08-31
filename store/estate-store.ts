@@ -3,8 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Estate } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { throwIfQueryError } from '@/lib/supabase-write-error';
 import { dedupeById } from '@/lib/dedup-by-id';
 import { useActivityLogStore } from '@/store/activity-log-store';
+import type { OnboardingUseCase } from '@/lib/onboarding-starters';
 
 function fromDb(row: Record<string, unknown>): Estate {
   const ownerId = row.owner_id as string;
@@ -45,7 +47,7 @@ interface EstateState {
   estates: Estate[];
   setEstates: (estates: Estate[]) => void;
   fetchFromSupabase: () => Promise<void>;
-  addEstate: (estate: Estate) => Promise<{ error: string | null; code?: string | null }>;
+  addEstate: (estate: Estate, opts?: { useCase?: OnboardingUseCase | null }) => Promise<{ error: string | null; code?: string | null }>;
   updateEstate: (id: string, patch: Partial<Estate>) => Promise<void>;
   deleteEstate: (id: string) => Promise<{ error: string | null }>;
   transferSponsor: (estateId: string) => Promise<{ error: string | null; code?: string | null }>;
@@ -59,7 +61,8 @@ export const useEstateStore = create<EstateState>()(
       estates: [],
       setEstates: (estates) => set({ estates }),
       fetchFromSupabase: async () => {
-        const { data } = await supabase.from('estates').select('*');
+        const { data, error } = await supabase.from('estates').select('*');
+        throwIfQueryError(error);
         if (data) {
           const estates = dedupeById(data).map(fromDb);
           set({ estates });
@@ -68,7 +71,7 @@ export const useEstateStore = create<EstateState>()(
           );
         }
       },
-      addEstate: async (estate) => {
+      addEstate: async (estate, opts) => {
         const withSponsor: Estate = {
           ...estate,
           sponsorUserId: estate.sponsorUserId || estate.ownerId,
@@ -95,8 +98,8 @@ export const useEstateStore = create<EstateState>()(
           };
         }
         useActivityLogStore.getState().logActivity(withSponsor.id, withSponsor.ownerId, 'estate_created');
-        void import('@/lib/use-case-profile').then(({ seedStarterFaqsIfEmpty }) =>
-          seedStarterFaqsIfEmpty(withSponsor.id)
+        void import('@/lib/use-case-profile').then(({ seedFirstProperty }) =>
+          seedFirstProperty(withSponsor.id, opts?.useCase)
         );
         void import('@/lib/notifications').then(({ maybeRequestPushAfterMeaningfulAction }) =>
           maybeRequestPushAfterMeaningfulAction(withSponsor.ownerId)

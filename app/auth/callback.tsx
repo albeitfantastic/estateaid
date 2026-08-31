@@ -1,8 +1,10 @@
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { ThemedView } from '@/components/themed-view';
+import { useScreenTheme } from '@/components/ui/screen-layout';
 import { createSessionFromUrl } from '@/lib/auth-linking';
 import { loadAllStores } from '@/lib/load-all-stores';
 import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
@@ -14,6 +16,7 @@ import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-s
 export default function AuthCallbackScreen() {
   const router = useRouter();
   const url = Linking.useURL();
+  const { colors } = useScreenTheme();
 
   useEffect(() => {
     void (async () => {
@@ -38,8 +41,12 @@ export default function AuthCallbackScreen() {
   }, [router, url]);
 
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8' }}>
-      <ActivityIndicator size="large" color="#1C3D5A" />
-    </View>
+    <ThemedView style={styles.container}>
+      <ActivityIndicator size="large" color={colors.tint} />
+    </ThemedView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+});

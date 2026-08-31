@@ -15,7 +15,7 @@ export function inviteDeepLink(code: string): string {
 
 /** Default English suffix for open (non-email-bound) invites; override via i18n in UI when building messages. */
 export const DEFAULT_OPEN_INVITE_SUFFIX =
-  'Each code is single-use. Open the link on your phone, or sign in to Maison and redeem the code from Stays → Redeem.';
+  'Each code is single-use. Open the link on your phone, or sign in to Maison and redeem the code from Properties → Join with a code.';
 
 
 function inviteEmailLine(inviteeEmail?: string): string {

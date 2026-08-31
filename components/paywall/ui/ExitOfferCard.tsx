@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { GroupedList, useScreenTheme } from '@/components/ui/screen-layout';
 import { Layout } from '@/constants/theme';
 
 import { MC } from '../paywall-tokens';
@@ -12,30 +13,33 @@ interface ExitOfferCardProps {
 }
 
 export function ExitOfferCard({ badge, price, period }: ExitOfferCardProps) {
+  const { colors } = useScreenTheme();
+
   return (
-    <View style={styles.card}>
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{badge}</Text>
+    <GroupedList style={[styles.card, { borderColor: colors.tint }]}>
+      <View style={styles.inner}>
+        <View style={[styles.badge, { backgroundColor: colors.tint }]}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+        <Text style={[styles.price, { color: colors.tint }]}>{price}</Text>
+        {period ? <Text style={[styles.period, { color: colors.tint }]}>{period}</Text> : null}
       </View>
-      <Text style={styles.price}>{price}</Text>
-      {period ? <Text style={styles.period}>{period}</Text> : null}
-    </View>
+    </GroupedList>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: MC.cardRadius,
     borderWidth: 1.5,
-    borderColor: MC.brand,
-    backgroundColor: MC.tint,
+    backgroundColor: 'transparent',
+  },
+  inner: {
     paddingVertical: 24,
-    paddingHorizontal: Layout.screenPaddingX,
+    paddingHorizontal: Layout.screenPaddingX - 14,
     alignItems: 'center',
     gap: 6,
   },
   badge: {
-    backgroundColor: MC.brand,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 5,
@@ -51,13 +55,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 32,
     fontWeight: '700',
-    color: MC.brand,
     fontFamily: 'Manrope_700Bold',
     letterSpacing: -0.5,
   },
   period: {
     fontSize: 13,
-    color: MC.brand,
     fontFamily: 'Manrope_400Regular',
     opacity: 0.7,
   },

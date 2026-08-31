@@ -1,32 +1,35 @@
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, EstateColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { EstateColors } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
+import { useManagedEstates } from '@/lib/entitlements/capabilities';
 
 export default function EditStay() {
   const { t } = useTranslation();
   const { stayId } = useLocalSearchParams<{ stayId: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const { stays, updateStayDates, deleteStay } = useStayStore();
   const profileById = useProfileStore((s) => s.byId);
+  const { estateIds: managedEstateIds } = useManagedEstates();
 
   const stay = stays.find((s) => s.id === stayId);
   const estate = allEstates.find((e) => e.id === stay?.estateId);
@@ -37,10 +40,10 @@ export default function EditStay() {
       ? resolveUserDisplayName(stay.guestId, profileById)
       : '';
 
-  const estateIndex = useMemo(() => {
-    const ownerEstates = allEstates.filter((e) => e.ownerId === currentUser?.id);
-    return ownerEstates.findIndex((e) => e.id === stay?.estateId);
-  }, [allEstates, currentUser?.id, stay?.estateId]);
+  const estateIndex = useMemo(
+    () => managedEstateIds.indexOf(stay?.estateId ?? ''),
+    [managedEstateIds, stay?.estateId]
+  );
   const dotColor = EstateColors[estateIndex >= 0 ? estateIndex % EstateColors.length : 0];
 
   const blockedRanges = useMemo(() => {
@@ -79,38 +82,27 @@ export default function EditStay() {
 
   if (!stay) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-        </View>
+      <ScreenShell title={t('titles.editStay')}>
         <ThemedText style={{ padding: 20, color: colors.icon }}>Stay not found.</ThemedText>
-      </ThemedView>
+      </ScreenShell>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.editStay')}</ThemedText>
+    <ScreenShell
+      title={t('titles.editStay')}
+      headerRight={
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: colors.tint }, !canSave && styles.disabled]}
           onPress={save}
           disabled={!canSave}
           activeOpacity={0.8}
         >
-          <ThemedText style={styles.saveBtnText}>Save</ThemedText>
+          <ThemedText style={[styles.saveBtnText, { color: colors.textOnBrand }]}>Save</ThemedText>
         </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
-        keyboardShouldPersistTaps="handled"
-      >
+      }
+    >
+      <ScreenScroll gap={24} contentContainerStyle={styles.scroll}>
         <View style={[styles.summaryCard, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}>
           <View style={[styles.estateDot, { backgroundColor: dotColor }]} />
           <View style={styles.summaryInfo}>
@@ -122,14 +114,14 @@ export default function EditStay() {
               <ThemedText style={[styles.typeBadgeText, { color: colors.tint }]}>Direct</ThemedText>
             </View>
           ) : (
-            <View style={[styles.typeBadge, { backgroundColor: '#22c55e18' }]}>
-              <ThemedText style={[styles.typeBadgeText, { color: '#22c55e' }]}>Approved</ThemedText>
+            <View style={[styles.typeBadge, { backgroundColor: colors.success + '18' }]}>
+              <ThemedText style={[styles.typeBadgeText, { color: colors.success }]}>Approved</ThemedText>
             </View>
           )}
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Dates</ThemedText>
+          <SectionLabel>Dates</SectionLabel>
           <View style={[styles.pickerWrap, { borderColor: colors.icon + '33', backgroundColor: colors.background }]}>
             <DateRangePicker
               from={from}
@@ -147,27 +139,23 @@ export default function EditStay() {
         </View>
 
         <TouchableOpacity
-          style={[styles.deleteBtn, { backgroundColor: '#ef444412', borderColor: '#ef444430' }]}
+          style={[styles.deleteBtn, { backgroundColor: colors.error + '12', borderColor: colors.error + '30' }]}
           onPress={confirmDelete}
           activeOpacity={0.75}
         >
-          <IconSymbol name="trash.fill" size={16} color="#ef4444" />
-          <ThemedText style={styles.deleteBtnText}>Cancel Stay</ThemedText>
+          <IconSymbol name="trash.fill" size={16} color={colors.error} />
+          <ThemedText style={[styles.deleteBtnText, { color: colors.error }]}>Cancel Stay</ThemedText>
         </TouchableOpacity>
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
   saveBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  saveBtnText: { fontWeight: '700', fontSize: 14 },
   disabled: { opacity: 0.4 },
-  scroll: { paddingHorizontal: 20, gap: 24, paddingTop: 4 },
+  scroll: { paddingTop: 4 },
   summaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -183,7 +171,6 @@ const styles = StyleSheet.create({
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   typeBadgeText: { fontSize: 11, fontWeight: '700' },
   section: { gap: 10 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   pickerWrap: { padding: 16, borderRadius: 16, borderWidth: 1 },
   dateSummary: { padding: 14, borderRadius: 12, borderWidth: 1, gap: 4 },
   deleteBtn: {
@@ -196,5 +183,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 8,
   },
-  deleteBtnText: { fontSize: 14, fontWeight: '700', color: '#ef4444' },
+  deleteBtnText: { fontSize: 14, fontWeight: '700' },
 });

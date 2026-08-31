@@ -1,14 +1,19 @@
-import { Fragment, useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Layout } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  GroupedList,
+  GroupedRow,
+  ScreenFootnote,
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { Layout } from '@/constants/theme';
 import {
   type AppLanguage,
   clearAppLanguagePreference,
@@ -27,113 +32,77 @@ const LANG_OPTIONS: { code: AppLanguage; label: string }[] = [
 ];
 
 export function LanguageSettingsContent() {
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const navigation = useNavigation();
+  const { colors } = useScreenTheme();
   const { t, i18n } = useTranslation();
   const [preference, setPreference] = useState<AppLanguage | null | undefined>(undefined);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: t('language.screenTitle') });
-  }, [navigation, t, i18n.language]);
 
   useEffect(() => {
     void getAppLanguagePreference().then(setPreference);
   }, [i18n.language]);
 
-  function row(
-    selected: boolean,
-    onPress: () => void,
-    main: string,
-    sub?: string
-  ) {
-    return (
-      <TouchableOpacity
-        style={[
-          styles.option,
-          {
-            borderColor: selected ? colors.tint : colors.border,
-            backgroundColor: selected ? colors.tint + '10' : colors.surface,
-          },
-        ]}
-        onPress={onPress}
-        activeOpacity={0.75}
-      >
-        <View style={{ flex: 1 }}>
-          <ThemedText type="defaultSemiBold" style={styles.optionMain}>
-            {main}
-          </ThemedText>
-          {sub ? (
-            <ThemedText style={[styles.optionSub, { color: colors.icon }]}>{sub}</ThemedText>
-          ) : null}
-        </View>
-        {selected ? <IconSymbol name="checkmark.circle.fill" size={22} color={colors.tint} /> : null}
-      </TouchableOpacity>
-    );
-  }
-
   if (preference === undefined) {
     return (
-      <ThemedView style={[styles.centered, styles.container]}>
-        <ActivityIndicator color={colors.tint} />
-      </ThemedView>
+      <ScreenShell title={t('language.screenTitle')}>
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.tint} />
+        </View>
+      </ScreenShell>
     );
   }
 
+  const rows: { key: string; selected: boolean; onPress: () => void; title: string; subtitle?: string }[] = [
+    {
+      key: 'device',
+      selected: preference === null,
+      onPress: () => {
+        void (async () => {
+          await clearAppLanguagePreference();
+          setPreference(null);
+        })();
+      },
+      title: t('language.followDevice'),
+      subtitle: t('language.followDeviceSub'),
+    },
+    ...LANG_OPTIONS.map(({ code, label }) => ({
+      key: code,
+      selected: preference === code,
+      onPress: () => {
+        void (async () => {
+          await setAppLanguage(code);
+          setPreference(code);
+        })();
+      },
+      title: label,
+    })),
+  ];
+
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={[styles.inner, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <ThemedText style={[styles.description, { color: colors.icon }]}>{t('language.description')}</ThemedText>
+    <ScreenShell title={t('language.screenTitle')}>
+      <ScreenScroll contentContainerStyle={styles.scroll}>
+        <ScreenFootnote>{t('language.description')}</ScreenFootnote>
 
-        <ThemedText type="defaultSemiBold" style={[styles.section, { color: colors.text }]}>
-          {t('language.sectionApp')}
-        </ThemedText>
+        <SectionLabel>{t('language.sectionApp')}</SectionLabel>
 
-        {row(preference === null, () => {
-          void (async () => {
-            await clearAppLanguagePreference();
-            setPreference(null);
-          })();
-        }, t('language.followDevice'), t('language.followDeviceSub'))}
-
-        <View style={{ height: 8 }} />
-
-        {LANG_OPTIONS.map(({ code, label }) => (
-          <Fragment key={code}>
-            {row(preference === code, () => {
-              void (async () => {
-                await setAppLanguage(code);
-                setPreference(code);
-              })();
-            }, label)}
-          </Fragment>
-        ))}
-      </ScrollView>
-    </ThemedView>
+        <GroupedList>
+          {rows.map((row, i) => (
+            <GroupedRow
+              key={row.key}
+              title={row.title}
+              subtitle={row.subtitle}
+              trailing={
+                row.selected ? <IconSymbol name="checkmark.circle.fill" size={22} color={colors.tint} /> : null
+              }
+              onPress={row.onPress}
+              isLast={i === rows.length - 1}
+            />
+          ))}
+        </GroupedList>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  centered: { alignItems: 'center', justifyContent: 'center' },
-  inner: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 16 },
-  description: { fontSize: 14, lineHeight: 20, marginBottom: 20 },
-  section: { fontSize: 13, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.6 },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 8,
-    gap: 12,
-  },
-  optionMain: { fontSize: 16 },
-  optionSub: { fontSize: 12, marginTop: 4 },
+  scroll: { paddingTop: Layout.sectionGap - 8 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

@@ -1,4 +1,4 @@
-import type { Benefit, Plan, Reassurance, Testimonial, TimelineItem } from './paywall-types';
+import type { Benefit, Reassurance, TimelineItem } from './paywall-types';
 import { STORE_TRIAL_DAYS } from '@/lib/subscription-config';
 
 // ─── Screen 1 — Trust ────────────────────────────────────────────────────────
@@ -7,12 +7,6 @@ export const TRUST_TITLE = 'Designed for people who value a well-run home';
 
 export const TRUST_BODY =
   'Maison helps hosts keep everything organised, reduce guest friction, and stay in control from anywhere.';
-
-export const TESTIMONIALS: Testimonial[] = [
-  { quote: 'It replaced messages, notes, and spreadsheets for us.' },
-  { quote: 'Guests always know what to do.' },
-  { quote: 'I finally stopped being the bottleneck.' },
-];
 
 // ─── Screen 2 — Main Paywall ─────────────────────────────────────────────────
 
@@ -27,23 +21,6 @@ export const BENEFITS: Benefit[] = [
   { label: 'Less coordination, fewer interruptions' },
   { label: 'Full visibility, even when you\'re away' },
 ];
-
-export const PLANS: Plan[] = [
-  {
-    id: 'yearly',
-    title: 'Yearly',
-    priceLabel: '€99/year',
-    helper: '€8.25/month',
-    badge: 'Best value',
-  },
-  {
-    id: 'monthly',
-    title: 'Monthly',
-    priceLabel: '€12.99/month',
-  },
-];
-
-export const DEFAULT_PLAN_ID: Plan['id'] = 'yearly';
 
 export const TRUST_LINE = 'No payment due today — start with a free trial';
 

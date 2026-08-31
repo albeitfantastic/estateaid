@@ -127,7 +127,7 @@ export function DateRangePicker({ from, to, blockedRanges = [], onChange }: Date
                   styles.dayText,
                   (isPast || blocked) && styles.dimmed,
                   blocked && styles.blocked,
-                  isEndpoint && styles.endpointText,
+                  isEndpoint && { color: colors.textOnBrand, fontWeight: '700' },
                 ]}
               >
                 {parseInt(dateStr.slice(8))}
@@ -163,6 +163,5 @@ const styles = StyleSheet.create({
   dayText: { fontSize: 14 },
   dimmed: { opacity: 0.25 },
   blocked: { textDecorationLine: 'line-through', opacity: 0.3 },
-  endpointText: { color: '#fff', fontWeight: '700' },
   hint: { textAlign: 'center', fontSize: 13, marginTop: 8 },
 });

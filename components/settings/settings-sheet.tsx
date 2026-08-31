@@ -1,11 +1,12 @@
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Elevation, Layout, Radius, type ThemeColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import type { AccessTier } from '@/lib/access-tier';
+import { useScreenTheme } from '@/components/ui/screen-layout';
+import { Layout, Radius, type ThemeColors } from '@/constants/theme';
+import { LEGAL_ROUTES } from '@/lib/legal-routes';
 import { supportMailto } from '@/lib/support';
 
 export type SettingsDestination = 'profile' | 'language' | 'subscription' | 'account' | 'notifications';
@@ -16,7 +17,10 @@ export interface SettingsSheetProps {
   colors: ThemeColors;
   insets: { top: number; bottom: number };
   currentUser: { name: string; email: string } | null;
-  accessTier: AccessTier;
+  /** Slots held on the account (spec §1: there are no user tiers). */
+  slotCount: number;
+  /** Slots already consumed by properties this user sponsors. */
+  propertiesSponsored: number;
   isDark: boolean;
   notificationsOn: boolean;
   onToggleDark: (v: boolean) => void;
@@ -31,7 +35,8 @@ export function SettingsSheet({
   colors,
   insets,
   currentUser,
-  accessTier,
+  slotCount,
+  propertiesSponsored,
   isDark,
   notificationsOn,
   onToggleDark,
@@ -40,7 +45,8 @@ export function SettingsSheet({
   onSignOut,
 }: SettingsSheetProps) {
   const { t } = useTranslation();
-  const scheme = useColorScheme() ?? 'light';
+  const router = useRouter();
+  const { cardShadow } = useScreenTheme();
   const initials =
     currentUser?.name
       .split(' ')
@@ -48,12 +54,10 @@ export function SettingsSheet({
       .join('')
       .slice(0, 2)
       .toUpperCase() ?? '';
-  const tierLabel =
-    accessTier === 'standard'
-      ? t('common.accessStandard')
-      : accessTier === 'trial'
-        ? t('common.accessTrial')
-        : t('common.accessPro');
+  const slotLabel =
+    slotCount > 0
+      ? t('common.slotsBadge', { used: propertiesSponsored, total: slotCount })
+      : t('common.slotsBadgeNone');
 
   function go(dest: SettingsDestination) {
     onClose();
@@ -109,19 +113,19 @@ export function SettingsSheet({
             style={[
               styles.profileCard,
               { backgroundColor: colors.surface, borderColor: colors.border },
-              Elevation.card[scheme],
+              cardShadow,
             ]}
           >
             <View style={[styles.avatar, { backgroundColor: colors.tint }]}>
-              <ThemedText style={styles.avatarText}>{initials}</ThemedText>
+              <ThemedText style={[styles.avatarText, { color: colors.textOnBrand }]}>{initials}</ThemedText>
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText type="defaultSemiBold" style={{ fontSize: 16 }}>
                 {currentUser?.name}
               </ThemedText>
             </View>
-            <View style={[styles.tierBadge, { backgroundColor: colors.tint + '18' }]}>
-              <ThemedText style={[styles.tierText, { color: colors.tint }]}>{tierLabel}</ThemedText>
+            <View style={[styles.slotBadge, { backgroundColor: colors.tint + '18' }]}>
+              <ThemedText style={[styles.slotText, { color: colors.tint }]}>{slotLabel}</ThemedText>
             </View>
           </View>
 
@@ -137,7 +141,7 @@ export function SettingsSheet({
                 value={isDark}
                 onValueChange={onToggleDark}
                 trackColor={{ false: colors.border, true: colors.tint }}
-                thumbColor="#fff"
+                thumbColor={colors.textOnBrand}
               />
             )}
 
@@ -149,7 +153,7 @@ export function SettingsSheet({
                 value={notificationsOn}
                 onValueChange={onToggleNotifications}
                 trackColor={{ false: colors.border, true: colors.tint }}
-                thumbColor="#fff"
+                thumbColor={colors.textOnBrand}
               />
             )}
 
@@ -158,9 +162,17 @@ export function SettingsSheet({
               onClose();
               void Linking.openURL(supportMailto(t('common.helpSupport'), t('settingsHub.helpBody')));
             })}
+            {menuRow('doc.text.fill', t('common.termsOfService'), () => {
+              onClose();
+              router.push(LEGAL_ROUTES.terms as never);
+            })}
             {menuRow('doc.text.fill', t('common.privacyPolicy'), () => {
               onClose();
-              Alert.alert(t('settingsHub.privacyTitle'), t('settingsHub.privacyBody'));
+              router.push(LEGAL_ROUTES.privacy as never);
+            })}
+            {menuRow('doc.text.fill', t('common.impressum'), () => {
+              onClose();
+              router.push(LEGAL_ROUTES.impressum as never);
             })}
           </ScrollView>
 
@@ -211,10 +223,10 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  avatarText: { fontSize: 18, fontWeight: '700' },
   email: { fontSize: 12, marginTop: 2 },
-  tierBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  tierText: { fontSize: 11, fontWeight: '700' },
+  slotBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  slotText: { fontSize: 11, fontWeight: '700' },
   menuList: { flex: 1 },
   row: {
     flexDirection: 'row',

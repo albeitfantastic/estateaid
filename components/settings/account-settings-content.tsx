@@ -1,21 +1,17 @@
-import { Alert, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, Layout } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ScreenFootnote, ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
+import { Layout, Radius } from '@/constants/theme';
 import { supportMailto } from '@/lib/support';
 import { useAuthStore } from '@/store/auth-store';
 
 export function AccountSettingsContent() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const signOut = useAuthStore((s) => s.signOut);
   const currentUser = useAuthStore((s) => s.currentUser);
 
@@ -42,9 +38,9 @@ export function AccountSettingsContent() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.inner, { paddingBottom: insets.bottom + 24 }]}>
-        <ThemedText style={[styles.copy, { color: colors.icon }]}>{t('accountSettings.copy')}</ThemedText>
+    <ScreenShell title="Account">
+      <ScreenScroll contentContainerStyle={styles.scroll}>
+        <ScreenFootnote>{t('accountSettings.copy')}</ScreenFootnote>
 
         <TouchableOpacity
           style={[styles.dangerBtn, { borderColor: colors.error }]}
@@ -53,19 +49,18 @@ export function AccountSettingsContent() {
         >
           <ThemedText style={{ color: colors.error, fontWeight: '700' }}>{t('common.deleteAccount')}</ThemedText>
         </TouchableOpacity>
-      </View>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  inner: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 16 },
-  copy: { fontSize: 15, lineHeight: 22, marginBottom: 24 },
+  scroll: { paddingTop: Layout.sectionGap - 8 },
   dangerBtn: {
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: Radius.md,
     alignItems: 'center',
     borderWidth: 1,
+    marginTop: 8,
   },
 });

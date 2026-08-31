@@ -17,7 +17,8 @@ export type UpgradeFeature =
   | 'events.write'
   | 'availability.write'
   | 'stays.approve'
-  | 'generic';
+  | 'generic'
+  | 'coverage_lapse';
 
 const FEATURE_COPY: Record<UpgradeFeature, { title: string; body: string; source: string }> = {
   'estate.createAsCoOwner': {
@@ -64,6 +65,11 @@ const FEATURE_COPY: Record<UpgradeFeature, { title: string; body: string; source
     title: 'Maison Pro',
     body: 'Upgrade to unpause host tools for your properties.',
     source: 'generic',
+  },
+  coverage_lapse: {
+    title: 'Management is paused',
+    body: 'Everything you added is still here. Choose a plan to keep writing — nothing is charged until you subscribe.',
+    source: 'coverage_lapse',
   },
 };
 
@@ -133,7 +139,10 @@ export function UpgradeSheetHost() {
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
         <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.body}>{copy.body}</Text>
-        <PrimaryButton label={t('access.upgradeCta', { defaultValue: 'Upgrade to Maison Pro' })} onPress={onUpgrade} />
+        <PrimaryButton
+          label={t('access.upgradeCta', { defaultValue: 'Choose a plan' })}
+          onPress={onUpgrade}
+        />
         <SecondaryButton label={t('access.notNow', { defaultValue: 'Not now' })} onPress={close} />
       </View>
     </Modal>

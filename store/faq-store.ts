@@ -46,7 +46,8 @@ export const useFaqStore = create<FaqState>()(
       faqs: [],
       setFaqs: (faqs) => set({ faqs }),
       fetchFromSupabase: async () => {
-        const { data } = await supabase.from('faqs').select('*');
+        const { data, error } = await supabase.from('faqs').select('*');
+        if (error) throw new Error(error.message);
         if (data) set({ faqs: dedupeById(data).map(fromDb) });
       },
       addFaq: async (faq) => {

@@ -1,22 +1,26 @@
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StatusBadge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
+import {
+  ScreenScroll,
+  ScreenShell,
+  SectionLabel,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
+import { StatusColors } from '@/constants/theme';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
-import { getPushToken, sendCategorizedPush } from '@/lib/notifications';
+import { sendCategorizedPush } from '@/lib/notifications';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
@@ -25,18 +29,16 @@ export default function ReviewStayRequest() {
   const { t } = useTranslation();
   const { estateId, requestId } = useLocalSearchParams<{ estateId: string; requestId: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useScreenTheme();
   const { stayRequests, approveStay, declineStay, proposeAlternative, askQuestion, hasConflict } = useStayStore();
   const profileById = useProfileStore((s) => s.byId);
   const currentUser = useAuthStore((s) => s.currentUser);
   const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
   const can = useCan();
   const canApprove = can('stays.approve', { estateId });
-  const isReadOnly = !estate || estate.ownerId !== currentUser?.id;
-  const estateName = estate?.name ?? 'the estate';
-  const ownerName = currentUser?.name ?? 'The host';
+  const isReadOnly = !canApprove;
+  const estateName = estate?.name ?? t('stayReview.theEstate');
+  const ownerName = currentUser?.name ?? t('stayReview.theHost');
 
   const req = stayRequests.find((r) => r.id === requestId);
   const guestName = req ? resolveUserDisplayName(req.guestId, profileById) : '';
@@ -49,7 +51,7 @@ export default function ReviewStayRequest() {
 
   if (!req) {
     return (
-      <ThemedView style={styles.center}><ThemedText>Request not found.</ThemedText></ThemedView>
+      <ThemedView style={styles.center}><ThemedText>{t('stayReview.notFound')}</ThemedText></ThemedView>
     );
   }
 
@@ -58,13 +60,11 @@ export default function ReviewStayRequest() {
 
   function notifyGuest(title: string, body: string) {
     if (!req) return;
-    void getPushToken(req.guestId).then((token) =>
-      sendCategorizedPush('stay_decisions', token, title, body, {
-        type: 'stay_decision',
-        estateId,
-        requestId,
-      })
-    );
+    void sendCategorizedPush('stay_decisions', req.guestId, title, body, {
+      type: 'stay_decision',
+      estateId,
+      requestId,
+    });
   }
 
   function onApprove() {
@@ -74,9 +74,9 @@ export default function ReviewStayRequest() {
     }
     const result = approveStay(requestId, ownerNote || undefined);
     if (!result.success) {
-      Alert.alert('Cannot Approve', 'These dates conflict with an existing approved stay. Please decline or propose alternative dates.');
+      Alert.alert(t('stayReview.cannotApproveTitle'), t('stayReview.cannotApproveBody'));
     } else {
-      notifyGuest('Stay Approved', `Your stay request at ${estateName} was approved.`);
+      notifyGuest(t('stayReview.approvedTitle'), t('stayReview.approvedBody', { estate: estateName }));
       router.back();
     }
   }
@@ -86,12 +86,12 @@ export default function ReviewStayRequest() {
       openHostCapabilityDenied(estateId, 'stays.approve', `/(app)/estates/${estateId}/stays/${requestId}`);
       return;
     }
-    Alert.alert('Decline Request', 'Decline this stay request?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('stayReview.declineTitle'), t('stayReview.declineBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Decline', style: 'destructive', onPress: () => {
+        text: t('stayReview.decline'), style: 'destructive', onPress: () => {
           declineStay(requestId, ownerNote || undefined);
-          notifyGuest('Stay Declined', `Your stay request at ${estateName} was declined.`);
+          notifyGuest(t('stayReview.declinedTitle'), t('stayReview.declinedBody', { estate: estateName }));
           router.back();
         },
       },
@@ -99,38 +99,30 @@ export default function ReviewStayRequest() {
   }
 
   function onProposeAlternative() {
-    if (!altFrom || !altTo) { Alert.alert('Required', 'Please select alternative dates.'); return; }
+    if (!altFrom || !altTo) { Alert.alert(t('common.required'), t('stayReview.requiredDates')); return; }
     proposeAlternative(requestId, altFrom, altTo, ownerNote || undefined);
-    notifyGuest('Alternative Dates Proposed', `${ownerName} proposed new dates for your stay at ${estateName}.`);
+    notifyGuest(t('stayReview.altProposedTitle'), t('stayReview.altProposedBody', { host: ownerName, estate: estateName }));
     router.back();
   }
 
   function onAskQuestion() {
-    if (!ownerNote.trim()) { Alert.alert('Required', 'Please enter your question.'); return; }
+    if (!ownerNote.trim()) { Alert.alert(t('common.required'), t('stayReview.requiredQuestion')); return; }
     askQuestion(requestId, ownerNote.trim());
-    notifyGuest('Question from Host', `${ownerName} has a question about your stay at ${estateName}.`);
+    notifyGuest(t('stayReview.questionTitle'), t('stayReview.questionBody', { host: ownerName, estate: estateName }));
     router.back();
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.title}>{t('titles.stayRequest')}</ThemedText>
-      </View>
-
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
+    <ScreenShell title={t('titles.stayRequest')}>
+      <ScreenScroll contentContainerStyle={styles.scroll} gap={16} keyboardShouldPersistTaps="handled">
         {isReadOnly && (
           <View style={[styles.readOnlyBanner, { backgroundColor: colors.icon + '12', borderColor: colors.icon + '30' }]}>
             <IconSymbol name="info.circle.fill" size={15} color={colors.icon} />
             <ThemedText style={[styles.readOnlyText, { color: colors.icon }]}>
-              Admin view — contact the estate host to manage this request.
+              {t('stayReview.readOnly')}
             </ThemedText>
           </View>
         )}
-        {/* Guest info */}
         <View style={[styles.guestCard, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}>
           <Avatar name={guestName} size={48} color={colors.tint} />
           <View style={styles.guestInfo}>
@@ -139,20 +131,19 @@ export default function ReviewStayRequest() {
           <StatusBadge status={req.status} />
         </View>
 
-        {/* Requested dates */}
         <View style={[styles.section, { borderColor: colors.icon + '22' }]}>
-          <ThemedText style={[styles.sectionLabel, { color: colors.icon }]}>Requested Dates</ThemedText>
+          <SectionLabel>{t('stayReview.requestedDates')}</SectionLabel>
           <ThemedText type="defaultSemiBold" style={styles.datesText}>
             {formatDateRange(req.requestedFrom, req.requestedTo)}
           </ThemedText>
           <ThemedText style={[styles.nights, { color: colors.icon }]}>
-            {nightCount(req.requestedFrom, req.requestedTo)} nights
+            {t('common.nights', { count: nightCount(req.requestedFrom, req.requestedTo) })}
           </ThemedText>
           {conflict && (
-            <View style={[styles.conflictAlert, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
-              <IconSymbol name="exclamationmark.triangle.fill" size={14} color="#f59e0b" />
-              <ThemedText style={styles.conflictText}>
-                These dates conflict with an existing approved stay.
+            <View style={[styles.conflictAlert, { backgroundColor: colors.warning + '18', borderColor: colors.warning + '55' }]}>
+              <IconSymbol name="exclamationmark.triangle.fill" size={14} color={colors.warning} />
+              <ThemedText style={[styles.conflictText, { color: colors.warning }]}>
+                {t('stayReview.conflict')}
               </ThemedText>
             </View>
           )}
@@ -160,17 +151,16 @@ export default function ReviewStayRequest() {
 
         {req.guestNote && (
           <View style={[styles.section, { borderColor: colors.icon + '22' }]}>
-            <ThemedText style={[styles.sectionLabel, { color: colors.icon }]}>Guest's Note</ThemedText>
+            <SectionLabel>{t('stayReview.guestNote')}</SectionLabel>
             <ThemedText style={{ lineHeight: 20 }}>{req.guestNote}</ThemedText>
           </View>
         )}
 
-        {/* Owner note / question field */}
         <View style={styles.noteField}>
-          <ThemedText style={[styles.label, { color: colors.icon }]}>Note / Message to Guest</ThemedText>
+          <SectionLabel>{t('stayReview.noteLabel')}</SectionLabel>
           <TextInput
             style={[styles.noteInput, { color: colors.text, borderColor: colors.icon + '44' }]}
-            placeholder="Optional message to the guest…"
+            placeholder={t('stayReview.notePlaceholder')}
             placeholderTextColor={colors.icon}
             value={ownerNote}
             onChangeText={setOwnerNote}
@@ -180,62 +170,61 @@ export default function ReviewStayRequest() {
           />
         </View>
 
-        {/* Actions — only for pending, and only for the estate owner */}
         {isPending && !isReadOnly && (
           <View style={styles.actions}>
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#22c55e' }]}
+              style={[styles.actionBtn, { backgroundColor: colors.success }]}
               onPress={onApprove}
               activeOpacity={0.8}
             >
-              <IconSymbol name="checkmark.circle.fill" size={18} color="#fff" />
-              <ThemedText style={styles.actionText}>Approve</ThemedText>
+              <IconSymbol name="checkmark.circle.fill" size={18} color={colors.textOnBrand} />
+              <ThemedText style={[styles.actionText, { color: colors.textOnBrand }]}>{t('stayReview.approve')}</ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
+              style={[styles.actionBtn, { backgroundColor: colors.error }]}
               onPress={onDecline}
               activeOpacity={0.8}
             >
-              <IconSymbol name="xmark.circle.fill" size={18} color="#fff" />
-              <ThemedText style={styles.actionText}>Decline</ThemedText>
+              <IconSymbol name="xmark.circle.fill" size={18} color={colors.textOnBrand} />
+              <ThemedText style={[styles.actionText, { color: colors.textOnBrand }]}>{t('stayReview.decline')}</ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#8b5cf6' }]}
+              style={[styles.actionBtn, { backgroundColor: StatusColors.alternative_proposed }]}
               onPress={() => setShowAltPicker((v) => !v)}
               activeOpacity={0.8}
             >
-              <IconSymbol name="arrow.triangle.2.circlepath" size={18} color="#fff" />
-              <ThemedText style={styles.actionText}>Propose Dates</ThemedText>
+              <IconSymbol name="arrow.triangle.2.circlepath" size={18} color={colors.textOnBrand} />
+              <ThemedText style={[styles.actionText, { color: colors.textOnBrand }]}>{t('stayReview.proposeDates')}</ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#06b6d4' }]}
+              style={[styles.actionBtn, { backgroundColor: StatusColors.question_asked }]}
               onPress={() => setShowQuestion((v) => !v)}
               activeOpacity={0.8}
             >
-              <IconSymbol name="questionmark.circle.fill" size={18} color="#fff" />
-              <ThemedText style={styles.actionText}>Ask Question</ThemedText>
+              <IconSymbol name="questionmark.circle.fill" size={18} color={colors.textOnBrand} />
+              <ThemedText style={[styles.actionText, { color: colors.textOnBrand }]}>{t('stayReview.askQuestion')}</ThemedText>
             </TouchableOpacity>
           </View>
         )}
 
         {showAltPicker && (
           <View style={[styles.altPicker, { borderColor: colors.icon + '33' }]}>
-            <ThemedText type="defaultSemiBold" style={{ marginBottom: 8 }}>Select Alternative Dates</ThemedText>
+            <ThemedText type="defaultSemiBold" style={{ marginBottom: 8 }}>{t('stayReview.selectAltDates')}</ThemedText>
             <DateRangePicker
               from={altFrom}
               to={altTo}
               blockedRanges={useStayStore.getState().getBlockedRanges(estateId)}
-              onChange={(f, t) => { setAltFrom(f); setAltTo(t); }}
+              onChange={(f, toVal) => { setAltFrom(f); setAltTo(toVal); }}
             />
             {altFrom && altTo && (
               <TouchableOpacity
                 style={[styles.sendAlt, { backgroundColor: '#8b5cf6' }]}
                 onPress={onProposeAlternative}
               >
-                <ThemedText style={styles.actionText}>Send Proposal</ThemedText>
+                <ThemedText style={styles.actionText}>{t('stayReview.sendProposal')}</ThemedText>
               </TouchableOpacity>
             )}
           </View>
@@ -246,37 +235,30 @@ export default function ReviewStayRequest() {
             style={[styles.sendAlt, { backgroundColor: '#06b6d4' }]}
             onPress={onAskQuestion}
           >
-            <ThemedText style={styles.actionText}>Send Question</ThemedText>
+            <ThemedText style={styles.actionText}>{t('stayReview.sendQuestion')}</ThemedText>
           </TouchableOpacity>
         )}
-      </ScrollView>
-    </ThemedView>
+      </ScreenScroll>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  back: { padding: 4 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700' },
-  scroll: { paddingHorizontal: 20, gap: 16 },
+  scroll: { gap: 16 },
   guestCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1, gap: 12 },
   guestInfo: { flex: 1, gap: 2 },
   guestName: { fontSize: 16 },
-  guestEmail: { fontSize: 13 },
   section: { padding: 14, borderRadius: 14, borderWidth: 1, gap: 4 },
-  sectionLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' },
   datesText: { fontSize: 16 },
   nights: { fontSize: 13 },
   conflictAlert: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderRadius: 8, borderWidth: 1, marginTop: 6 },
-  conflictText: { flex: 1, fontSize: 12, color: '#f59e0b', fontWeight: '500' },
+  conflictText: { flex: 1, fontSize: 12, fontWeight: '500' },
   noteField: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   noteInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, height: 80, paddingTop: 12 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionBtn: { flex: 1, minWidth: '45%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 6 },
-  actionText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  actionText: { fontWeight: '600', fontSize: 13 },
   altPicker: { padding: 16, borderRadius: 16, borderWidth: 1 },
   sendAlt: { paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 12 },
   readOnlyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, borderWidth: 1 },

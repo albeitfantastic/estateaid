@@ -8,6 +8,7 @@ import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useSubscription } from '@/providers/subscription-provider';
+import type { Estate } from '@/types/estate';
 import { normalizeInviteRole, type Invitation } from '@/types/invitation';
 
 export type PropertyRole = 'sponsor' | 'owner' | 'guest' | 'none';
@@ -292,18 +293,54 @@ export function useHasPaidHostAccess(): boolean {
   return useAccountContext().slotCount > 0;
 }
 
-export function useOwnedEstateContext() {
-  const currentUserId = useAuthStore((s) => s.currentUser?.id);
+export interface ManagedEstates {
+  /** Properties where the actor is sponsor or host, in store order. */
+  estates: Estate[];
+  estateIds: string[];
+  /** Resolved role for every known property, managed or not. */
+  roleById: Record<string, PropertyRole>;
+  isManaged: (estateId: string) => boolean;
+}
+
+/**
+ * Shared replacement for `estate.ownerId === currentUser.id` filters.
+ *
+ * Resolves the actor role from the server-derived coverage store when it is
+ * loaded, falling back to local invitation state, so an invited Host sees the
+ * properties they co-manage (spec §3) rather than only the ones they created.
+ */
+export function useManagedEstates(): ManagedEstates {
+  const currentUser = useAuthStore((s) => s.currentUser);
   const estates = useEstateStore((s) => s.estates);
+  const invitations = useInvitationStore((s) => s.invitations);
+  const coverageById = useEstateCoverageStore((s) => s.byId);
+
   return useMemo(() => {
-    const owned = estates.filter((e) => e.ownerId === currentUserId || e.sponsorUserId === currentUserId);
+    const roleById: Record<string, PropertyRole> = {};
+    const managed: Estate[] = [];
+    for (const estate of estates) {
+      let role =
+        coverageById[estate.id]?.actorRole ??
+        getEstateActorRole(
+          estates,
+          invitations,
+          estate.id,
+          currentUser?.id ?? '',
+          currentUser?.email
+        );
+      if (role === ('coOwner' as PropertyRole)) role = 'owner';
+      roleById[estate.id] = role;
+      if (isHost(role)) managed.push(estate);
+    }
+    const estateIds = managed.map((e) => e.id);
+    const managedIds = new Set(estateIds);
     return {
-      owned,
-      ownedEstateCount: owned.length,
-      primaryEstateId: owned.sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.id ?? null,
-      sponsoredEstateCount: estates.filter((e) => e.sponsorUserId === currentUserId).length,
+      estates: managed,
+      estateIds,
+      roleById,
+      isManaged: (estateId: string) => managedIds.has(estateId),
     };
-  }, [estates, currentUserId]);
+  }, [estates, invitations, currentUser, coverageById]);
 }
 
 export { OWNER_CAP, CO_OWNER_CAP } from '@/lib/entitlements/constants';

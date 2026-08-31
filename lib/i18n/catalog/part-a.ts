@@ -27,6 +27,18 @@ export const catalogPartA: Record<string, unknown> = {
     save: 'Save',
     skip: 'Skip',
     close: 'Close',
+    back: 'Back',
+    required: 'Required',
+    delete: 'Delete',
+    add: 'Add',
+    edit: 'Edit',
+    call: 'Call',
+    loading: 'Loading…',
+    retry: 'Try again',
+    open: 'Open',
+    nights: '{{count}} nights',
+    nights_one: '{{count}} night',
+    nights_other: '{{count}} nights',
     error: 'Error',
     estateAid: 'Maison',
     you: 'You',
@@ -41,13 +53,15 @@ export const catalogPartA: Record<string, unknown> = {
     subscription: 'Manage subscription',
     darkMode: 'Dark mode',
     notifications: 'Notifications',
+    notificationsMaster: 'Enable push',
     helpSupport: 'Help & Support',
     privacyPolicy: 'Privacy Policy',
+    termsOfService: 'Terms of Service',
+    impressum: 'Impressum',
     language: 'Language',
     guest: 'Guest',
-    accessStandard: 'Standard',
-    accessTrial: 'Trial',
-    accessPro: 'Pro',
+    slotsBadge: '{{used}}/{{total}} slots',
+    slotsBadgeNone: 'No slots',
     premium: 'Premium',
     starter: 'Starter',
     ownerResponse: 'Host response',
@@ -56,6 +70,11 @@ export const catalogPartA: Record<string, unknown> = {
   access: {
     maisonProTitle: 'Maison Pro',
     upgradeToUnpause: 'Upgrade to Maison Pro to unpause access.',
+    upgradeCta: 'Choose a plan',
+    notNow: 'Not now',
+    coverageLapseTitle: 'Management is paused',
+    coverageLapseBody:
+      'Everything you added is still here. Choose a plan to keep writing — nothing renews until you subscribe.',
   },
   calendar: {
     months: [
@@ -145,6 +164,8 @@ export const catalogPartA: Record<string, unknown> = {
     useCasePrimary: 'Primary residence',
     useCaseRental: 'Rental property',
     useCaseOther: 'Managing for someone else',
+    reaskQ: 'What kind of property is this?',
+    reaskH: 'We’ll seed starters for this property. You can edit or delete everything.',
   },
   role: {
     eyebrow: 'Almost there',
@@ -199,11 +220,78 @@ export const catalogPartA: Record<string, unknown> = {
     manageSubscription: 'Manage subscription',
     helpSubject: 'Help & Support',
     helpBody: 'I need help with Maison.',
-    privacyTitle: 'Privacy Policy',
-    privacyBody:
-      'Our privacy policy will be published on the website soon. Contact support if you need details now.',
     signOutTitle: 'Sign out',
     signOutConfirm: 'Are you sure you want to sign out?',
+  },
+  legal: {
+    draftHeading: 'Pre-launch draft',
+    draftBody:
+      'Maison has not launched yet, and this document is a working draft. It has not been reviewed by a lawyer and is not a binding agreement in its current form. Email support if you need a definitive answer before launch.',
+    lastUpdated: 'Last updated: TODO — set a real date before public launch.',
+    contactHeading: 'Questions',
+    contactBody: 'Write to {{email}} and we will answer directly.',
+
+    termsTitle: 'Terms of Service',
+    termsWhatHeading: 'What Maison is',
+    termsWhatBody:
+      'Maison is an app for managing a property and the people who use it: documents, contacts, an FAQ, maintenance, availability and stay requests. You add the content; we store it and show it to the people you invite.',
+    termsAccountHeading: 'Your account',
+    termsAccountBody:
+      'You need an account to use Maison. Keep your sign-in details to yourself, give accurate information, and only invite people you actually want to have access. You are responsible for what you and the people you invite put into a property you sponsor.',
+    termsSlotsHeading: 'Property slots',
+    termsSlotsBody:
+      'Maison is sold as property slots rather than account tiers. Holding a slot lets you create and manage one property. Everyone you invite to that property gets full access to it at no cost to them, and being invited never requires a payment.',
+    termsTrialHeading: 'Free trial',
+    termsTrialBody:
+      'Your first property comes with a {{days}}-day free trial of one property slot. No payment is taken during the trial, we never ask for or store a payment method, and nothing renews or auto-charges at the end of it. When the trial ends, everything you added stays readable and only writing pauses until you choose a plan. The trial is granted once per account.',
+    termsBillingHeading: 'Paid plans',
+    termsBillingBody:
+      'Paid slots are sold through the App Store or Google Play, so billing, price changes, renewals, cancellations and refunds are handled by the store under its own terms. Cancel from your store subscription settings at any time. If your slots stop covering a property, nothing is deleted: the property becomes read-only until it is covered again.',
+    termsContentHeading: 'Your content',
+    termsContentBody:
+      'What you add stays yours. We only process it to run the app for you and the people you invite. Expenses and handover records are record-keeping features only — Maison does not give financial, tax or legal advice, and no figure it shows should be treated as such.',
+    termsLimitsHeading: 'Limits and changes',
+    termsLimitsBody:
+      'Maison is not a substitute for keeping your own copies of anything important. TODO — warranty, liability, governing law, dispute resolution and termination terms to be drafted with legal review before launch.',
+
+    privacyTitle: 'Privacy Policy',
+    privacyControllerHeading: 'Who is responsible',
+    privacyControllerBody:
+      'TODO — the operating company named in the Impressum is the controller for this data. Company details are being finalised and will appear here and in the Impressum before launch.',
+    privacyCollectHeading: 'What we collect',
+    privacyCollectBody:
+      'Account details you give us (name, email address, and your password in hashed form). The content you add to a property: its name and location, documents, contacts, FAQ entries, maintenance items, expenses, availability and stays. Invitations you send or accept. Your app settings, such as language, theme and notification preferences. A push token if you turn notifications on.',
+    privacyWhyHeading: 'Why we use it',
+    privacyWhyBody:
+      'To run your account, show a property to the people invited to it, send the notifications you asked for, resolve which properties your subscription covers, and answer support requests. We do not sell your data and we do not use it for advertising or profiling.',
+    privacyProcessorsHeading: 'Who processes it for us',
+    privacyProcessorsBody:
+      'Supabase hosts the database, authentication and file storage. RevenueCat processes subscription state, and the App Store or Google Play processes the payment itself — we never see your card. Expo delivers push notifications. Each acts as a processor on our instructions. TODO — the full processor list, hosting regions and any transfer safeguards will be itemised here before launch.',
+    privacyRetentionHeading: 'How long we keep it',
+    privacyRetentionBody:
+      'Property content stays until you delete it or delete the property. Losing a subscription never deletes anything. When you ask us to delete your account we remove your profile and the properties you sponsor. TODO — exact retention periods for backups and support correspondence to be confirmed before launch.',
+    privacyRightsHeading: 'Your rights',
+    privacyRightsBody:
+      'Under the GDPR you can ask for a copy of your data, correct it, have it deleted, restrict or object to processing, and take it elsewhere. You can also complain to your local data protection authority. Write to {{email}} and we will handle it.',
+
+    impressumTitle: 'Impressum',
+    impressumIntro:
+      'German law requires an Impressum naming the operator of this app. Maison has not launched commercially yet, so the entries below are placeholders and will be completed before public release.',
+    impressumProviderHeading: 'Provider',
+    impressumProviderBody:
+      'Company name: TODO\nLegal form: TODO\nStreet and number: TODO\nPostcode and city: TODO\nCountry: TODO',
+    impressumRepresentativeHeading: 'Represented by',
+    impressumRepresentativeBody: 'Managing director: TODO',
+    impressumContactHeading: 'Contact',
+    impressumContactBody: 'Email: {{email}}\nTelephone: TODO',
+    impressumRegisterHeading: 'Register entry',
+    impressumRegisterBody:
+      'Register court: TODO\nRegister number: TODO\nVAT identification number (USt-IdNr., § 27a UStG): TODO',
+    impressumResponsibleHeading: 'Responsible for editorial content',
+    impressumResponsibleBody: 'Per § 18 (2) MStV: TODO — name and address',
+    impressumDisputeHeading: 'Consumer dispute resolution',
+    impressumDisputeBody:
+      'TODO — state whether we take part in an alternative dispute resolution scheme, and name the body if so.',
   },
   profileSettings: {
     email: 'Email',
@@ -224,31 +312,31 @@ export const catalogPartA: Record<string, unknown> = {
       'Account deletion is processed by support. We will sign you out after you send the request.',
   },
   subscriptionSettings: {
-    planGuest: 'Guest — free',
-    planTrial: 'Trial — full access until {{date}}',
-    planProActive: '{{plan}} (active)',
-    planStandard: 'Standard — host tools locked',
-    trialSub: 'After your trial, subscribe to {{plan}} to keep full host access.',
+    slotsHeld_one: '{{count}} property slot',
+    slotsHeld_other: '{{count}} property slots',
+    slotsInUse: '{{used}} of {{total}} in use by properties you sponsor',
+    noSlots: 'No property slots',
+    noSlotsSub:
+      'You can still open and read every property you were invited to. A slot is only needed to add your own.',
+    trialUntil: 'Maison Pro trial · ends {{date}}',
+    trialNoPayment:
+      'No payment is taken and nothing renews during the trial. When it ends, everything you added stays readable and writing pauses until you choose a plan.',
+    trialLine: 'Maison Pro · {{count}} days left',
+    trialLine_one: 'Maison Pro · {{count}} day left',
+    trialLine_other: 'Maison Pro · {{count}} days left',
+    slotsLine: 'Maison · {{count}} slots',
+    slotsLine_one: 'Maison · {{count}} slot',
+    slotsLine_other: 'Maison · {{count}} slots',
     startTrialFlow: 'Start free trial',
     standardUpgradeHint: 'Start the trial or subscribe to unlock property management.',
     standardManageTitle: 'No active subscription',
     standardManageBody:
       'Subscribe to {{plan}} or start a trial from the paywall flow to manage billing on this account.',
-    planOwnerPro: 'Host — {{plan}}',
-    planOwnerProPending: 'Host — {{plan}} (pending)',
-    planOwnerStarter: 'Host — Starter',
     loadingSuffix: ' · …',
-    proConfirmed:
-      '{{plan}} is confirmed on our servers after purchase (webhook sync).',
     storeWaiting: 'Store shows an active subscription; waiting for account sync. Tap Sync below.',
-    completeCheckout: 'Complete checkout to activate {{plan}} on this account.',
-    starterDefault:
-      'Starter is the default host plan. Upgrade to {{plan}} for premium features.',
     renewsEnds: 'Renews or ends: {{date}}',
     currentPlan: 'Current plan',
     upgradeSection: 'Upgrade',
-    upgradeCta: 'Upgrade to host',
-    upgradeHint: 'List properties and manage guest stays as a host.',
     maisonSection: '{{plan}}',
     viewPaywall: 'View paywall',
     syncStore: 'Sync with App Store / Play Store',
@@ -308,6 +396,7 @@ export const catalogPartA: Record<string, unknown> = {
     emptyGuestTitle: 'No properties yet',
     emptyGuestSub: 'Ask your host for an invite link.',
     enterCode: 'Enter a code',
+    joinWithCode: 'Join with a code',
     addEstate: 'Add property',
     lockedTap: 'Locked — tap to upgrade',
     lockedDetailTitle: 'Host tools locked',
@@ -320,8 +409,8 @@ export const catalogPartA: Record<string, unknown> = {
     sub: 'Lets plan',
     properties: 'Properties',
     staysPending: 'Stays Pending',
-    planStay: 'Request dates',
-    planStaySub: 'Ask to stay at a property',
+    requestDates: 'Request dates',
+    requestDatesSub: 'Ask to stay at a property',
     upcomingStays: 'Upcoming Stays',
     seeAll: 'See All',
     noUpcomingTitle: 'No upcoming stays',

@@ -41,18 +41,3 @@ export function hasUsedTrialFlag(input: {
   if (input.hasUsedTrial) return true;
   return Boolean(input.trialEndsAt?.trim() || input.trialStartedAt?.trim());
 }
-
-/** @deprecated Use deriveSlotCount. Kept for settings labels during migration. */
-export type AccessTier = 'trial' | 'pro' | 'standard';
-
-/** @deprecated */
-export function deriveAccessTier(input: {
-  trialEndsAt?: string | null;
-  isProEntitlement: boolean;
-  sdkEntitlementActive?: boolean;
-}): AccessTier {
-  const end = input.trialEndsAt?.trim();
-  if (end && new Date(end).getTime() > Date.now()) return 'trial';
-  if (input.isProEntitlement || input.sdkEntitlementActive) return 'pro';
-  return 'standard';
-}
