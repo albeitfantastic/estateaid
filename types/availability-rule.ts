@@ -1,7 +1,7 @@
 export type AvailabilityRuleKind =
   | 'blackout'
-  | 'annual_closure'
-  | 'min_nights'
+  | 'annual_closure' // legacy — no longer shown or enforced in app
+  | 'min_nights' // legacy — no longer shown or enforced in app
   | 'max_advance_days';
 
 export interface EstateAvailabilityRule {

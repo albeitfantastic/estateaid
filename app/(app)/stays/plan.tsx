@@ -18,9 +18,7 @@ import { useStayStore } from '@/store/stay-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import {
   effectiveMaxAdvanceDays,
-  effectiveMinNights,
   violatesMaxAdvance,
-  violatesMinNights,
 } from '@/lib/availability-rule-blocking';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
@@ -79,27 +77,17 @@ export default function GuestPlanStay() {
   }, [paramLocked, paramEstateId, acceptedEstateIds, acceptedEstates, selectedEstateId]);
 
   const blockedRanges = selectedEstateId ? getBlockedRanges(selectedEstateId) : [];
-  const nights = from && to ? nightCount(from, to) : 0;
-  const effMinNights =
-    selectedEstateId != null ? effectiveMinNights(availabilityRules, selectedEstateId) : undefined;
   const effMaxAdvance =
     selectedEstateId != null ? effectiveMaxAdvanceDays(availabilityRules, selectedEstateId) : undefined;
   const conflictWarning =
     selectedEstateId && from && to ? hasConflict(selectedEstateId, from, to) : false;
-  const minNightsBreak = Boolean(
-    selectedEstateId && from && to && violatesMinNights(availabilityRules, selectedEstateId, from, to, nights)
-  );
   const maxAdvanceBreak = Boolean(
     selectedEstateId && from && violatesMaxAdvance(availabilityRules, selectedEstateId, from)
   );
-  const limitHint = [
-    minNightsBreak && effMinNights != null ? `Minimum stay is ${effMinNights} nights.` : '',
+  const limitHint =
     maxAdvanceBreak && effMaxAdvance != null
       ? `Check-in must be within ${effMaxAdvance} days from today.`
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+      : '';
 
   function pickEstate(id: string) {
     setSelectedEstateId(id);
@@ -109,15 +97,6 @@ export default function GuestPlanStay() {
 
   async function submit() {
     if (!selectedEstateId || !from || !to) return;
-    if (minNightsBreak) {
-      Alert.alert(
-        'Minimum stay',
-        effMinNights != null
-          ? `This property requires at least ${effMinNights} nights.`
-          : 'Dates do not meet the minimum stay.'
-      );
-      return;
-    }
     if (maxAdvanceBreak) {
       Alert.alert(
         'Booking window',
@@ -147,7 +126,7 @@ export default function GuestPlanStay() {
   }
 
   const canSubmit =
-    !!selectedEstateId && !!from && !!to && !minNightsBreak && !maxAdvanceBreak;
+    !!selectedEstateId && !!from && !!to && !maxAdvanceBreak;
 
   return (
     <ThemedView style={styles.container}>
@@ -221,7 +200,7 @@ export default function GuestPlanStay() {
                 </ThemedText>
               </View>
             )}
-            {(minNightsBreak || maxAdvanceBreak) && limitHint.length > 0 && (
+            {maxAdvanceBreak && limitHint.length > 0 && (
               <View style={[styles.warnBanner, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b55' }]}>
                 <ThemedText style={[styles.warnText, { color: '#f59e0b' }]}>{limitHint}</ThemedText>
               </View>

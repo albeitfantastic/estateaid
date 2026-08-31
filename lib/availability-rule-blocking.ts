@@ -67,9 +67,6 @@ export function calendarBlockingRangesFromRules(
       const clipped = clipRange(r.from, r.to, windowStart, windowEnd);
       if (clipped) out.push(clipped);
     }
-    if (r.kind === 'annual_closure' && r.annualFrom && r.annualTo) {
-      out.push(...expandAnnualClosureRanges(r.annualFrom, r.annualTo, windowStart, windowEnd));
-    }
   }
   return out;
 }
@@ -91,15 +88,6 @@ export function isDateBlockedByRules(
   return calendarBlockingRangesFromRules(rules, estateId).some((b) => dateStr >= b.from && dateStr <= b.to);
 }
 
-/** Strictest minimum nights across enabled rules (highest number wins). */
-export function effectiveMinNights(rules: EstateAvailabilityRule[], estateId: string): number | undefined {
-  const vals = rulesForEstate(rules, estateId)
-    .filter((r) => r.kind === 'min_nights' && r.minNights != null && r.minNights > 0)
-    .map((r) => r.minNights!);
-  if (vals.length === 0) return undefined;
-  return Math.max(...vals);
-}
-
 /** Strictest max advance: smallest limit wins. */
 export function effectiveMaxAdvanceDays(rules: EstateAvailabilityRule[], estateId: string): number | undefined {
   const vals = rulesForEstate(rules, estateId)
@@ -107,18 +95,6 @@ export function effectiveMaxAdvanceDays(rules: EstateAvailabilityRule[], estateI
     .map((r) => r.maxAdvanceDays!);
   if (vals.length === 0) return undefined;
   return Math.min(...vals);
-}
-
-export function violatesMinNights(
-  rules: EstateAvailabilityRule[],
-  estateId: string,
-  from: string,
-  to: string,
-  nightCount: number
-): boolean {
-  const min = effectiveMinNights(rules, estateId);
-  if (min == null) return false;
-  return nightCount < min;
 }
 
 export function violatesMaxAdvance(

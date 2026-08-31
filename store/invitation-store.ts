@@ -155,31 +155,6 @@ export const useInvitationStore = create<InvitationState>()(
         const prev = get().invitations;
         set({ invitations: prev.filter((i) => i.id !== id) });
         const { error } = await supabase.from('invitations').delete().eq('id', id);
-        // #region agent log
-        console.warn(
-          '[debug-1393f3]',
-          JSON.stringify({
-            hypothesisId: 'A',
-            location: 'invitation-store:deleteInvitation',
-            id,
-            deleteOk: !error,
-            errorMessage: error?.message ?? null,
-            remainingCount: get().invitations.length,
-          })
-        );
-        fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1393f3' },
-          body: JSON.stringify({
-            sessionId: '1393f3',
-            hypothesisId: 'A',
-            location: 'invitation-store:deleteInvitation',
-            message: 'delete invitation result',
-            data: { id, deleteOk: !error, errorMessage: error?.message ?? null },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         if (error) {
           set({ invitations: prev });
           return { error: error.message };

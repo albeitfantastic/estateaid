@@ -5,27 +5,6 @@ export type InviteShareChannel = 'whatsapp' | 'sms' | 'telegram';
 /** Conservative iOS limit for Linking.openURL query strings. */
 const IOS_URL_SAFE_LEN = 1800;
 
-function debugShareLog(
-  hypothesisId: string,
-  message: string,
-  data: Record<string, string | number | boolean | null | undefined>
-) {
-  // #region agent log
-  fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1393f3' },
-    body: JSON.stringify({
-      sessionId: '1393f3',
-      hypothesisId,
-      location: 'invite-share-channels.ts',
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-}
-
 export function buildWhatsAppShareUrl(text: string): string {
   return `whatsapp://send?text=${encodeURIComponent(text)}`;
 }
@@ -67,34 +46,18 @@ export async function openInviteShareChannel(
   const url = buildShareUrl(channel, message);
   const urlTooLong = Platform.OS === 'ios' && url.length > IOS_URL_SAFE_LEN;
 
-  debugShareLog('A', 'openInviteShareChannel', {
-    channel,
-    urlLength: url.length,
-    urlTooLong,
-    platform: Platform.OS,
-  });
-
   if (!urlTooLong) {
     try {
       const canOpen = await Linking.canOpenURL(schemeProbe(channel));
-      debugShareLog('B', 'canOpenURL result', { channel, canOpen });
-
       if (canOpen) {
         await Linking.openURL(url);
-        debugShareLog('C', 'opened deep link', { channel });
         return 'deep_link';
       }
-    } catch (err) {
-      debugShareLog('D', 'deep link failed', {
-        channel,
-        error: err instanceof Error ? err.message : 'unknown',
-      });
+    } catch {
+      // fall through to share sheet
     }
-  } else {
-    debugShareLog('E', 'skipped deep link — URL too long', { channel, urlLength: url.length });
   }
 
   await Share.share({ message, title: shareTitle });
-  debugShareLog('F', 'fallback share sheet', { channel });
   return 'share_sheet';
 }

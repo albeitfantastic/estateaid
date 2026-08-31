@@ -18,9 +18,7 @@ import { useStayStore } from '@/store/stay-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import {
   effectiveMaxAdvanceDays,
-  effectiveMinNights,
   violatesMaxAdvance,
-  violatesMinNights,
 } from '@/lib/availability-rule-blocking';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
@@ -60,14 +58,8 @@ export default function BlockStay() {
   const [to, setTo] = useState<string | null>(null);
 
   const blockedRanges = selectedEstateId ? getBlockedRanges(selectedEstateId) : [];
-  const nights = from && to ? nightCount(from, to) : 0;
-  const effMinNights =
-    selectedEstateId != null ? effectiveMinNights(availabilityRules, selectedEstateId) : undefined;
   const effMaxAdvance =
     selectedEstateId != null ? effectiveMaxAdvanceDays(availabilityRules, selectedEstateId) : undefined;
-  const minNightsBreak = Boolean(
-    selectedEstateId && from && to && violatesMinNights(availabilityRules, selectedEstateId, from, to, nights)
-  );
   const maxAdvanceBreak = Boolean(
     selectedEstateId && from && violatesMaxAdvance(availabilityRules, selectedEstateId, from)
   );
@@ -114,15 +106,6 @@ export default function BlockStay() {
       Alert.alert('Dates unavailable', 'These dates overlap another stay or a closed period.');
       return;
     }
-    if (minNightsBreak) {
-      Alert.alert(
-        'Minimum stay',
-        effMinNights != null
-          ? `This property requires at least ${effMinNights} nights.`
-          : 'Dates do not meet the minimum stay.'
-      );
-      return;
-    }
     if (maxAdvanceBreak) {
       Alert.alert(
         'Booking window',
@@ -158,7 +141,6 @@ export default function BlockStay() {
     selectedGuestIds.length > 0 &&
     !!from &&
     !!to &&
-    !minNightsBreak &&
     !maxAdvanceBreak &&
     !(selectedEstateId && from && to && hasConflict(selectedEstateId, from, to));
 
