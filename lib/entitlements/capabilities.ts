@@ -1,176 +1,190 @@
 import { useMemo } from 'react';
 
-import { useAccessTier, type AccessTier } from '@/lib/access-tier';
-import { CO_OWNER_CAP } from '@/lib/entitlements/constants';
+import { deriveSlotCount, hasUsedTrialFlag } from '@/lib/access-tier-core';
+import { OWNER_CAP } from '@/lib/entitlements/constants';
+import { getEstateActorRole } from '@/lib/estate-role';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { getEstateActorRole } from '@/lib/estate-role';
+import { useSubscription } from '@/providers/subscription-provider';
 import { normalizeInviteRole, type Invitation } from '@/types/invitation';
 
-export type Tier = AccessTier;
-
-export type EstateRole = 'sponsor' | 'coOwner' | 'guest' | 'none';
+export type PropertyRole = 'sponsor' | 'owner' | 'guest' | 'none';
+/** @deprecated Use PropertyRole */
+export type EstateRole = PropertyRole;
 
 export type Capability =
-  | 'estate.create'
-  | 'estate.edit'
+  | 'property.create'
+  | 'property.edit'
+  | 'property.delete'
+  | 'property.transferSponsorship'
   | 'documents.read'
-  | 'documents.upload'
+  | 'documents.write'
   | 'contacts.read'
   | 'contacts.write'
   | 'faq.read'
   | 'faq.write'
-  | 'availability.read'
-  | 'availability.write'
   | 'events.read'
   | 'events.write'
-  | 'guests.invite'
-  | 'coOwners.invite'
-  | 'stays.request'
+  | 'availability.read'
+  | 'availability.write'
+  | 'dates.block'
+  | 'dates.request'
   | 'stays.approve'
+  | 'guests.invite'
+  | 'owners.invite'
   | 'calendar.view'
-  | 'activity.view';
-
-export interface EstateContext {
-  estateId: string;
-  role: EstateRole;
-  covered: boolean;
-  coOwnerCount: number;
-}
+  | 'activity.view'
+  // Legacy aliases (map in can())
+  | 'estate.create'
+  | 'estate.edit'
+  | 'documents.upload'
+  | 'coOwners.invite'
+  | 'stays.request';
 
 export interface AccountContext {
-  tier: Tier;
-  sponsoredEstateCount: number;
+  slotCount: number;
+  propertiesSponsored: number;
+  hasUsedTrial: boolean;
 }
 
-/** Caps available on an uncovered estate the actor sponsors (standard own property). */
-const UNCOVERED_SPONSOR_CAPS: Capability[] = [
-  'estate.edit',
-  'documents.read',
-  'contacts.read',
-  'faq.read',
-  'availability.read',
-  'events.read',
-  'calendar.view',
-  'activity.view',
-];
+export interface PropertyContext {
+  propertyId: string;
+  role: PropertyRole;
+  covered: boolean;
+  ownerCount: number;
+  stayWindowActive: boolean;
+}
 
-const HOST_CAPS: Capability[] = [
-  'estate.edit',
-  'documents.read',
-  'documents.upload',
-  'contacts.read',
+/** @deprecated Use PropertyContext */
+export type EstateContext = {
+  estateId: string;
+  role: PropertyRole;
+  covered: boolean;
+  coOwnerCount: number;
+  ownerCount?: number;
+  stayWindowActive?: boolean;
+};
+
+const WRITE_CAPS: Capability[] = [
+  'property.edit',
+  'documents.write',
   'contacts.write',
-  'faq.read',
   'faq.write',
-  'availability.read',
-  'availability.write',
-  'events.read',
   'events.write',
-  'guests.invite',
-  'coOwners.invite',
+  'availability.write',
+  'dates.block',
   'stays.approve',
-  'calendar.view',
-  'activity.view',
+  'guests.invite',
 ];
 
-const GUEST_CAPS: Capability[] = [
-  'stays.request',
+const READ_CAPS: Capability[] = [
   'documents.read',
   'contacts.read',
   'faq.read',
-  'availability.read',
   'events.read',
+  'availability.read',
   'calendar.view',
   'activity.view',
 ];
 
-function isHost(role: EstateRole): boolean {
-  return role === 'sponsor' || role === 'coOwner';
+function normalizeCap(cap: Capability): Capability {
+  if (cap === 'estate.create') return 'property.create';
+  if (cap === 'estate.edit') return 'property.edit';
+  if (cap === 'documents.upload') return 'documents.write';
+  if (cap === 'coOwners.invite') return 'owners.invite';
+  if (cap === 'stays.request') return 'dates.request';
+  return cap;
+}
+
+function isHost(role: PropertyRole): boolean {
+  return role === 'sponsor' || role === 'owner';
 }
 
 /**
- * Single source of truth for feature gating (estate-scoped sponsorship).
- * estate.create is account-scoped; all other caps require EstateContext.
- *
- * Regression (manual):
- * - Standard co-owner on covered estate → full host caps
- * - Same user New estate → create paywall (co-owner pitch when applicable)
- * - Co-owned does not increment sponsoredEstateCount
- * - Sponsor lapse → coOwner read-only + transfer/upgrade banner
- * - coOwners.invite respects CO_OWNER_CAP
+ * Single source of truth for feature gating (slot economy — docs/spec.md §4).
  */
 export function can(
   cap: Capability,
   account: AccountContext,
-  estate?: EstateContext
+  property?: PropertyContext | EstateContext
 ): boolean {
-  if (cap === 'estate.create') {
-    if (account.tier === 'trial' || account.tier === 'pro') return true;
-    return account.sponsoredEstateCount === 0;
+  const c = normalizeCap(cap);
+
+  if (c === 'property.create') {
+    return account.slotCount > account.propertiesSponsored;
   }
 
-  if (!estate) {
+  if (!property) {
     if (__DEV__) {
-      throw new Error(`Capability "${cap}" requires EstateContext`);
+      throw new Error(`Capability "${c}" requires PropertyContext`);
     }
     return false;
   }
 
-  if (cap === 'stays.request') {
-    return estate.role === 'guest' || isHost(estate.role);
+  const ctx: PropertyContext =
+    'propertyId' in property
+      ? property
+      : {
+          propertyId: property.estateId,
+          role: property.role,
+          covered: property.covered,
+          ownerCount: property.ownerCount ?? property.coOwnerCount + 1,
+          stayWindowActive: property.stayWindowActive ?? true,
+        };
+
+  if (c === 'dates.request') {
+    return ctx.role === 'guest' || isHost(ctx.role);
   }
 
-  if (GUEST_CAPS.includes(cap) && estate.role === 'guest') {
-    // Guest reads never depend on covered (§2.5 / §2.4)
+  if (READ_CAPS.includes(c) && ctx.role === 'guest') {
+    return ctx.stayWindowActive;
+  }
+
+  if (!isHost(ctx.role)) return false;
+
+  if (c === 'owners.invite' || c === 'property.delete' || c === 'property.transferSponsorship') {
+    if (c === 'property.transferSponsorship') {
+      // §7: an owner with a free slot takes over (account free-slot checked by caller).
+      return ctx.role === 'owner';
+    }
+    if (ctx.role !== 'sponsor') return false;
+    if (c === 'owners.invite') {
+      return ctx.covered && ctx.ownerCount < OWNER_CAP;
+    }
+    return true; // property.delete
+  }
+
+  if (WRITE_CAPS.includes(c) || c === 'property.edit') {
+    return ctx.covered && isHost(ctx.role);
+  }
+
+  if (READ_CAPS.includes(c)) {
     return true;
   }
 
-  if (!isHost(estate.role)) return false;
-
-  if (cap === 'coOwners.invite') {
-    return (
-      estate.covered &&
-      estate.coOwnerCount < CO_OWNER_CAP &&
-      HOST_CAPS.includes(cap)
-    );
-  }
-
-  if (estate.covered) {
-    return HOST_CAPS.includes(cap);
-  }
-
-  // Uncovered: sponsor keeps a limited subset; co-owners get no host writes
-  if (estate.role === 'sponsor') {
-    return UNCOVERED_SPONSOR_CAPS.includes(cap);
-  }
-
-  // Uncovered coOwner: read-only host views
-  const readOnly: Capability[] = [
-    'documents.read',
-    'contacts.read',
-    'faq.read',
-    'availability.read',
-    'events.read',
-    'calendar.view',
-    'activity.view',
-  ];
-  return readOnly.includes(cap);
+  return false;
 }
 
 export function useAccountContext(): AccountContext {
-  const tier = useAccessTier();
-  const currentUserId = useAuthStore((s) => s.currentUser?.id);
+  const currentUser = useAuthStore((s) => s.currentUser);
   const estates = useEstateStore((s) => s.estates);
+  const { slotCount } = useSubscription();
   return useMemo(() => {
-    const sponsoredEstateCount = estates.filter((e) => e.sponsorUserId === currentUserId).length;
-    return { tier, sponsoredEstateCount };
-  }, [tier, estates, currentUserId]);
+    const propertiesSponsored = estates.filter((e) => e.sponsorUserId === currentUser?.id).length;
+    return {
+      slotCount,
+      propertiesSponsored,
+      hasUsedTrial: hasUsedTrialFlag({
+        hasUsedTrial: (currentUser as { hasUsedTrial?: boolean } | null)?.hasUsedTrial,
+        trialEndsAt: currentUser?.trialEndsAt,
+        trialStartedAt: currentUser?.trialStartedAt,
+      }),
+    };
+  }, [currentUser, estates, slotCount]);
 }
 
-/** Build EstateContext from stores + coverage cache (fallback to local role/covered heuristics). */
 export function resolveEstateContext(
   estateId: string,
   opts: {
@@ -178,13 +192,23 @@ export function resolveEstateContext(
     userEmail?: string | null;
     estates: { id: string; ownerId: string; sponsorUserId: string }[];
     invitations: Invitation[];
-    coverageById: Record<string, { covered: boolean; coOwnerCount: number; actorRole: EstateRole; sponsorUserId: string }>;
-    actorTier: Tier;
+    coverageById: Record<
+      string,
+      {
+        covered: boolean;
+        coOwnerCount: number;
+        ownerCount?: number;
+        actorRole: PropertyRole;
+        sponsorUserId: string;
+        stayWindowActive?: boolean;
+      }
+    >;
+    slotCount: number;
   }
-): EstateContext {
+): PropertyContext {
   const coverage = opts.coverageById[estateId];
   const estate = opts.estates.find((e) => e.id === estateId);
-  const role =
+  let role =
     coverage?.actorRole ??
     getEstateActorRole(
       opts.estates,
@@ -193,41 +217,43 @@ export function resolveEstateContext(
       opts.currentUserId ?? '',
       opts.userEmail
     );
+  if (role === ('coOwner' as PropertyRole)) role = 'owner';
 
   let covered = coverage?.covered;
   if (covered == null && estate) {
-    // Heuristic before RPC: if actor is sponsor, use their own tier
     if (estate.sponsorUserId === opts.currentUserId) {
-      covered = opts.actorTier === 'trial' || opts.actorTier === 'pro';
+      covered = opts.slotCount > 0;
     } else {
       covered = false;
     }
   }
 
-  let coOwnerCount = coverage?.coOwnerCount;
-  if (coOwnerCount == null) {
+  let ownerCount = coverage?.ownerCount;
+  if (ownerCount == null) {
     const sponsorId = estate?.sponsorUserId;
     const ownerId = estate?.ownerId;
-    let n = ownerId && sponsorId && ownerId !== sponsorId ? 1 : 0;
+    let n = 1; // sponsor
+    if (ownerId && sponsorId && ownerId !== sponsorId) n += 1;
     for (const inv of opts.invitations) {
       if (
         inv.estateId === estateId &&
         (inv.status === 'accepted' || inv.status === 'pending') &&
-        normalizeInviteRole(inv.role) === 'coOwner' &&
+        normalizeInviteRole(inv.role) === 'owner' &&
         inv.guestId !== sponsorId &&
         inv.guestId !== ownerId
       ) {
         n += 1;
       }
     }
-    coOwnerCount = n;
+    ownerCount = n;
   }
 
   return {
-    estateId,
+    propertyId: estateId,
     role,
     covered: Boolean(covered),
-    coOwnerCount,
+    ownerCount,
+    stayWindowActive: coverage?.stayWindowActive ?? true,
   };
 }
 
@@ -240,7 +266,7 @@ export function useCan(): (cap: Capability, estateIdOrCtx?: string | { estateId:
 
   return useMemo(() => {
     return (cap: Capability, estateIdOrCtx?: string | { estateId: string }) => {
-      if (cap === 'estate.create') {
+      if (normalizeCap(cap) === 'property.create') {
         return can(cap, account);
       }
       const estateId =
@@ -248,25 +274,24 @@ export function useCan(): (cap: Capability, estateIdOrCtx?: string | { estateId:
       if (!estateId) {
         return can(cap, account, undefined);
       }
-      const estate = resolveEstateContext(estateId, {
+      const property = resolveEstateContext(estateId, {
         currentUserId: currentUser?.id,
         userEmail: currentUser?.email,
         estates,
         invitations,
         coverageById,
-        actorTier: account.tier,
+        slotCount: account.slotCount,
       });
-      return can(cap, account, estate);
+      return can(cap, account, property);
     };
   }, [account, currentUser, estates, invitations, coverageById]);
 }
 
-/** @deprecated Prefer useCan — kept for settings labels. */
+/** True when user holds any paid/trial slots. */
 export function useHasPaidHostAccess(): boolean {
-  return useAccessTier() !== 'standard';
+  return useAccountContext().slotCount > 0;
 }
 
-/** @deprecated Use sponsored estates / coverage instead. */
 export function useOwnedEstateContext() {
   const currentUserId = useAuthStore((s) => s.currentUser?.id);
   const estates = useEstateStore((s) => s.estates);
@@ -281,4 +306,5 @@ export function useOwnedEstateContext() {
   }, [estates, currentUserId]);
 }
 
-export { CO_OWNER_CAP };
+export { OWNER_CAP, CO_OWNER_CAP } from '@/lib/entitlements/constants';
+export { deriveSlotCount };

@@ -27,19 +27,31 @@ export default function EstateExpensesScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const expenses = useExpenseStore((s) => s.getByEstate(estateId));
+  const allExpenses = useExpenseStore((s) => s.expenses);
   const addExpense = useExpenseStore((s) => s.addExpense);
   const deleteExpense = useExpenseStore((s) => s.deleteExpense);
-  const total = useExpenseStore((s) => s.totalForEstate(estateId));
   const year = new Date().getFullYear();
-  const yearTotal = useExpenseStore((s) => s.totalForEstate(estateId, year));
+
+  const sorted = useMemo(
+    () =>
+      allExpenses
+        .filter((e) => e.estateId === estateId)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [allExpenses, estateId]
+  );
+  const total = useMemo(() => sorted.reduce((sum, e) => sum + e.amount, 0), [sorted]);
+  const yearTotal = useMemo(
+    () =>
+      sorted
+        .filter((e) => e.date.startsWith(String(year)))
+        .reduce((sum, e) => sum + e.amount, 0),
+    [sorted, year]
+  );
 
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('other');
   const [date, setDate] = useState(today());
-
-  const sorted = useMemo(() => expenses, [expenses]);
 
   function onAdd() {
     const n = parseFloat(amount.replace(',', '.'));

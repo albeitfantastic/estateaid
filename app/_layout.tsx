@@ -17,7 +17,6 @@ import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { agentLog } from '@/lib/debug-agent-log';
 import { hydrateStoredLanguage, initI18n } from '@/lib/i18n';
 import { loadAllStores } from '@/lib/load-all-stores';
 import { clearPushToken, registerPushToken, setupNotificationDeepLinkListener } from '@/lib/notifications';
@@ -76,16 +75,6 @@ export default function RootLayout() {
   const currentUserId = useAuthStore((s) => s.currentUser?.id);
   const notificationsEnabled = useAuthStore((s) => s.notificationsEnabled);
 
-  // #region agent log
-  agentLog('A', 'app/_layout.tsx:RootLayout', 'render', {
-    fontsLoaded,
-    fontError: fontError?.message ?? null,
-    i18nReady,
-    colorScheme,
-    currentUserId: currentUserId ?? null,
-  });
-  // #endregion
-
   useEffect(() => {
     if (!currentUserId) return;
     if (notificationsEnabled) {
@@ -106,22 +95,12 @@ export default function RootLayout() {
 
   useEffect(() => {
     let cancelled = false;
-    // #region agent log
-    agentLog('A', 'app/_layout.tsx:i18n', 'init start', {});
-    // #endregion
     void (async () => {
       try {
         await initI18n();
         await hydrateStoredLanguage();
-        // #region agent log
-        agentLog('A', 'app/_layout.tsx:i18n', 'init ok', {});
-        // #endregion
-      } catch (e) {
-        // #region agent log
-        agentLog('A', 'app/_layout.tsx:i18n', 'init error', {
-          err: e instanceof Error ? e.message : String(e),
-        });
-        // #endregion
+      } catch {
+        /* continue with defaults */
       } finally {
         if (!cancelled) setI18nReady(true);
       }
@@ -132,21 +111,8 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    // #region agent log
-    agentLog('A', 'app/_layout.tsx:splash', 'hide check', {
-      fontsLoaded,
-      fontError: fontError?.message ?? null,
-      i18nReady,
-      willHide: Boolean(fontsLoaded && i18nReady),
-      wouldHideWithFontError: Boolean((fontsLoaded || fontError) && i18nReady),
-    });
-    // #endregion
     if (fontsLoaded && i18nReady) {
-      void SplashScreen.hideAsync().then(() => {
-        // #region agent log
-        agentLog('A', 'app/_layout.tsx:splash', 'hideAsync done', {});
-        // #endregion
-      });
+      void SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError, i18nReady]);
 
@@ -157,12 +123,6 @@ export default function RootLayout() {
     async function afterSession() {
       if (cancelled) return;
       const user = useAuthStore.getState().currentUser;
-      // #region agent log
-      agentLog('D', 'app/_layout.tsx:bootstrap', 'afterSession', {
-        hasUser: Boolean(user),
-        isHydrated: useAuthStore.getState().isHydrated,
-      });
-      // #endregion
       if (user) await loadAllStores();
     }
 
@@ -188,6 +148,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="auth" />
+          <Stack.Screen name="i/[code]" />
           <Stack.Screen name="(onboarding)" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(app)" />

@@ -1,7 +1,7 @@
 export type InvitationStatus = 'pending' | 'declined' | 'revoked' | 'accepted';
 
 /** Access level on a specific estate when accepting an invite (not an account type). */
-export type EstateInviteRole = 'guest' | 'coOwner';
+export type EstateInviteRole = 'guest' | 'owner';
 
 export interface Invitation {
   id: string;
@@ -14,7 +14,7 @@ export interface Invitation {
    */
   guestEmail?: string;
   guestId?: string;
-  /** Co-owner vs guest on this property only. */
+  /** Owner vs guest on this property only. */
   role?: EstateInviteRole;
   status: InvitationStatus;
   message?: string;
@@ -25,8 +25,8 @@ export interface Invitation {
 /** @deprecated Use EstateInviteRole */
 export type InvitationRole = EstateInviteRole;
 
-/** Normalize legacy DB/app value `owner` → `coOwner`. */
+/** Normalize legacy DB/app values `coOwner` / `owner` → `owner`. */
 export function normalizeInviteRole(role: string | null | undefined): EstateInviteRole {
-  if (role === 'coOwner' || role === 'owner') return 'coOwner';
+  if (role === 'coOwner' || role === 'owner') return 'owner';
   return 'guest';
 }

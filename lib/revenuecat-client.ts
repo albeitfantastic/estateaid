@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL, type CustomerInfo } from 'react-native-purchases';
 
-import { getRevenueCatApiKey, entitlementIdsToMatch } from '@/lib/subscription-config';
+import { getRevenueCatApiKey, entitlementIdsToMatch, slotsForEntitlementId } from '@/lib/subscription-config';
 
 let configured = false;
 
@@ -62,10 +62,18 @@ export function isEntitlementActiveInCustomerInfo(
   entitlementId: string
 ): boolean {
   if (info.entitlements.active[entitlementId] != null) return true;
-  // Also accept configured aliases when checking the primary Maison Pro entitlement.
   return entitlementIdsToMatch().some(
     (id) => id !== entitlementId && info.entitlements.active[id] != null
   );
+}
+
+/** Max slot count from active SDK entitlements. */
+export function sdkMaxSlotCount(info: CustomerInfo): number {
+  let max = 0;
+  for (const id of Object.keys(info.entitlements.active)) {
+    max = Math.max(max, slotsForEntitlementId(id));
+  }
+  return max;
 }
 
 /** Refresh with Apple/Google then return latest CustomerInfo, or null on failure. */

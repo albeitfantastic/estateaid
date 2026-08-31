@@ -3,9 +3,14 @@ import type { EstateInviteRole } from '@/types';
 export const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
 export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
 
-/** App-scheme invite deep link (HTTPS universal links deferred). */
+/** HTTPS universal-link invite (primary share URL). */
+export function inviteHttpsLink(code: string): string {
+  return `https://estateaid.app/i/${encodeURIComponent(code.trim().toUpperCase())}`;
+}
+
+/** App-scheme fallback. Prefer {@link inviteHttpsLink} in share text. */
 export function inviteDeepLink(code: string): string {
-  return `estateaid://i/${encodeURIComponent(code.trim().toUpperCase())}`;
+  return inviteHttpsLink(code);
 }
 
 /** Default English suffix for open (non-email-bound) invites; override via i18n in UI when building messages. */
@@ -26,7 +31,7 @@ export type InviteMessageLine = {
 };
 
 function roleLabel(role?: EstateInviteRole | string): string {
-  if (role === 'coOwner' || role === 'owner') return 'Co-owner';
+  if (role === 'coOwner' || role === 'owner') return 'Owner';
   return 'Guest on property';
 }
 
@@ -34,7 +39,7 @@ function formatInviteLines(items: InviteMessageLine[]): string {
   return items
     .map(
       (i) =>
-        `• ${i.estateName}\n  Link: ${inviteDeepLink(i.inviteCode)}\n  Code: ${i.inviteCode} (${roleLabel(i.role)})`
+        `• ${i.estateName}\n  Link: ${inviteHttpsLink(i.inviteCode)}\n  Code: ${i.inviteCode} (${roleLabel(i.role)})`
     )
     .join('\n\n');
 }
@@ -70,17 +75,19 @@ export function buildMultiInviteShareMessage(
   );
 }
 
-/** WhatsApp: lead with App Store URL (existing pattern). */
+/** WhatsApp: lead with HTTPS invite link when a single code is present. */
 export function buildWhatsAppMultiInviteMessage(
   items: InviteMessageLine[],
   opts?: MultiInviteMessageOpts
 ): string {
   const body = buildMultiInviteShareMessage(items, opts);
-  return `${APP_STORE_URL}\n\n${body}`;
+  const lead =
+    items.length === 1 ? `${inviteHttpsLink(items[0].inviteCode)}\n\n` : `${APP_STORE_URL}\n\n`;
+  return `${lead}${body}`;
 }
 
 /**
- * WhatsApp: lead with App Store URL; include invite code for guests who already have the app.
+ * WhatsApp: lead with HTTPS invite link; include invite code for guests who already have the app.
  */
 export function buildWhatsAppInviteMessage(opts: {
   estateName: string;
@@ -92,15 +99,16 @@ export function buildWhatsAppInviteMessage(opts: {
   const { estateName, inviteCode, role, note, inviteeEmail } = opts;
   const noteSection = note ? `\n\n"${note}"` : '';
   const roleSection = role ? ` as ${roleLabel(role)}` : '';
+  const link = inviteHttpsLink(inviteCode);
   return (
-    `${APP_STORE_URL}\n\n` +
-    `Already have Maison? Your invite code: ${inviteCode}\n\n` +
-    `You're invited to ${estateName} on Maison${roleSection}.${noteSection}` +
+    `${link}\n\n` +
+    `You're invited to ${estateName} on Maison${roleSection}.${noteSection}\n\n` +
+    `Code: ${inviteCode}` +
     inviteEmailLine(inviteeEmail)
   );
 }
 
-/** Telegram / system share: both store links plus code. */
+/** Telegram / system share: HTTPS link plus store links and code. */
 export function buildFullInviteMessage(opts: {
   estateName: string;
   inviteCode: string;
@@ -118,15 +126,16 @@ export function buildFullInviteMessage(opts: {
   const footer =
     footerLine ??
     (role === 'guest' || role === undefined
-      ? 'Enter your code after signing up. Redeem your invite from the Invitations tab.'
-      : 'Enter your code after signing up. Co-owner invites work the same way.');
+      ? 'Open the link on your phone, or enter your code after signing up.'
+      : 'Open the link on your phone, or enter your code after signing up. Owner invites work the same way.');
   const openSuffix =
     openInvite && !inviteeEmail?.trim()
       ? `\n\n${openInviteSuffix ?? DEFAULT_OPEN_INVITE_SUFFIX}`
       : '';
   return (
-    `🏡 You're invited to ${estateName} on Maison${roleSection}!${noteSection}\n\n` +
-    `Your invite code: ${inviteCode}\n\n` +
+    `You're invited to ${estateName} on Maison${roleSection}!${noteSection}\n\n` +
+    `Link: ${inviteHttpsLink(inviteCode)}\n` +
+    `Code: ${inviteCode}\n\n` +
     `Download the app:\n` +
     `iOS: ${APP_STORE_URL}\n` +
     `Android: ${PLAY_STORE_URL}\n\n` +

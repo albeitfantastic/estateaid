@@ -36,6 +36,7 @@ const MAPPING = {
   'phone.fill': 'phone',
   'exclamationmark.triangle.fill': 'warning',
   'checkmark.circle.fill': 'check-circle',
+  circle: 'radio-button-unchecked',
   'xmark.circle.fill': 'cancel',
   'questionmark.circle.fill': 'help',
   'lock.doc.fill': 'lock',

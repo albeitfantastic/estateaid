@@ -8,22 +8,17 @@ import {
   type TouchableOpacityProps,
 } from 'react-native';
 
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
   openUpgradePaywall,
   type UpgradeFeature,
 } from '@/lib/maison-pro-upgrade';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 
-const BADGE_SIZE = 22;
 
 type Props = {
   /** When true, tap shows upgrade sheet instead of `onPress`. */
   locked: boolean;
-  /**
-   * When true, shows the lock badge. Defaults to `locked`.
-   * Use with `locked={false}` to mark Pro features that remain open for read.
-   */
+  /** @deprecated Lock badges are no longer shown. */
   showLock?: boolean;
   onPress: () => void;
   children: ReactNode;
@@ -31,7 +26,7 @@ type Props = {
   activeOpacity?: number;
   feature?: UpgradeFeature;
   returnTo?: string;
-  /** When set, co-owner lapse does not open the upgrade sheet. */
+  /** When set, coverage lapse uses host-gate sheet instead of generic upgrade. */
   estateId?: string;
   shrinkToContent?: boolean;
   accessibilityLabel?: TouchableOpacityProps['accessibilityLabel'];
@@ -39,11 +34,12 @@ type Props = {
 };
 
 /**
- * Wraps a tappable control; shows a small lock badge for Pro-gated host features.
+ * Wraps a tappable control. When `locked`, tap opens the upgrade / coverage sheet
+ * instead of `onPress`. Lock badges are not shown (slot economy — paywall only on create).
  */
 export function HostProLockTouchable({
   locked,
-  showLock,
+  showLock: _showLock,
   onPress,
   children,
   style,
@@ -55,7 +51,6 @@ export function HostProLockTouchable({
   accessibilityLabel,
   accessibilityRole,
 }: Props) {
-  const badge = showLock ?? locked;
   return (
     <View style={[styles.wrap, shrinkToContent && styles.wrapShrink, style]}>
       <TouchableOpacity
@@ -77,11 +72,6 @@ export function HostProLockTouchable({
       >
         {children}
       </TouchableOpacity>
-      {badge && (
-        <View style={styles.badge} pointerEvents="none">
-          <IconSymbol name="lock.fill" size={11} color="#fff" />
-        </View>
-      )}
     </View>
   );
 }
@@ -94,16 +84,5 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: BADGE_SIZE,
-    height: BADGE_SIZE,
-    borderRadius: BADGE_SIZE / 2,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

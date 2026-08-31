@@ -40,7 +40,7 @@ export const useHandoverStore = create<HandoverState>()(
       completions: [],
       getTemplateItems: (estateId) => {
         const t = get().templates.find((x) => x.estateId === estateId);
-        return t?.items?.length ? t.items : [...DEFAULT_HANDOVER_ITEMS];
+        return t?.items?.length ? t.items : DEFAULT_HANDOVER_ITEMS;
       },
       setTemplateItems: (estateId, items) => {
         set((s) => {

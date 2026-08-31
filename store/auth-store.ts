@@ -29,6 +29,8 @@ function profileToUser(
     createdAt: (profile.created_at ?? '') as string,
     trialEndsAt: (profile.trial_ends_at as string | null) ?? null,
     trialStartedAt: (profile.trial_started_at as string | null) ?? null,
+    hasUsedTrial: Boolean(profile.has_used_trial),
+    grandfatheredSlots: (profile.grandfathered_slots as number | null) ?? null,
   };
 }
 
@@ -39,16 +41,23 @@ interface AuthState {
   /** User id for which `hasCompletedOnboarding` applies; must match `currentUser.id` to skip onboarding. */
   onboardingCompletedForUserId: string | null;
   pendingInviteCode: string | null;
+  /** Deep-linked invitees skip quiz + start fork. */
+  skipOnboardingForInvite: boolean;
   themePreference: ThemePreference;
   /** Persisted; when false, skip push registration and clear server token. */
   notificationsEnabled: boolean;
   setUser: (user: User) => void;
-  patchUser: (partial: Partial<Pick<User, 'name' | 'avatarUrl' | 'trialEndsAt' | 'trialStartedAt'>>) => void;
+  patchUser: (
+    partial: Partial<
+      Pick<User, 'name' | 'avatarUrl' | 'trialEndsAt' | 'trialStartedAt' | 'hasUsedTrial' | 'grandfatheredSlots'>
+    >
+  ) => void;
   clearUser: () => void;
   setHydrated: () => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
   setPendingInviteCode: (code: string | null) => void;
+  setSkipOnboardingForInvite: (skip: boolean) => void;
   setThemePreference: (theme: ThemePreference) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
   bootstrapSession: () => Promise<void>;
@@ -64,6 +73,7 @@ export const useAuthStore = create<AuthState>()(
       hasCompletedOnboarding: false,
       onboardingCompletedForUserId: null,
       pendingInviteCode: null,
+      skipOnboardingForInvite: false,
       themePreference: 'light',
       notificationsEnabled: false,
       setUser: (user) => set({ currentUser: user }),
@@ -81,6 +91,7 @@ export const useAuthStore = create<AuthState>()(
         })),
       resetOnboarding: () => set({ hasCompletedOnboarding: false, onboardingCompletedForUserId: null }),
       setPendingInviteCode: (code) => set({ pendingInviteCode: code }),
+      setSkipOnboardingForInvite: (skip) => set({ skipOnboardingForInvite: skip }),
       setThemePreference: (theme) => set({ themePreference: theme }),
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       bootstrapSession: async () => {
@@ -94,7 +105,7 @@ export const useAuthStore = create<AuthState>()(
               if (session?.user) {
                 const { data: profile } = await supabase
                   .from('profiles')
-                  .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at')
+                  .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at, has_used_trial, grandfathered_slots')
                   .eq('id', session.user.id)
                   .single();
                 if (profile) {
@@ -120,7 +131,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at')
+            .select('id, name, avatar_url, created_at, trial_started_at, trial_ends_at, has_used_trial, grandfathered_slots')
             .eq('id', uid)
             .single();
           if (profile) {
@@ -139,12 +150,13 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: '@estateaid/auth/v10',
+      name: '@estateaid/auth/v11',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         onboardingCompletedForUserId: state.onboardingCompletedForUserId,
         pendingInviteCode: state.pendingInviteCode,
+        skipOnboardingForInvite: state.skipOnboardingForInvite,
         themePreference: state.themePreference,
         notificationsEnabled: state.notificationsEnabled,
       }),

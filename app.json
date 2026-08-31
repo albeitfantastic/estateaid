@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.estateaid.app",
+      "associatedDomains": ["applinks:estateaid.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -25,6 +26,20 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "estateaid.app",
+              "pathPrefix": "/i"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {

@@ -165,7 +165,7 @@ export const useInvitationStore = create<InvitationState>()(
         }
         const inv = get().invitations.find((i) => i.id === id);
         if (inv?.guestId) {
-          const roleLabel = nextRole === 'coOwner' ? 'Co-owner' : 'Guest';
+          const roleLabel = nextRole === 'owner' ? 'Owner' : 'Guest';
           void getPushToken(inv.guestId).then((token) =>
             sendPush(token, 'Role Updated', `Your role has been updated to ${roleLabel}.`)
           );

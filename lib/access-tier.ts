@@ -1,13 +1,21 @@
-import { type AccessTier, deriveAccessTier } from '@/lib/access-tier-core';
+import { deriveAccessTier, deriveSlotCount, type AccessTier } from '@/lib/access-tier-core';
 import { useAuthStore } from '@/store/auth-store';
 import { useSubscription } from '@/providers/subscription-provider';
 
 export type { AccessTier };
-export { deriveAccessTier };
+export { deriveAccessTier, deriveSlotCount };
 
+/** @deprecated Prefer useAccountContext().slotCount / useCan(). */
 export function useAccessTier(): AccessTier {
   const trialEndsAt = useAuthStore((s) => s.currentUser?.trialEndsAt);
-  const { isPro, sdkMaisonProActive } = useSubscription();
+  const { slotCount, isPro, sdkMaisonProActive } = useSubscription();
+  if (slotCount > 0) {
+    return deriveAccessTier({
+      trialEndsAt,
+      isProEntitlement: isPro || slotCount > 0,
+      sdkEntitlementActive: sdkMaisonProActive,
+    });
+  }
   return deriveAccessTier({
     trialEndsAt,
     isProEntitlement: isPro,
@@ -15,7 +23,12 @@ export function useAccessTier(): AccessTier {
   });
 }
 
-/** @deprecated Prefer useCan() from entitlements/capabilities for feature gates. */
+/** @deprecated Prefer useCan() / useAccountContext(). */
 export function useHasFullHostAccess(): boolean {
-  return useAccessTier() !== 'standard';
+  const { slotCount } = useSubscription();
+  return slotCount > 0;
+}
+
+export function useSlotCount(): number {
+  return useSubscription().slotCount;
 }

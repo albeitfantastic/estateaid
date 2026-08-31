@@ -31,7 +31,7 @@ export default function EstatesList() {
   const allInvitations = useInvitationStore((s) => s.invitations);
   const coverageById = useEstateCoverageStore((s) => s.byId);
   const can = useCan();
-  const canCreate = can('estate.create');
+  const canCreate = can('property.create');
   const addLocked = !canCreate;
 
   const invitedEstateIds = useMemo(
@@ -43,7 +43,7 @@ export default function EstatesList() {
     if (!currentUser) return false;
     return allEstates.some((e) => {
       const role = getEstateActorRole(allEstates, allInvitations, e.id, currentUser.id, currentUser.email);
-      return role === 'coOwner';
+      return role === 'owner';
     });
   }, [allEstates, allInvitations, currentUser]);
 
@@ -115,27 +115,24 @@ export default function EstatesList() {
               : 'none';
             const coverage = coverageById[estate.id];
             const uncoveredHost =
-              (role === 'sponsor' || role === 'coOwner') && coverage != null && !coverage.covered;
+              (role === 'sponsor' || role === 'owner') && coverage != null && !coverage.covered;
             return (
               <View key={estate.id} style={styles.cardWrap}>
                 <EstateCard
                   estate={estate}
                   onPress={() => router.push(`/(app)/estates/${estate.id}` as never)}
                 />
-                {uncoveredHost && (
+                {uncoveredHost && role === 'owner' && (
                   <View style={[styles.downgradeBadge, { backgroundColor: colors.borderSoft }]}>
-                    <IconSymbol name="lock.fill" size={10} color={colors.textMuted} />
                     <ThemedText style={[styles.downgradeText, { color: colors.textMuted }]}>
-                      {role === 'sponsor'
-                        ? 'Upgrade to unlock host tools'
-                        : `Paused — ${coverage?.sponsorDisplayName ?? 'sponsor'}'s plan ended`}
+                      {`Paused — ${coverage?.sponsorDisplayName ?? 'sponsor'}'s plan ended`}
                     </ThemedText>
                   </View>
                 )}
-                {(role === 'coOwner' || role === 'guest') && (
+                {(role === 'owner' || role === 'guest') && (
                   <View style={[styles.roleBadge, { backgroundColor: colors.icon + '15' }]}>
                     <ThemedText style={[styles.roleBadgeText, { color: colors.icon }]}>
-                      {role === 'coOwner'
+                      {role === 'owner'
                         ? t('ownerInvite.estateRoleCoOwnerLabel')
                         : t('ownerInvite.estateRoleGuestLabel')}
                     </ThemedText>

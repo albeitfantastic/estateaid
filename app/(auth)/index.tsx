@@ -110,7 +110,7 @@ export default function AuthScreen() {
   const colorScheme = useColorScheme();
   const appTheme = useAppTheme();
   const dark = colorScheme === 'dark';
-  const { setUser, resetOnboarding, pendingInviteCode, setPendingInviteCode } = useAuthStore();
+  const { setUser, resetOnboarding, pendingInviteCode, setPendingInviteCode, completeOnboarding, setSkipOnboardingForInvite } = useAuthStore();
   const { redeemCode } = useInvitationStore();
 
   const [mode, setMode] = useState<Mode>('signin');
@@ -134,9 +134,17 @@ export default function AuthScreen() {
     };
     setUser(user);
     await loadAllStores();
-    if (pendingInviteCode) {
-      const r = await redeemCode(pendingInviteCode, user.id);
+    const skipInvite = useAuthStore.getState().skipOnboardingForInvite;
+    const code = pendingInviteCode ?? useAuthStore.getState().pendingInviteCode;
+    if (code) {
+      const r = await redeemCode(code, user.id);
       setPendingInviteCode(null);
+      if (r.success && r.invitation) {
+        completeOnboarding();
+        setSkipOnboardingForInvite(false);
+        router.replace(`/(app)/estates/${r.invitation.estateId}` as never);
+        return;
+      }
       if (!r.success) {
         const msg =
           r.reason === 'wrong_invitee'
@@ -148,6 +156,12 @@ export default function AuthScreen() {
                 : t('auth.inviteGenericFail');
         Alert.alert(t('auth.inviteCodeTitle'), msg);
       }
+    }
+    if (skipInvite) {
+      completeOnboarding();
+      setSkipOnboardingForInvite(false);
+      router.replace('/(app)/home' as never);
+      return;
     }
     if (!isOnboardingCompleteForCurrentUser(useAuthStore.getState())) {
       router.replace('/(onboarding)/q1' as never);

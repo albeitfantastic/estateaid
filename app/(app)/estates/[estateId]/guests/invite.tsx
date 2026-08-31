@@ -10,7 +10,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { CO_OWNER_CAP, useCan } from '@/lib/entitlements/capabilities';
+import { useCan } from '@/lib/entitlements/capabilities';
+import { OWNER_CAP, OWNER_INVITE_CAP } from '@/lib/entitlements/constants';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateCoverageStore } from '@/store/estate-coverage-store';
@@ -45,10 +46,10 @@ export default function InviteGuest() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
 
   const canInviteGuest = can('guests.invite', { estateId });
-  const canInviteCoOwner = can('coOwners.invite', { estateId });
-  const allowed = canInviteGuest || canInviteCoOwner;
+  const canInviteOwner = can('owners.invite', { estateId });
+  const allowed = canInviteGuest || canInviteOwner;
   const guestsListPath = `/(app)/estates/${estateId}/guests`;
-  const atCap = (coverage?.coOwnerCount ?? 0) >= CO_OWNER_CAP;
+  const atCap = (coverage?.ownerCount ?? (coverage?.coOwnerCount ?? 0) + 1) >= OWNER_CAP;
   const uncovered = coverage != null && !coverage.covered;
 
   useEffect(() => {
@@ -62,8 +63,8 @@ export default function InviteGuest() {
   }, [allowed, estateId, guestsListPath, router]);
 
   useEffect(() => {
-    if (role === 'coOwner' && !canInviteCoOwner) setRole('guest');
-  }, [role, canInviteCoOwner]);
+    if (role === 'owner' && !canInviteOwner) setRole('guest');
+  }, [role, canInviteOwner]);
 
   const openSuffix = t('ownerInvite.openInviteSuffix');
   const sharePayload = useMemo(() => {
@@ -81,14 +82,14 @@ export default function InviteGuest() {
 
   async function createInvite() {
     if (!estate) return;
-    if (role === 'coOwner' && !canInviteCoOwner) {
+    if (role === 'owner' && !canInviteOwner) {
       Alert.alert(
         t('ownerInvite.saveFailedTitle'),
         uncovered
-          ? 'Co-owner invites need an active subscription on this property.'
+          ? 'Owner invites need an active subscription on this property.'
           : atCap
-            ? `This property already has ${CO_OWNER_CAP} co-owners.`
-            : 'Co-owner invites are not available.'
+            ? `This property already has ${OWNER_CAP} owners (including sponsor; max ${OWNER_INVITE_CAP} invited).`
+            : 'Owner invites are not available.'
       );
       return;
     }
@@ -105,7 +106,10 @@ export default function InviteGuest() {
     });
     if (error) {
       if (errCode === 'co_owner_cap_reached') {
-        Alert.alert(t('ownerInvite.saveFailedTitle'), `Co-owner limit reached (${CO_OWNER_CAP}).`);
+        Alert.alert(
+          t('ownerInvite.saveFailedTitle'),
+          `Owner limit reached (${OWNER_CAP} including sponsor).`
+        );
         return;
       }
       Alert.alert(t('ownerInvite.saveFailedTitle'), error);
@@ -146,10 +150,10 @@ export default function InviteGuest() {
     );
   }
 
-  const coOwnerDisabledReason = uncovered
+  const ownerDisabledReason = uncovered
     ? 'Needs an active subscription on this property'
     : atCap
-      ? `Limit reached (${CO_OWNER_CAP} co-owners)`
+      ? `Limit reached (${OWNER_CAP} owners including sponsor; max ${OWNER_INVITE_CAP} invited)`
       : null;
 
   return (
@@ -196,9 +200,9 @@ export default function InviteGuest() {
                 {([
                   { value: 'guest' as const, label: t('ownerInvite.estateRoleGuestLabel'), disabled: false },
                   {
-                    value: 'coOwner' as const,
+                    value: 'owner' as const,
                     label: t('ownerInvite.estateRoleCoOwnerLabel'),
-                    disabled: !canInviteCoOwner,
+                    disabled: !canInviteOwner,
                   },
                 ]).map((opt) => {
                   const selected = role === opt.value;
@@ -229,9 +233,9 @@ export default function InviteGuest() {
                   );
                 })}
               </View>
-              {coOwnerDisabledReason ? (
+              {ownerDisabledReason ? (
                 <ThemedText style={[styles.capHint, { color: colors.icon }]}>
-                  Co-owner: {coOwnerDisabledReason}
+                  Owner: {ownerDisabledReason}
                 </ThemedText>
               ) : null}
             </View>

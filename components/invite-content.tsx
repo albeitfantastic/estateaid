@@ -51,7 +51,7 @@ export function InviteContent({
     () =>
       [
         { value: 'guest' as const, label: t('ownerInvite.estateRoleGuestLabel') },
-        { value: 'coOwner' as const, label: t('ownerInvite.estateRoleCoOwnerLabel') },
+        { value: 'owner' as const, label: t('ownerInvite.estateRoleCoOwnerLabel') },
       ] as const,
     [t]
   );
@@ -277,7 +277,7 @@ export function InviteContent({
                 </ThemedText>
                 <View style={[styles.roleBadge, { backgroundColor: colors.tint + '15' }]}>
                   <ThemedText style={[styles.roleBadgeText, { color: colors.tint }]}>
-                    {inv.role === 'coOwner'
+                    {inv.role === 'owner'
                       ? t('ownerInvite.estateRoleCoOwnerLabel')
                       : t('ownerInvite.estateRoleGuestLabel')}
                   </ThemedText>

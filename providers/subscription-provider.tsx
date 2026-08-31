@@ -9,28 +9,29 @@ import React, {
 import { AppState, Platform, type AppStateStatus } from 'react-native';
 import type { CustomerInfo } from 'react-native-purchases';
 
+import { deriveSlotCount } from '@/lib/access-tier-core';
 import {
   configureRevenueCatIfNeeded,
   fetchCustomerInfoSafe,
-  isEntitlementActiveInCustomerInfo,
   isRevenueCatConfigured,
   logInRevenueCatUser,
   logOutRevenueCatUser,
   presentManageSubscriptions,
+  sdkMaxSlotCount,
   Purchases,
 } from '@/lib/revenuecat-client';
-import { PRIMARY_ENTITLEMENT_ID, isPrimaryEntitlementId } from '@/lib/subscription-config';
+import { slotEntitlementIds } from '@/lib/subscription-config';
 import { fetchSubscriptionEntitlements, rowGrantsAccess } from '@/lib/subscription-access';
 import { useAuthStore } from '@/store/auth-store';
 import type { SubscriptionEntitlementRow } from '@/types/subscription';
 
 export type SubscriptionContextValue = {
   loading: boolean;
-  /** Trusted mirror from Supabase (webhook). Use for gating paid backend-backed features. */
+  /** Resolved property slot count (RC + trial + grandfather). */
+  slotCount: number;
+  /** @deprecated Prefer slotCount > 0 */
   isPro: boolean;
-  /**
-   * SDK-reported active entitlement (Apple/Google). Can be true briefly before webhook sync — do not use as sole gate.
-   */
+  /** @deprecated Prefer slotCount */
   sdkMaisonProActive: boolean;
   entitlementIds: string[];
   expiresAt: string | null;
@@ -38,7 +39,6 @@ export type SubscriptionContextValue = {
   primaryRow: SubscriptionEntitlementRow | null;
   error: string | null;
   refetch: () => Promise<void>;
-  /** Sync with store + refresh CustomerInfo + refetch Supabase mirror. */
   syncPurchasesAndRefetch: () => Promise<void>;
   presentManageSubscriptions: () => Promise<void>;
 };
@@ -46,11 +46,12 @@ export type SubscriptionContextValue = {
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const currentUserId = useAuthStore((s) => s.currentUser?.id ?? null);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const currentUserId = currentUser?.id ?? null;
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<SubscriptionEntitlementRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [sdkMaisonProActive, setSdkMaisonProActive] = useState(false);
+  const [sdkSlotCount, setSdkSlotCount] = useState(0);
 
   const refetch = useCallback(async () => {
     if (!currentUserId) {
@@ -73,7 +74,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (Platform.OS !== 'web' && isRevenueCatConfigured()) {
       const info = await fetchCustomerInfoSafe();
       if (info) {
-        setSdkMaisonProActive(isEntitlementActiveInCustomerInfo(info, PRIMARY_ENTITLEMENT_ID));
+        setSdkSlotCount(sdkMaxSlotCount(info));
       }
     }
     await refetch();
@@ -85,12 +86,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     const listener = (info: CustomerInfo) => {
       if (cancelled) return;
-      setSdkMaisonProActive(isEntitlementActiveInCustomerInfo(info, PRIMARY_ENTITLEMENT_ID));
+      setSdkSlotCount(sdkMaxSlotCount(info));
     };
 
     async function run() {
       if (Platform.OS === 'web') {
-        setSdkMaisonProActive(false);
+        setSdkSlotCount(0);
         await refetch();
         return;
       }
@@ -103,7 +104,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
       if (!currentUserId) {
         await logOutRevenueCatUser();
-        setSdkMaisonProActive(false);
+        setSdkSlotCount(0);
         setRows([]);
         setError(null);
         setLoading(false);
@@ -116,10 +117,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           const info = await Purchases.getCustomerInfo();
           listener(info);
         } catch {
-          setSdkMaisonProActive(false);
+          setSdkSlotCount(0);
         }
       } else {
-        setSdkMaisonProActive(false);
+        setSdkSlotCount(0);
       }
 
       await refetch();
@@ -143,21 +144,39 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return () => sub.remove();
   }, [currentUserId, refetch]);
 
-  const primaryRow = useMemo(
-    () => rows.find((r) => isPrimaryEntitlementId(r.entitlement_id)) ?? null,
-    [rows]
-  );
+  const primaryRow = useMemo(() => {
+    let best: SubscriptionEntitlementRow | null = null;
+    let bestSlots = 0;
+    for (const r of rows) {
+      if (!rowGrantsAccess(r)) continue;
+      const ids = slotEntitlementIds();
+      if (!ids.includes(r.entitlement_id) && !rowGrantsAccess(r)) continue;
+      const fromDerive = deriveSlotCount({ rows: [r], trialEndsAt: null });
+      if (fromDerive >= bestSlots) {
+        bestSlots = fromDerive;
+        best = r;
+      }
+    }
+    return best;
+  }, [rows]);
 
-  const isPro = useMemo(() => {
-    if (!primaryRow) return false;
-    return rowGrantsAccess(primaryRow);
-  }, [primaryRow]);
+  const slotCount = useMemo(
+    () =>
+      deriveSlotCount({
+        rows,
+        trialEndsAt: currentUser?.trialEndsAt,
+        grandfatheredSlots: currentUser?.grandfatheredSlots,
+        sdkSlotCount,
+      }),
+    [rows, currentUser?.trialEndsAt, currentUser?.grandfatheredSlots, sdkSlotCount]
+  );
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({
       loading,
-      isPro,
-      sdkMaisonProActive,
+      slotCount,
+      isPro: slotCount > 0,
+      sdkMaisonProActive: sdkSlotCount > 0,
       entitlementIds: rows.map((r) => r.entitlement_id),
       expiresAt: primaryRow?.expires_at ?? null,
       managementUrl: null,
@@ -167,7 +186,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       syncPurchasesAndRefetch,
       presentManageSubscriptions: () => presentManageSubscriptions(),
     }),
-    [loading, isPro, sdkMaisonProActive, rows, primaryRow, error, refetch, syncPurchasesAndRefetch]
+    [loading, slotCount, sdkSlotCount, rows, primaryRow, error, refetch, syncPurchasesAndRefetch]
   );
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;

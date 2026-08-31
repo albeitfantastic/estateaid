@@ -14,10 +14,11 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
-import { useCan } from '@/lib/entitlements/capabilities';
+import { useAccountContext, useCan } from '@/lib/entitlements/capabilities';
 import { getEstateActorRole } from '@/lib/estate-role';
 import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
 import { generateUuidV4 } from '@/lib/id';
+import { startAppTrialRpc } from '@/lib/start-app-trial';
 import { isRequired } from '@/lib/validators';
 import { useInvitationStore } from '@/store/invitation-store';
 
@@ -28,16 +29,19 @@ export default function NewEstate() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
+  const patchUser = useAuthStore((s) => s.patchUser);
   const addEstate = useEstateStore((s) => s.addEstate);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
+  const account = useAccountContext();
   const can = useCan();
-  const allowed = can('estate.create');
+  const allowed = can('property.create');
+  const needsTrialGrant = !allowed && !account.hasUsedTrial;
   const isCoOwnerElsewhere =
     !!currentUser &&
     allEstates.some((e) => {
       const role = getEstateActorRole(allEstates, allInvitations, e.id, currentUser.id, currentUser.email);
-      return role === 'coOwner';
+      return role === 'owner';
     });
 
   const [name, setName] = useState('');
@@ -48,15 +52,12 @@ export default function NewEstate() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (allowed) return;
-    openEstateCreatePaywall({
-      isCoOwnerElsewhere,
-      returnTo: '/(app)/estates',
-    });
+    // Trial users may enter create while !allowed; paywall only on explicit create attempts.
+    if (allowed || needsTrialGrant) return;
     router.replace('/(app)/estates' as never);
-  }, [allowed, isCoOwnerElsewhere, router]);
+  }, [allowed, needsTrialGrant, router]);
 
-  if (!allowed) {
+  if (!allowed && !needsTrialGrant) {
     return <ThemedView style={{ flex: 1 }} />;
   }
 
@@ -82,6 +83,21 @@ export default function NewEstate() {
 
     setSaving(true);
     try {
+      if (needsTrialGrant) {
+        const trial = await startAppTrialRpc();
+        if (!trial.ok && trial.code !== 'TRIAL_ALREADY_USED') {
+          Alert.alert('Trial unavailable', trial.reason);
+          return;
+        }
+        if (trial.ok) {
+          patchUser({
+            hasUsedTrial: true,
+            trialEndsAt: trial.trialEndsAt ?? new Date(Date.now() + 14 * 864e5).toISOString(),
+            trialStartedAt: new Date().toISOString(),
+          });
+        }
+      }
+
       const { error, code } = await addEstate({
         id: generateUuidV4(),
         ownerId: currentUser.id,
@@ -94,7 +110,7 @@ export default function NewEstate() {
         createdAt: new Date().toISOString(),
       });
 
-      if (code === 'upgrade_required') {
+      if (code === 'NO_FREE_SLOT' || code === 'upgrade_required') {
         openEstateCreatePaywall({
           isCoOwnerElsewhere,
           returnTo: '/(app)/estates/new',
@@ -105,7 +121,7 @@ export default function NewEstate() {
         Alert.alert('Could not save property', error);
         return;
       }
-      router.back();
+      router.replace('/(app)/home' as never);
     } finally {
       setSaving(false);
     }

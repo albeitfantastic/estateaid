@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { PrimaryButton } from '@/components/paywall/ui/PrimaryButton';
 import { SecondaryButton } from '@/components/paywall/ui/SecondaryButton';
 import { useAccessTier } from '@/lib/access-tier';
+import { useAccountContext } from '@/lib/entitlements/capabilities';
 import {
   openUpgradePaywall,
   type UpgradeFeature,
@@ -21,25 +22,25 @@ type Props = {
 
 /**
  * Shown on host hubs when the estate is not covered.
- * Co-owners never see a generic "Upgrade" for someone else's lapse.
+ * Owners never see a generic "Upgrade" for someone else's lapse.
  */
 export function SponsorCoverageBanner({
   estateId,
   sponsorUpgradeFeature = 'generic',
 }: Props) {
   const colors = useAppTheme().colors;
-  const tier = useAccessTier();
+  const account = useAccountContext();
   const coverage = useEstateCoverageStore((s) => s.byId[estateId]);
   const transferSponsor = useEstateStore((s) => s.transferSponsor);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!coverage || coverage.covered) return null;
-  if (coverage.actorRole !== 'sponsor' && coverage.actorRole !== 'coOwner') return null;
+  if (coverage.actorRole !== 'sponsor' && coverage.actorRole !== 'owner') return null;
 
   const isSponsor = coverage.actorRole === 'sponsor';
-  const canTransfer = !isSponsor && (tier === 'trial' || tier === 'pro');
-
+  const canTransfer =
+    !isSponsor && account.slotCount > account.propertiesSponsored;
   async function onTransfer() {
     setBusy(true);
     setError(null);
@@ -58,13 +59,13 @@ export function SponsorCoverageBanner({
     <View style={[styles.banner, { backgroundColor: colors.borderSoft, borderColor: colors.border }]}>
       {isSponsor ? (
         <>
-          <ThemedText style={styles.title}>Host tools are locked on this property</ThemedText>
+          <ThemedText style={styles.title}>Management is paused</ThemedText>
           <ThemedText style={[styles.body, { color: colors.textMuted }]}>
-            Upgrade to Maison Pro to unlock invites, documents, availability, and stay approvals on
-            estates you sponsor.
+            Your subscription no longer covers this property. Everything you added is still here.
+            Choose a plan with enough slots, or elect which properties to keep covered.
           </ThemedText>
           <SecondaryButton
-            label="Upgrade to Maison Pro"
+            label="Choose a plan"
             onPress={() => openUpgradePaywall(sponsorUpgradeFeature)}
           />
         </>
@@ -72,10 +73,9 @@ export function SponsorCoverageBanner({
         <>
           <ThemedText style={styles.title}>Management is paused</ThemedText>
           <ThemedText style={[styles.body, { color: colors.textMuted }]}>
-            {coverage.sponsorDisplayName}&apos;s subscription has ended. Documents and invites stay
-            visible; writes are blocked until sponsorship is restored.
-          </ThemedText>
-          {canTransfer ? (
+            {coverage.sponsorDisplayName}&apos;s subscription has ended. Everything you added is still
+            here. Writes are blocked until sponsorship is restored.
+          </ThemedText>          {canTransfer ? (
             busy ? (
               <ActivityIndicator color={colors.primary} />
             ) : (

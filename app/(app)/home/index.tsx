@@ -10,9 +10,11 @@ import { ThemedView } from '@/components/themed-view';
 import { EmptyState } from '@/components/ui/empty-state';
 import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { OverAllocationChooser } from '@/components/ui/over-allocation-chooser';
 import { StatusBadge } from '@/components/ui/badge';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SurfaceCard } from '@/components/ui/surface-card';
+import { TrialStatusLine } from '@/components/ui/trial-status-line';
 import { Colors, EstateColors, Layout, Radius, type ThemeColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAccessTier } from '@/lib/access-tier';
@@ -135,7 +137,7 @@ export default function HomeDashboard() {
           currentUser.id,
           currentUser.email
         );
-        return role === 'sponsor' || role === 'coOwner';
+        return role === 'sponsor' || role === 'owner';
       })
       .map((e) => e.id);
   }, [allEstates, allInvitations, currentUser]);
@@ -143,12 +145,12 @@ export default function HomeDashboard() {
   const canInvite = hostEstateIds.some((id) => can('guests.invite', id));
   const canApprove = hostEstateIds.some((id) => can('stays.approve', id));
   const canWriteEvents = hostEstateIds.some((id) => can('events.write', id));
-  const canAddEstate = can('estate.create');
+  const canAddEstate = can('property.create');
   const isCoOwnerElsewhere = useMemo(() => {
     if (!currentUser) return false;
     return allEstates.some((e) => {
       const role = getEstateActorRole(allEstates, allInvitations, e.id, currentUser.id, currentUser.email);
-      return role === 'coOwner';
+      return role === 'owner';
     });
   }, [allEstates, allInvitations, currentUser]);
   const [useCase, setUseCase] = useState<OnboardingUseCase | null>(null);
@@ -171,37 +173,11 @@ export default function HomeDashboard() {
           currentUser.id,
           currentUser.email
         );
-        return role === 'sponsor' || role === 'coOwner';
+        return role === 'sponsor' || role === 'owner';
       }),
     [allEstates, allInvitations, currentUser]
   );
   const estateIds = useMemo(() => estates.map((e) => e.id), [estates]);
-
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7410/ingest/3b21f73e-4d1e-45e8-beb0-f14c26a6554d', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1393f3' },
-      body: JSON.stringify({
-        sessionId: '1393f3',
-        runId: 'pre-fix',
-        hypothesisId: 'B',
-        location: 'home/index.tsx:caps',
-        message: 'home capability snapshot',
-        data: {
-          accessTier,
-          canInvite,
-          canApprove,
-          canWriteEvents,
-          canAddEstate,
-          ownedCount: estates.length,
-          useCase,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }, [accessTier, canInvite, canApprove, canWriteEvents, canAddEstate, estates.length, useCase]);
-  // #endregion
 
   const estateColorMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -361,6 +337,7 @@ export default function HomeDashboard() {
           <ThemedText type="caption" style={[styles.sub, { color: heroIssues.length > 0 ? colors.warning : colors.success }]}>
             {dynamicSubtitle}
           </ThemedText>
+          <TrialStatusLine />
         </View>
         <TouchableOpacity
           onPress={() => setMenuOpen(true)}
@@ -405,6 +382,7 @@ export default function HomeDashboard() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <OverAllocationChooser />
         {/* ── Needs Attention (hero) ─────────────────────────────── */}
         {hasAttentionItems && (
           <View style={styles.attentionHeader}>

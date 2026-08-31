@@ -91,7 +91,7 @@ export const useEstateStore = create<EstateState>()(
           set((s) => ({ estates: s.estates.filter((e) => e.id !== withSponsor.id) }));
           return {
             error: result?.message ?? result?.code ?? 'Could not create estate',
-            code: (result?.code as 'upgrade_required' | 'error') ?? 'error',
+            code: (result?.code as string) ?? 'error',
           };
         }
         useActivityLogStore.getState().logActivity(withSponsor.id, withSponsor.ownerId, 'estate_created');

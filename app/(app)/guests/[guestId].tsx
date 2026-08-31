@@ -71,15 +71,15 @@ export default function GuestDetail() {
   }
 
   function promptChangeRole(invId: string, currentRole: string) {
-    const ROLES = ['guest', 'coOwner'] as const;
-    const normalized = currentRole === 'owner' ? 'coOwner' : currentRole;
+    const ROLES = ['guest', 'owner'] as const;
+    const normalized = currentRole === 'coOwner' ? 'owner' : currentRole;
     const others = ROLES.filter((r) => r !== normalized);
     Alert.alert(
       'Change Role',
-      `Current role: ${normalized === 'coOwner' ? 'Co-owner' : 'Guest'}`,
+      `Current role: ${normalized === 'owner' ? 'Owner' : 'Guest'}`,
       [
         ...others.map((r) => ({
-          text: r === 'coOwner' ? 'Co-owner' : 'Guest',
+          text: r === 'owner' ? 'Owner' : 'Guest',
           onPress: () => void updateInvitationRole(invId, r),
         })),
         { text: 'Cancel', style: 'cancel' as const },
@@ -154,7 +154,7 @@ export default function GuestDetail() {
                       activeOpacity={0.7}
                     >
                       <ThemedText style={[styles.roleBadgeText, { color: dotColor }]}>
-                        {role === 'coOwner' || role === 'owner' ? 'Co-owner' : 'Guest'}
+                        {role === 'owner' ? 'Owner' : 'Guest'}
                       </ThemedText>
                       <IconSymbol name="chevron.up.chevron.down" size={9} color={dotColor} />
                     </TouchableOpacity>

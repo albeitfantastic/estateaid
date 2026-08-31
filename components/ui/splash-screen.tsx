@@ -8,7 +8,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { SplashScreenAnimation } from '@/components/ui/splash-screen-animation';
-import { agentLog } from '@/lib/debug-agent-log';
 
 interface Props {
   isHydrated: boolean;
@@ -25,29 +24,10 @@ export function SplashScreenOverlay({ isHydrated, onDone }: Props) {
   const rootOpacity = useSharedValue(1);
   const exitStarted = useRef(false);
 
-  // #region agent log
-  agentLog('B', 'splash-screen.tsx:SplashScreenOverlay', 'render', {
-    isHydrated,
-    introDone,
-    exitStarted: exitStarted.current,
-  });
-  // #endregion
-
   const startExit = () => {
     if (exitStarted.current) return;
     exitStarted.current = true;
-    // #region agent log
-    agentLog('B', 'splash-screen.tsx:startExit', 'exit animation start', {
-      isHydrated,
-      introDone,
-    });
-    // #endregion
     rootOpacity.value = withTiming(0, { duration: 300 }, (finished) => {
-      // #region agent log
-      runOnJS(agentLog)('B', 'splash-screen.tsx:startExit', 'exit animation end', {
-        finished: Boolean(finished),
-      });
-      // #endregion
       if (finished) {
         runOnJS(onDone)();
       }

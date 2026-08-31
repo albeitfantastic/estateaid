@@ -53,7 +53,17 @@ export async function setNotificationCategoryPref(
   await AsyncStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
 }
 
-/** Request permission after first estate or first redeem — never on cold start / onboarding. */
+/**
+ * Spec §13 notification mapping (category / deep-link `type`):
+ * - New stay request → stay_requests / stay_request
+ * - Request approved | declined | alternate → stay_decisions / stay_decision
+ * - Stay starts tomorrow → stay_reminders / stay_reminder
+ * - New ticket/issue → maintenance / maintenance
+ * - Invite accepted → invites / invite_accepted
+ *
+ * Request permission after first meaningful action (first property created, or first
+ * invite redeemed) — never on cold start / onboarding.
+ */
 export async function maybeRequestPushAfterMeaningfulAction(userId: string): Promise<void> {
   try {
     const asked = await AsyncStorage.getItem(ASKED_KEY);

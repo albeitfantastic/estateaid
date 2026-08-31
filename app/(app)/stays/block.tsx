@@ -1,5 +1,5 @@
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -25,9 +25,17 @@ import {
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
 
+function paramString(v: string | string[] | undefined): string {
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v[0]) return v[0];
+  return '';
+}
+
 export default function BlockStay() {
   const { t } = useTranslation();
   const router = useRouter();
+  const params = useLocalSearchParams<{ estateId?: string | string[] }>();
+  const paramEstateId = paramString(params.estateId);
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -39,13 +47,14 @@ export default function BlockStay() {
   const { getInvitationsByEstate } = useInvitationStore();
 
   const estates = useMemo(
-    () => allEstates.filter((e) => e.ownerId === currentUser?.id),
+    () => allEstates.filter((e) => e.ownerId === currentUser?.id || e.sponsorUserId === currentUser?.id),
     [allEstates, currentUser?.id]
   );
 
-  const [selectedEstateId, setSelectedEstateId] = useState<string | null>(
-    estates.length === 1 ? estates[0].id : null
-  );
+  const [selectedEstateId, setSelectedEstateId] = useState<string | null>(() => {
+    if (paramEstateId && estates.some((e) => e.id === paramEstateId)) return paramEstateId;
+    return estates.length === 1 ? estates[0].id : null;
+  });
   const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);

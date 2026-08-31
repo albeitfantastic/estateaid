@@ -39,7 +39,7 @@ export default function OnboardingUseCaseScreen() {
       }
     }
     completeOnboarding();
-    router.replace('/(app)/home' as never);
+    router.replace('/(onboarding)/start' as never);
   }
 
   return (

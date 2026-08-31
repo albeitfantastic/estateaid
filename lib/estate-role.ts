@@ -1,5 +1,5 @@
 import { guestEmailsMatch } from '@/lib/invite-email';
-import type { EstateRole } from '@/lib/entitlements/capabilities';
+import type { PropertyRole } from '@/lib/entitlements/capabilities';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
@@ -25,31 +25,31 @@ export function getEstateRole(
   return normalizeInviteRole(match.role);
 }
 
-/** Full estate role including sponsorship (sponsor | coOwner | guest | none). */
+/** Full estate role including sponsorship (sponsor | owner | guest | none). */
 export function getEstateActorRole(
   estates: { id: string; ownerId: string; sponsorUserId: string }[],
   invitations: Invitation[],
   estateId: string,
   userId: string,
   userEmail?: string | null
-): EstateRole {
+): PropertyRole {
   if (!userId) return 'none';
   const estate = estates.find((e) => e.id === estateId);
   if (!estate) {
     const invRole = getEstateRole(invitations, estateId, userId, userEmail);
-    if (invRole === 'coOwner') return 'coOwner';
+    if (invRole === 'owner') return 'owner';
     if (invRole === 'guest') return 'guest';
     return 'none';
   }
   if (estate.sponsorUserId === userId) return 'sponsor';
-  if (estate.ownerId === userId) return 'coOwner';
+  if (estate.ownerId === userId) return 'owner';
   const invRole = getEstateRole(invitations, estateId, userId, userEmail);
-  if (invRole === 'coOwner') return 'coOwner';
+  if (invRole === 'owner') return 'owner';
   if (invRole === 'guest') return 'guest';
   return 'none';
 }
 
-/** Hook: invitation role only (guest | coOwner). */
+/** Hook: invitation role only (guest | owner). */
 export function useEstateRole(estateId: string): EstateInviteRole | null {
   const invitations = useInvitationStore((s) => s.invitations);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -58,7 +58,7 @@ export function useEstateRole(estateId: string): EstateInviteRole | null {
 }
 
 /** Hook: full actor role including sponsor. */
-export function useEstateActorRole(estateId: string): EstateRole {
+export function useEstateActorRole(estateId: string): PropertyRole {
   const invitations = useInvitationStore((s) => s.invitations);
   const estates = useEstateStore((s) => s.estates);
   const currentUser = useAuthStore((s) => s.currentUser);

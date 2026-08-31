@@ -9,6 +9,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { addDays, today } from '@/lib/date-utils';
+import { DEFAULT_HANDOVER_ITEMS } from '@/lib/onboarding-starters';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useHandoverStore } from '@/store/handover-store';
@@ -22,14 +23,20 @@ export default function HandoverScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const currentUser = useAuthStore((s) => s.currentUser);
-  const estate = useEstateStore((s) => s.estates.find((e) => e.id === estateId));
+  const estates = useEstateStore((s) => s.estates);
+  const estate = useMemo(() => estates.find((e) => e.id === estateId), [estates, estateId]);
   const isOwner = !!estate && estate.ownerId === currentUser?.id;
-  const items = useHandoverStore((s) => s.getTemplateItems(estateId));
+  const templates = useHandoverStore((s) => s.templates);
+  const completions = useHandoverStore((s) => s.completions);
   const setTemplateItems = useHandoverStore((s) => s.setTemplateItems);
   const toggleItem = useHandoverStore((s) => s.toggleItem);
-  const getCompletion = useHandoverStore((s) => s.getCompletion);
   const stays = useStayStore((s) => s.stays);
   const todayStr = today();
+
+  const items = useMemo(() => {
+    const t = templates.find((x) => x.estateId === estateId);
+    return t?.items?.length ? t.items : DEFAULT_HANDOVER_ITEMS;
+  }, [templates, estateId]);
 
   const activeGuestStay = useMemo(() => {
     if (!currentUser || isOwner) return null;
@@ -44,8 +51,14 @@ export default function HandoverScreen() {
     );
   }, [stays, estateId, currentUser, isOwner, todayStr]);
 
-  const completion = activeGuestStay ? getCompletion(activeGuestStay.id) : undefined;
-  const [draft, setDraft] = useState(items.join('\n'));
+  const completion = useMemo(
+    () =>
+      activeGuestStay
+        ? completions.find((c) => c.stayId === activeGuestStay.id)
+        : undefined,
+    [completions, activeGuestStay]
+  );
+  const [draft, setDraft] = useState(() => items.join('\n'));
 
   function saveTemplate() {
     const next = draft

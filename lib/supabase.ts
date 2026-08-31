@@ -3,18 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient, type SupportedStorage } from '@supabase/supabase-js'
 import { Platform } from 'react-native'
 
-import { agentLog } from '@/lib/debug-agent-log'
-
 /** Expo web SSR evaluates modules in Node with no window. Native always has a real runtime. */
 const isWebSSR = Platform.OS === 'web' && typeof window === 'undefined'
-
-// #region agent log
-agentLog('E', 'lib/supabase.ts:module', 'supabase module load', {
-  platformOS: Platform.OS,
-  isWebSSR,
-  hasWindow: typeof window !== 'undefined',
-})
-// #endregion
 
 /**
  * AsyncStorage on web uses window.localStorage. During Expo web SSR / Metro Node
@@ -49,10 +39,3 @@ export const supabase = createClient(
     },
   }
 )
-
-// #region agent log
-agentLog('E', 'lib/supabase.ts:afterCreateClient', 'createClient ok', {
-  platformOS: Platform.OS,
-  persistSession: !isWebSSR,
-})
-// #endregion

@@ -1,12 +1,35 @@
 # Maison Paywall Flow
 
-Intent-triggered soft pitch → **RevenueCat** (store free trial / subscribe) → post-purchase **rating** (once). Warm, minimal, premium — no fake discounts, no timers.
+Intent-triggered soft pitch → **RevenueCat** (subscribe / slot packs) → post-purchase **rating** (once). Warm, minimal, premium — no fake discounts, no timers.
 
-Primary conversion is the App Store / Play Store trial via RevenueCat. App-managed `startAppTrialRpc` is a **fallback only** when no RC API key is available (e.g. Expo Go / missing env), reachable from Outcome.
+## Slot packs (§2)
 
-Onboarding does **not** open the paywall. Soft pitch opens from upgrade triggers (`source` + optional `returnTo`).
+What is sold is **property slots**, not a feature tier. Three packs in one App Store subscription group:
 
-**Estate-scoped entitlement:** host tools follow the estate’s **sponsor** (trial/Pro), not each co-owner’s personal tier. Never open the upgrade sheet when a co-owner hits a lapsed sponsor — show the named lapse + transfer UI instead (`SponsorCoverageBanner`).
+| Pack | Slots | Annual | Monthly | Per-property/year pitch |
+|------|-------|--------|---------|-------------------------|
+| Home | 1 | €59.99 | €6.99 | ~€60 |
+| Family | 3 | €99.99 | €10.99 | ~€33 |
+| Portfolio | 10 | €199.99 | €19.99 | ~€20 |
+
+RevenueCat resolves the active product to an integer `slotCount` (1 / 3 / 10). Creating a property consumes one free slot (`sponsorUserId` = creator). Above 10 is not sold — contact for a manual grant.
+
+## Create-only paywall trigger (§8)
+
+The paywall opens from **one condition**:
+
+> A user attempts to **create a property** with no free slot.
+
+| Condition | Behaviour |
+|-----------|-----------|
+| `hasUsedTrial === false` | Grant 14-day trial, no paywall, open creation form |
+| `hasUsedTrial === true`, no free slot | Paywall (Home / Family / Portfolio) |
+
+Everything else is **coverage** on the property (reads stay open; writes lock when uncovered). Do not pitch on invite / upload / approve / availability — those are covered-property gates, not sales moments.
+
+Onboarding does **not** open the paywall. Soft pitch screens (`paywall-trust` → `paywall-outcome`) are reached only from the create-estate path (`openEstateCreatePaywall` / upgrade sheet → Choose a plan).
+
+**Estate-scoped coverage:** host tools follow the estate’s **sponsor** slot, not each owner’s personal purchases. Never open the upgrade sheet when an owner hits a lapsed sponsor — show the named lapse + transfer UI instead (`SponsorCoverageBanner`).
 
 ---
 
@@ -21,67 +44,33 @@ store/estate-coverage-store.ts     covered / sponsor name / role cache
 
 ---
 
-## Paywall triggers (§3.2)
-
-Ordered by signal strength:
-
-| Trigger | Feature / source |
-|---------|------------------|
-| Co-owner taps New estate (already hosts on a covered estate) | `estate.createAsCoOwner` |
-| Sponsor attempts a 2nd estate | `estate.create` |
-| Invite guest/co-owner on an uncovered estate **you sponsor** | `guests.invite` |
-| Upload document | `documents.upload` |
-| Create ticket/issue | `events.write` |
-| Edit availability rules | `availability.write` |
-| Approve/decline stay request | `stays.approve` |
-
-Never trigger the paywall when the actor is entitled and the estate is uncovered only because **someone else’s** sponsorship lapsed → transfer / named message path.
-
----
-
-## Tier & sponsorship
-
-| Situation | Host surface |
-|-----------|----------------|
-| **You sponsor, standard (uncovered)** | Create/view/edit basic details; read calendar/contacts/FAQ/docs; no invites/uploads/approvals/availability write |
-| **You co-own a covered estate** | Full host capabilities on that estate (even if your account is standard) |
-| **You co-own an uncovered estate** | Read-only; banner names the sponsor; Pro/trial co-owners can transfer sponsorship |
-| **trial / pro** | Can create additional estates you sponsor; can take over sponsorship |
-
-`estate.create` is account-scoped: trial/pro, or standard with `sponsoredEstateCount === 0`. Co-owned estates do **not** count.
-
-Co-owner seat cap: **3** per estate (plus sponsor).
-
----
-
 ## Navigation Flow
 
 ```
-Intent (create estate / invite / upload / … on estate you sponsor)
+Create property, no free slot, trial already used
   → upgrade sheet → paywall-trust?source=&returnTo=
   ↓ Continue
-/(app)/settings/paywall-outcome → RC / exit
+/(app)/settings/paywall-outcome → RC packages (Home/Family/Portfolio)
 
-Sponsor lapsed (you are co-owner)
+Sponsor lapsed (you are owner, not sponsor)
   → SponsorCoverageBanner → Take over sponsorship | Upgrade to take over
-  (no generic Maison Pro sheet for the lapse itself)
+  (no generic pitch for the lapse itself)
 ```
 
 ---
 
-## Regression checklist (estate entitlement)
+## Regression checklist (slots)
 
-- [ ] Standard co-owner B on Pro user A’s estate: full host tools on A’s estate
-- [ ] B taps New estate → `estate.createAsCoOwner` pitch
-- [ ] B with 0 sponsored estates can still create their first estate
-- [ ] A’s subscription ends → read-only for A and B; B (Pro) sees named lapse + working transfer
-- [ ] After transfer, writable; A retains co-owner access
-- [ ] Standard co-owner on lapsed estate: upgrade path, no broken transfer
-- [ ] Co-owner invites blocked at seat cap (client + server)
-- [ ] Direct `create_estate` as standard user who already sponsors → `upgrade_required`
+- [ ] New signup → Add my property → trial granted → writable, no paywall
+- [ ] Invite redeem → no trial, lands in property
+- [ ] Trial used, no free slot → create shows paywall with three packs
+- [ ] Delete property → slot frees for reuse (no second trial)
+- [ ] Owner on covered estate: full write; cannot invite owners / delete / transfer
+- [ ] Sponsor lapse: all sponsored properties read-only; named message + transfer
+- [ ] Downgrade Family → Home with 3 properties: all locked until sponsor chooses 1
 
 ---
 
 ## Expo Go / no RC key
 
-Outcome can still call `startAppTrialRpc` when RevenueCat is unavailable.
+Outcome can still call `startAppTrialRpc` when RevenueCat is unavailable (fallback only).

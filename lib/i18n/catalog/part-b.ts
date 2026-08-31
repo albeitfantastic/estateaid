@@ -107,7 +107,7 @@ export const catalogPartB: Record<string, unknown> = {
     selectedCount: '· {{count}} selected',
     roleFor: 'Role for {{name}}',
     estateRoleGuestLabel: 'Guest on property',
-    estateRoleCoOwnerLabel: 'Co-owner',
+    estateRoleCoOwnerLabel: 'Owner',
     createMore: 'Create more invite codes',
     done: 'Done',
     emailSubject: 'Maison invitation',
