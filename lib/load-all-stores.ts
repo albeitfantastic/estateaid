@@ -11,6 +11,7 @@ import { useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { useActivityLogStore } from '@/store/activity-log-store';
+import { useStayActivityStore } from '@/store/stay-activity-store';
 import { useBootstrapStore } from '@/store/bootstrap-store';
 
 async function runNamed(label: string, fn: () => Promise<void>): Promise<void> {
@@ -37,6 +38,7 @@ export async function loadAllStores(): Promise<void> {
       runNamed('availability', () => useAvailabilityRuleStore.getState().fetchFromSupabase()),
       runNamed('faqs', () => useFaqStore.getState().fetchFromSupabase()),
       runNamed('activity', () => useActivityLogStore.getState().fetchFromSupabase()),
+      runNamed('stayActivities', () => useStayActivityStore.getState().fetchFromSupabase()),
       runNamed('expenses', () => useExpenseStore.getState().fetchFromSupabase()),
       runNamed('handover', () => useHandoverStore.getState().fetchFromSupabase()),
     ]);

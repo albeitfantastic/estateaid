@@ -1,6 +1,7 @@
 import { Alert, Linking, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ScreenScroll, ScreenShell, FilledButton, useScreenTheme } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
@@ -8,15 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { useDocumentStore } from '@/store/document-store';
 import { getEstateDocumentSignedUrl } from '@/lib/estate-document-storage';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  guide: 'Guide',
-  manual: 'Manual',
-  rule: 'House Rules',
-  emergency: 'Emergency',
-  other: 'Other',
-};
-
 export default function DocumentDetailScreen() {
+  const { t } = useTranslation();
   const { docId } = useLocalSearchParams<{ estateId: string; docId: string }>();
   const { colors } = useScreenTheme();
   const doc = useDocumentStore((s) => s.documents.find((d) => d.id === docId));
@@ -50,7 +44,7 @@ export default function DocumentDetailScreen() {
       <ScreenScroll contentContainerStyle={styles.body} gap={16}>
         <View style={[styles.badge, { backgroundColor: colors.tint + '15' }]}>
           <ThemedText style={[styles.badgeText, { color: colors.tint }]}>
-            {CATEGORY_LABELS[doc.category] ?? doc.category}
+            {t(`documentsList.categories.${doc.category}`, { defaultValue: doc.category })}
           </ThemedText>
         </View>
         {doc.description ? (

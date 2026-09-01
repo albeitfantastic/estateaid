@@ -79,6 +79,7 @@ interface ExpenseState {
   setExpenses: (expenses: EstateExpense[]) => void;
   fetchFromSupabase: () => Promise<void>;
   addExpense: (draft: ExpenseDraft) => Promise<{ error: string | null }>;
+  updateExpense: (id: string, patch: Partial<EstateExpense>) => Promise<{ error: string | null }>;
   deleteExpense: (id: string) => Promise<{ error: string | null }>;
   getByEstate: (estateId: string) => EstateExpense[];
   totalForEstate: (estateId: string, year?: number) => number;
@@ -152,6 +153,32 @@ export const useExpenseStore = create<ExpenseState>()(
             return { error: null };
           }
           set((s) => ({ expenses: s.expenses.filter((e) => e.id !== row.id) }));
+          return { error: error.message };
+        }
+        return { error: null };
+      },
+
+      updateExpense: async (id, patch) => {
+        const previous = get().expenses;
+        set((s) => ({
+          expenses: s.expenses.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+        }));
+        const dbPatch: Record<string, unknown> = {};
+        if (Object.prototype.hasOwnProperty.call(patch, 'eventId')) {
+          dbPatch.event_id = patch.eventId ?? null;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'stayId')) {
+          dbPatch.stay_id = patch.stayId ?? null;
+        }
+        if (patch.note !== undefined) dbPatch.note = patch.note || null;
+        if (patch.amount !== undefined) dbPatch.amount_cents = toCents(patch.amount);
+        if (patch.category !== undefined) dbPatch.category = patch.category;
+        if (patch.date !== undefined) dbPatch.expense_date = patch.date;
+        if (Object.keys(dbPatch).length === 0) return { error: null };
+        if (get().localOnlyIds.includes(id)) return { error: null };
+        const { error } = await supabase.from('estate_expenses').update(dbPatch).eq('id', id);
+        if (error) {
+          set({ expenses: previous });
           return { error: error.message };
         }
         return { error: null };

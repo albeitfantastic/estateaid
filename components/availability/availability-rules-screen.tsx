@@ -1,6 +1,5 @@
 import {
   Alert,
-  ScrollView,
   StyleSheet,
   Switch,
   TouchableOpacity,
@@ -11,7 +10,6 @@ import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { EmptyState } from '@/components/ui/empty-state';
 import { FocusInput } from '@/components/ui/focus-input';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
@@ -239,114 +237,111 @@ export function AvailabilityRulesScreen({ estateId }: Props) {
     );
   }
 
+  const advanceValue = advanceDays ?? DEFAULT_ADVANCE_DAYS;
+
   return (
     <ScreenShell title={t('titles.availability')}>
-      <ScreenScroll>
-        <ScreenFootnote>{t('availabilityScreen.infoCalendar')}</ScreenFootnote>
+      <ScreenScroll gap={Layout.sectionGap} contentContainerStyle={styles.scroll}>
+        <ScreenFootnote style={styles.intro}>
+          {t('availabilityScreen.infoCalendar')}
+        </ScreenFootnote>
 
-        <SectionLabel>{t('availabilityScreen.sectionBlocked')}</SectionLabel>
-
-        {blackouts.length === 0 ? (
+        <View>
+          <SectionLabel>{t('availabilityScreen.sectionBlocked')}</SectionLabel>
           <GroupedList>
-            <EmptyState
-              icon="calendar.badge.minus"
-              title={t('availabilityScreen.blockedEmptyTitle')}
-              subtitle={t('availabilityScreen.blockedEmptySub')}
-              actionLabel={canWrite ? t('availabilityScreen.addBlockedDates') : undefined}
-              onAction={canWrite ? openAddSheet : undefined}
-            />
-          </GroupedList>
-        ) : (
-          <GroupedList>
-            {blackouts.map((rule, i) => {
-              const range =
-                rule.from && rule.to
-                  ? formatDateRange(rule.from, rule.to)
-                  : t('availabilityScreen.invalidDates');
-              return (
-                <GroupedRow
-                  key={rule.id}
-                  icon="calendar.badge.minus"
-                  title={rule.title?.trim() || range}
-                  subtitle={rule.title?.trim() ? range : undefined}
-                  trailing={blackoutTrailing(rule)}
-                  onPress={() => openEditSheet(rule)}
-                  isLast={i === blackouts.length - 1}
-                  disabled={!canWrite}
-                />
-              );
-            })}
-          </GroupedList>
-        )}
-
-        {blackouts.length > 0 && (
-          <OutlineButton
-            label={t('availabilityScreen.addBlockedDates')}
-            icon="plus"
-            onPress={openAddSheet}
-          />
-        )}
-
-        <SectionLabel marginTop={Layout.sectionGap}>
-          {t('availabilityScreen.sectionBookingWindow')}
-        </SectionLabel>
-
-        <GroupedList>
-          <GroupedRow
-            icon="clock.badge.checkmark"
-            title={t('availabilityScreen.limitAdvanceBooking')}
-            trailing={
-              <Switch
-                value={advanceLimitEnabled}
-                onValueChange={(v) => void setAdvanceLimitEnabled(v)}
-                trackColor={{ false: colors.border, true: colors.tint + '88' }}
-                thumbColor={colors.textOnBrand}
+            {blackouts.length === 0 ? (
+              <GroupedRow
+                icon="calendar.badge.minus"
+                title={t('availabilityScreen.blockedEmptyTitle')}
+                subtitle={t('availabilityScreen.blockedEmptySub')}
+                isLast
               />
-            }
-            isLast={!advanceLimitEnabled}
-          />
+            ) : (
+              blackouts.map((rule, i) => {
+                const range =
+                  rule.from && rule.to
+                    ? formatDateRange(rule.from, rule.to)
+                    : t('availabilityScreen.invalidDates');
+                return (
+                  <GroupedRow
+                    key={rule.id}
+                    icon="calendar.badge.minus"
+                    title={rule.title?.trim() || range}
+                    subtitle={rule.title?.trim() ? range : undefined}
+                    trailing={blackoutTrailing(rule)}
+                    onPress={() => openEditSheet(rule)}
+                    isLast={i === blackouts.length - 1}
+                    disabled={!canWrite}
+                  />
+                );
+              })
+            )}
+          </GroupedList>
+          {canWrite ? (
+            <OutlineButton
+              label={t('availabilityScreen.addBlockedDates')}
+              icon="plus"
+              onPress={openAddSheet}
+              style={styles.addBtn}
+            />
+          ) : null}
+        </View>
 
+        <View>
+          <SectionLabel>{t('availabilityScreen.sectionBookingWindow')}</SectionLabel>
+          <GroupedList>
+            <GroupedRow
+              icon="clock.badge.checkmark"
+              title={t('availabilityScreen.limitAdvanceBooking')}
+              subtitle={advanceLimitEnabled ? undefined : t('availabilityScreen.noBookingLimit')}
+              trailing={
+                <Switch
+                  value={advanceLimitEnabled}
+                  onValueChange={(v) => void setAdvanceLimitEnabled(v)}
+                  trackColor={{ false: colors.border, true: colors.tint + '88' }}
+                  thumbColor={colors.textOnBrand}
+                />
+              }
+              isLast={!advanceLimitEnabled}
+            />
+            {advanceLimitEnabled ? (
+              <GroupedRow
+                title={t('availabilityScreen.guestsCanBookUpTo')}
+                trailing={
+                  <View style={styles.stepper}>
+                    <TouchableOpacity
+                      style={[styles.stepperBtn, { backgroundColor: colors.tintMuted }]}
+                      onPress={() => void changeAdvanceDays(-1)}
+                      disabled={!canWrite || advanceValue <= MIN_ADVANCE_DAYS}
+                      activeOpacity={0.7}
+                      accessibilityLabel="−"
+                    >
+                      <IconSymbol name="minus" size={16} color={colors.tint} />
+                    </TouchableOpacity>
+                    <ThemedText type="defaultSemiBold" style={styles.stepperValue}>
+                      {advanceValue}
+                    </ThemedText>
+                    <TouchableOpacity
+                      style={[styles.stepperBtn, { backgroundColor: colors.tintMuted }]}
+                      onPress={() => void changeAdvanceDays(1)}
+                      disabled={!canWrite || advanceValue >= MAX_ADVANCE_DAYS}
+                      activeOpacity={0.7}
+                      accessibilityLabel="+"
+                    >
+                      <IconSymbol name="plus" size={16} color={colors.tint} />
+                    </TouchableOpacity>
+                  </View>
+                }
+                isLast
+              />
+            ) : null}
+          </GroupedList>
           {advanceLimitEnabled ? (
-            <View style={styles.stepperRow}>
-              <ThemedText style={[styles.stepperLabel, { color: colors.textSecondary }]}>
-                {t('availabilityScreen.guestsCanBookUpTo')}
-              </ThemedText>
-              <View style={styles.stepper}>
-                <TouchableOpacity
-                  style={[styles.stepperBtn, { backgroundColor: colors.tintMuted }]}
-                  onPress={() => void changeAdvanceDays(-1)}
-                  disabled={!canWrite || (advanceDays ?? DEFAULT_ADVANCE_DAYS) <= MIN_ADVANCE_DAYS}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol name="minus" size={16} color={colors.tint} />
-                </TouchableOpacity>
-                <ThemedText type="defaultSemiBold" style={styles.stepperValue}>
-                  {advanceDays ?? DEFAULT_ADVANCE_DAYS}
-                </ThemedText>
-                <TouchableOpacity
-                  style={[styles.stepperBtn, { backgroundColor: colors.tintMuted }]}
-                  onPress={() => void changeAdvanceDays(1)}
-                  disabled={!canWrite || (advanceDays ?? DEFAULT_ADVANCE_DAYS) >= MAX_ADVANCE_DAYS}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol name="plus" size={16} color={colors.tint} />
-                </TouchableOpacity>
-                <ThemedText style={[styles.stepperUnit, { color: colors.textSecondary }]}>
-                  {t('availabilityScreen.daysAhead')}
-                </ThemedText>
-              </View>
-              <ThemedText style={[styles.hint, { color: colors.textSecondary }]}>
-                {t('availabilityScreen.bookingWindowFootnote')}
-              </ThemedText>
-            </View>
-          ) : (
-            <View style={styles.stepperRow}>
-              <ThemedText style={[styles.hint, { color: colors.textSecondary }]}>
-                {t('availabilityScreen.noBookingLimit')}
-              </ThemedText>
-            </View>
-          )}
-        </GroupedList>
+            <ScreenFootnote style={styles.sectionNote}>
+              {t('availabilityScreen.bookingWindowFootnote')}
+            </ScreenFootnote>
+          ) : null}
+        </View>
       </ScreenScroll>
 
       <FormSheet
@@ -381,18 +376,18 @@ export function AvailabilityRulesScreen({ estateId }: Props) {
 }
 
 const styles = StyleSheet.create({
-  trailingCluster: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stepperRow: { paddingHorizontal: 14, paddingVertical: 14, gap: 10 },
-  stepperLabel: { fontSize: 14 },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  scroll: { paddingTop: Layout.sectionGap - 8 },
+  intro: { marginBottom: 0 },
+  addBtn: { marginTop: 12 },
+  sectionNote: { marginTop: 12, marginBottom: 0 },
+  trailingCluster: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepperBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperValue: { fontSize: 22, minWidth: 36, textAlign: 'center' },
-  stepperUnit: { fontSize: 15, flex: 1 },
-  hint: { fontSize: 13, lineHeight: 18 },
+  stepperValue: { fontSize: 18, minWidth: 32, textAlign: 'center' },
 });

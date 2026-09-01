@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
+import { FilledButton, ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
 import { useFaqStore } from '@/store/faq-store';
 
@@ -32,31 +32,22 @@ export default function FaqScreen() {
     ]);
   }
 
+  function goNew() {
+    router.push(`/(app)/estates/${estateId}/faq/new` as never);
+  }
+
   return (
-    <ScreenShell
-      title={t('titles.faq')}
-      headerRight={
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.tint }]}
-          onPress={() => router.push(`/(app)/estates/${estateId}/faq/new` as never)}
-          accessibilityRole="button"
-          accessibilityLabel={t('faqList.addCta')}
-        >
-          <IconSymbol name="plus" size={20} color={colors.textOnBrand} />
-        </TouchableOpacity>
-      }
-    >
-      {faqs.length === 0 ? (
-        <EmptyState
-          icon="questionmark.circle.fill"
-          title={t('faqList.emptyTitle')}
-          subtitle={t('faqList.emptySub')}
-          actionLabel={t('faqList.addCta')}
-          onAction={() => router.push(`/(app)/estates/${estateId}/faq/new` as never)}
-        />
-      ) : (
-        <ScreenScroll contentContainerStyle={styles.list} gap={10}>
-          {faqs.map((faq) => (
+    <ScreenShell title={t('titles.faq')}>
+      <ScreenScroll contentContainerStyle={styles.scroll} gap={16}>
+        {faqs.length === 0 ? (
+          <EmptyState
+            icon="questionmark.circle.fill"
+            title={t('faqList.emptyTitle')}
+            subtitle={t('faqList.emptySub')}
+          />
+        ) : (
+          <View style={styles.list}>
+            {faqs.map((faq) => (
             <View key={faq.id} style={[styles.card, { borderColor: colors.icon + '22', backgroundColor: colors.background }]}>
               <TouchableOpacity
                 style={styles.questionRow}
@@ -94,15 +85,22 @@ export default function FaqScreen() {
                 </View>
               )}
             </View>
-          ))}
-        </ScreenScroll>
-      )}
+            ))}
+          </View>
+        )}
+
+        <FilledButton
+          label={t('faqList.addCta')}
+          onPress={goNew}
+          style={{ marginTop: 20 }}
+        />
+      </ScreenScroll>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  scroll: { paddingTop: 8 },
   list: { gap: 10 },
   card: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
   questionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },

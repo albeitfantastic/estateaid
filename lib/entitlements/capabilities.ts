@@ -26,6 +26,7 @@ export type Capability =
   | 'contacts.write'
   | 'faq.read'
   | 'faq.write'
+  | 'activities.write'
   | 'events.read'
   | 'events.write'
   | 'availability.read'
@@ -75,6 +76,7 @@ const WRITE_CAPS: Capability[] = [
   'documents.write',
   'contacts.write',
   'faq.write',
+  'activities.write',
   'events.write',
   'availability.write',
   'dates.block',

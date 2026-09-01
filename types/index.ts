@@ -10,3 +10,4 @@ export * from './event';
 export * from './availability-rule';
 export * from './subscription';
 export * from './activity-log';
+export * from './stay-activity';

@@ -47,7 +47,7 @@ const OWNER_ITEMS: {
   { labelKey: 'estateHub.faq', icon: 'questionmark.circle.fill', route: 'faq', cap: 'faq.read', feature: 'generic' },
   { labelKey: 'estateHub.documents', icon: 'doc.fill', route: 'documents', cap: 'documents.read', feature: 'documents.upload', countKey: 'documents' },
   { labelKey: 'estateHub.contacts', icon: 'phone.fill', route: 'contacts', cap: 'contacts.read', feature: 'generic', countKey: 'contacts' },
-  { labelKey: 'estateHub.activity', icon: 'clock.fill', route: 'activity', cap: 'activity.view', feature: 'generic' },
+  { labelKey: 'estateHub.activity', icon: 'map.fill', route: 'activity', cap: 'activity.view', feature: 'generic' },
   { labelKey: 'estateHub.handover', icon: 'checkmark.circle.fill', route: 'handover', cap: 'property.edit', feature: 'generic' },
   { labelKey: 'estateHub.expenses', icon: 'creditcard.fill', route: 'expenses', cap: 'property.edit', feature: 'generic' },
 ];
@@ -63,7 +63,7 @@ const GUEST_ITEMS: GuestHubItem[] = [
   { labelKey: 'estateHub.documents', icon: 'doc.fill', route: 'documents', alwaysOn: false },
   { labelKey: 'estateHub.contacts', icon: 'phone.fill', route: 'contacts', alwaysOn: false },
   { labelKey: 'estateHub.handover', icon: 'checkmark.circle.fill', route: 'handover', alwaysOn: false },
-  { labelKey: 'estateHub.activity', icon: 'clock.fill', route: 'activity', alwaysOn: false },
+  { labelKey: 'estateHub.activity', icon: 'map.fill', route: 'activity', alwaysOn: false },
 ];
 
 function HubCover({

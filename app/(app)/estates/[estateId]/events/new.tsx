@@ -1,31 +1,29 @@
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter, Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { MaintenanceForm } from '@/components/maintenance/maintenance-form';
+import { FocusInput, inputBaseStyle } from '@/components/ui/focus-input';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FocusInput } from '@/components/ui/focus-input';
-import { FilledButton, ScreenScroll, ScreenShell, SectionLabel, useScreenTheme } from '@/components/ui/screen-layout';
+import { SelectField } from '@/components/ui/select-field';
+import { FilledButton, ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
-import { EstateColors, Fonts, PriorityColors, Spacing, Colors } from '@/constants/theme';
+import { EstateColors, Radius } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth-store';
+import { useContactStore } from '@/store/contact-store';
 import { useEventStore } from '@/store/event-store';
+import { useExpenseStore } from '@/store/expense-store';
 import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
-import { EventType, IssuePriority } from '@/types';
-import { formatDate, today } from '@/lib/date-utils';
+import { IssuePriority } from '@/types';
+import { formatDate } from '@/lib/date-utils';
 import { generateId, generateUuidV4 } from '@/lib/id';
-import { usesDayOfMonth } from '@/lib/event-utils';
-import { RecurrenceFields, type RecurrenceFieldsValue } from '@/components/maintenance/recurrence-fields';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 
 const EVENT_COLORS = [...EstateColors];
-const ISSUE_PRIORITIES: { value: IssuePriority; label: string; color: string }[] = [
-  { value: 'low', label: 'Low', color: PriorityColors.low },
-  { value: 'normal', label: 'Normal', color: PriorityColors.normal },
-  { value: 'high', label: 'High', color: PriorityColors.high },
-  { value: 'urgent', label: 'Urgent', color: PriorityColors.urgent },
-];
+const ISSUE_PRIORITIES: IssuePriority[] = ['low', 'normal', 'high', 'urgent'];
 
 function paramId(v: string | string[] | undefined): string {
   if (typeof v === 'string') return v;
@@ -39,11 +37,43 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
   const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const addEvent = useEventStore((s) => s.addEvent);
+  const allContacts = useContactStore((s) => s.contacts);
+  const allExpenses = useExpenseStore((s) => s.expenses);
+  const updateExpense = useExpenseStore((s) => s.updateExpense);
+
+  const contacts = useMemo(
+    () =>
+      (Array.isArray(allContacts) ? allContacts : [])
+        .filter((c) => c.estateId === estateId)
+        .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)),
+    [allContacts, estateId]
+  );
+  const expenses = useMemo(
+    () =>
+      (Array.isArray(allExpenses) ? allExpenses : [])
+        .filter((e) => e.estateId === estateId)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [allExpenses, estateId]
+  );
+
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [priority, setPriority] = useState<IssuePriority>('normal');
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [dueModalOpen, setDueModalOpen] = useState(false);
+  const [taggedContactId, setTaggedContactId] = useState('');
+  const [taggedExpenseId, setTaggedExpenseId] = useState('');
+  const pendingNewContact = useRef(false);
+  const knownContactIds = useRef(new Set(contacts.map((c) => c.id)));
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!pendingNewContact.current) return;
+      pendingNewContact.current = false;
+      const created = contacts.find((c) => !knownContactIds.current.has(c.id));
+      if (created) setTaggedContactId(created.id);
+    }, [contacts])
+  );
 
   async function submit() {
     if (!title.trim()) {
@@ -56,21 +86,25 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
     }
     const id = generateUuidV4();
     const now = new Date().toISOString();
-    const messages = body.trim()
-      ? [
-          {
-            id: generateId(),
-            eventId: id,
-            authorId: currentUser.id,
-            body: body.trim(),
-            createdAt: now,
-          },
-        ]
-      : [];
+    const text = body.trim();
+    const messages =
+      text || taggedContactId
+        ? [
+            {
+              id: generateId(),
+              eventId: id,
+              authorId: currentUser.id,
+              body: text,
+              createdAt: now,
+              ...(taggedContactId ? { taggedContactId } : {}),
+            },
+          ]
+        : [];
     const { error } = await addEvent({
       id,
       estateId,
       title: title.trim(),
+      description: text || undefined,
       type: 'task',
       taskKind: 'issue',
       date: dueDate ?? undefined,
@@ -86,63 +120,109 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
       Alert.alert(t('maintenanceSchedule.saveFailedTitle'), error);
       return;
     }
+    if (taggedExpenseId) {
+      const { error: linkError } = await updateExpense(taggedExpenseId, { eventId: id });
+      if (linkError) Alert.alert(t('expenses.saveFailedTitle'), linkError);
+    }
     router.back();
   }
+
+  const contactOptions = [
+    { value: '', label: t('maintenanceSchedule.noTag') },
+    ...contacts.map((c) => ({
+      value: c.id,
+      label: c.role?.trim() ? `${c.name} · ${c.role}` : c.name,
+    })),
+  ];
+  const expenseOptions = [
+    { value: '', label: t('maintenanceSchedule.noTag') },
+    ...expenses.map((e) => ({
+      value: e.id,
+      label: [e.amount.toFixed(2), t(`expenses.categories.${e.category}`), e.note || e.date]
+        .filter(Boolean)
+        .join(' · '),
+    })),
+  ];
+  const priorityOptions = ISSUE_PRIORITIES.map((p) => ({
+    value: p,
+    label: t(
+      p === 'low'
+        ? 'maintenanceSchedule.priorityLow'
+        : p === 'high'
+          ? 'maintenanceSchedule.priorityHigh'
+          : p === 'urgent'
+            ? 'maintenanceSchedule.priorityUrgent'
+            : 'maintenanceSchedule.priorityNormal'
+    ),
+  }));
 
   return (
     <ScreenShell title={t('maintenanceSchedule.newIssueTitle')}>
       <ScreenScroll contentContainerStyle={styles.form} gap={16} keyboardShouldPersistTaps="handled">
-        <FocusInput label={t('ticketsHub.threadEditTitleLabel')} placeholder="" value={title} onChangeText={setTitle} />
+        <FocusInput
+          label={t('ticketsHub.threadEditTitleLabel')}
+          value={title}
+          onChangeText={setTitle}
+        />
+
         <FocusInput
           label={t('maintenanceSchedule.issueFirstMessage')}
-          placeholder={t('ticketsHub.threadReplyPlaceholder')}
           value={body}
           onChangeText={setBody}
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-          style={styles.issueMessageInput}
         />
-        <View style={styles.issuePriorityBlock}>
-        <SectionLabel>{t('ticketsHub.threadEditPriority')}</SectionLabel>
-        <View style={styles.issuePriRow}>
-          {ISSUE_PRIORITIES.map((p) => {
-            const selected = p.value === priority;
-            return (
-              <TouchableOpacity
-                key={p.value}
-                style={[
-                  styles.issuePriPill,
-                  {
-                    backgroundColor: selected ? p.color + '22' : colors.tint + '08',
-                    borderColor: selected ? p.color : colors.icon + '33',
-                  },
-                ]}
-                onPress={() => setPriority(p.value)}
-              >
-                <ThemedText style={[styles.issuePriText, selected && { color: p.color, fontWeight: '700' }]}>
-                  {p.label}
-                </ThemedText>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        </View>
-        <SectionLabel style={{ marginTop: Spacing.xs }}>
-          {t('ticketsHub.newTicketDueOptional')}
-        </SectionLabel>
-        <TouchableOpacity
-          style={[styles.duePickBtn, { borderColor: colors.icon + '44' }]}
-          onPress={() => setDueModalOpen(true)}
-        >
-          <ThemedText style={{ color: colors.text }}>
-            {dueDate ? formatDate(dueDate) : t('ticketsHub.newTicketPickDue')}
+
+        <SelectField
+          label={t('ticketsHub.threadEditPriority')}
+          value={priority}
+          options={priorityOptions}
+          onChange={setPriority}
+        />
+
+        <View style={styles.field}>
+          <ThemedText style={[inputBaseStyle.label, { color: colors.icon }]}>
+            {t('maintenanceSchedule.dueDate')}
           </ThemedText>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.dateTrigger, { borderColor: colors.border, backgroundColor: colors.card }]}
+            onPress={() => setDueModalOpen(true)}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('maintenanceSchedule.dueDate')}, ${dueDate ? formatDate(dueDate) : t('ticketsHub.newTicketPickDue')}`}
+          >
+            <ThemedText style={[styles.dateTriggerText, { color: colors.text }]} numberOfLines={1}>
+              {dueDate ? formatDate(dueDate) : t('ticketsHub.newTicketPickDue')}
+            </ThemedText>
+            <IconSymbol name="chevron.down" size={18} color={colors.iconMuted} />
+          </TouchableOpacity>
+        </View>
+
+        <SelectField
+          label={t('maintenanceSchedule.tagContact')}
+          value={taggedContactId}
+          options={contactOptions}
+          onChange={setTaggedContactId}
+          action={{
+            label: t('activitiesList.addContact'),
+            onPress: () => {
+              knownContactIds.current = new Set(contacts.map((c) => c.id));
+              pendingNewContact.current = true;
+              router.push(`/(app)/estates/${estateId}/contacts/new` as never);
+            },
+          }}
+        />
+
+        <SelectField
+          label={t('maintenanceSchedule.tagExpense')}
+          value={taggedExpenseId}
+          options={expenseOptions}
+          onChange={setTaggedExpenseId}
+        />
+
         <FilledButton
           label={t('maintenanceSchedule.reportIssueCta')}
           onPress={() => void submit()}
           disabled={!title.trim()}
+          style={{ marginTop: 20 }}
         />
       </ScreenScroll>
       <DueDatePickerModal
@@ -163,183 +243,20 @@ function NewMaintenanceIssueScreen({ estateId }: { estateId: string }) {
   );
 }
 
-function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
-  const { t } = useTranslation();
-  const router = useRouter();
-  const { colors } = useScreenTheme();
-  const addEvent = useEventStore((s) => s.addEvent);
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [type, setType] = useState<EventType>('recurring');
-  const [color, setColor] = useState(EVENT_COLORS[0]);
-
-  // Task fields
-  const [taskDate, setTaskDate] = useState(today());
-  const [recurrence, setRecurrence] = useState<RecurrenceFieldsValue>({
-    frequency: 'weekly',
-    dayOfWeek: 1,
-    dayOfMonth: 1,
-    intervalMonths: 6,
-    reminderLeadDays: 7,
-    onceDate: today(),
-  });
-
-  async function save() {
-    if (!title.trim()) {
-      Alert.alert(t('maintenanceSchedule.missingTitle'), t('maintenanceSchedule.missingTitleBody'));
-      return;
-    }
-    if (!estateId) {
-      Alert.alert(t('common.error'), t('maintenanceSchedule.propertyMissingBody'));
-      return;
-    }
-
-    const id = generateUuidV4();
-    const createdAt = new Date().toISOString();
-    const { frequency, dayOfWeek, dayOfMonth, intervalMonths, reminderLeadDays, onceDate } = recurrence;
-    const base = {
-      id,
-      estateId,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      color,
-      createdAt,
-      reminderLeadDays,
-    } as const;
-
-    const once = type === 'task' || frequency === 'once';
-    const result = once
-      ? await addEvent({
-          ...base,
-          type: 'task' as const,
-          taskKind: 'calendar',
-          date: frequency === 'once' ? onceDate.trim() || today() : taskDate,
-        })
-      : await addEvent({
-          ...base,
-          type: 'recurring' as const,
-          recurrence: {
-            frequency,
-            dayOfWeek: frequency === 'weekly' || frequency === 'biweekly' ? dayOfWeek : undefined,
-            dayOfMonth: usesDayOfMonth(frequency) ? dayOfMonth : undefined,
-            intervalMonths: frequency === 'custom' ? intervalMonths : undefined,
-            startDate: today(),
-          },
-        });
-
-    if (result.error) {
-      Alert.alert(t('maintenanceSchedule.saveFailedTitle'), result.error);
-      return;
-    }
-    router.back();
-  }
-
-  return (
-    <ScreenShell title={t('titles.newEvent')}>
-      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
-        <SectionLabel>Type</SectionLabel>
-        <View style={styles.typePicker}>
-          {(['recurring', 'task'] as EventType[]).map((kind) => (
-            <TouchableOpacity
-              key={kind}
-              style={[
-                styles.typeBtn,
-                { borderColor: colors.tint + '44' },
-                type === kind && { backgroundColor: colors.tint, borderColor: colors.tint },
-              ]}
-              onPress={() => setType(kind)}
-              activeOpacity={0.8}
-            >
-              <IconSymbol
-                name={kind === 'recurring' ? 'arrow.triangle.2.circlepath' : 'checkmark.circle.fill'}
-                size={18}
-                color={type === kind ? colors.textOnBrand : colors.tint}
-              />
-              <ThemedText style={[styles.typeBtnText, { color: type === kind ? colors.textOnBrand : colors.text }]}>
-                {kind === 'recurring' ? t('maintenanceSchedule.typeRecurring') : t('maintenanceSchedule.oneTimeTask')}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Title */}
-        <FocusInput label="Title" placeholder="e.g. Glass Recycling Pickup" value={title} onChangeText={setTitle} />
-
-        {/* Description */}
-        <FocusInput label="Description (optional)" placeholder="Additional notes..." value={description} onChangeText={setDescription} multiline numberOfLines={3} textAlignVertical="top" style={styles.textArea} />
-
-        <SectionLabel style={{ paddingTop: 24 }}>Color</SectionLabel>
-        <View style={[styles.colorRow, ]}>
-          {EVENT_COLORS.map((c) => (
-            <TouchableOpacity
-              key={c}
-              style={[styles.colorDot, { backgroundColor: c }, color === c && styles.colorDotSelected]}
-              onPress={() => setColor(c)}
-            />
-          ))}
-        </View>
-
-        {type === 'recurring' ? (
-          <RecurrenceFields value={recurrence} onChange={setRecurrence} />
-        ) : (
-          <>
-            <FocusInput
-              label="Date (YYYY-MM-DD)"
-              placeholder="2026-06-15"
-              value={taskDate}
-              onChangeText={setTaskDate}
-              keyboardType="numbers-and-punctuation"
-            />
-            <RecurrenceFields
-              value={recurrence}
-              onChange={setRecurrence}
-              showFrequency={false}
-            />
-          </>
-        )}
-
-        {/* Save */}
-        <FilledButton
-          label={t('maintenanceSchedule.saveButton')}
-          onPress={save}
-          disabled={!title.trim()}
-        />
-      </ScreenScroll>
-    </ScreenShell>
-  );
-}
-
 const styles = StyleSheet.create({
-  form: { gap: 16 },
-  textArea: { minHeight: 80, paddingTop: 14, textAlignVertical: 'top' },
-  typePicker: { flexDirection: 'row', gap: 10 },
-  typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5 },
-  typeBtnText: { fontSize: 14, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
-  colorRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  colorDot: { width: 34, height: 34, borderRadius: 17 },
-  colorDotSelected: { borderWidth: 3, borderColor: Colors.light.textOnBrand, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4 },
-  freqRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  freqBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
-  freqBtnText: { fontSize: 13, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
-  dayRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  dayBtn: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
-  dayBtnText: { fontSize: 13, fontWeight: '600', fontFamily: Fonts.headingSemiBold },
-  dayOfMonthRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  issuePriRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  issuePriPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
-  issuePriText: { fontSize: 13, fontWeight: '600' },
-  duePickBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-    justifyContent: 'center',
-    minHeight: 48,
+  form: { paddingTop: 8 },
+  field: { gap: 6 },
+  dateTrigger: {
+    height: 50,
+    borderWidth: 1.5,
+    borderRadius: Radius.md,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  issueMessageInput: { minHeight: 108 },
-  issuePriorityBlock: { marginTop: Spacing.md, gap: 8 },
+  dateTriggerText: { flex: 1, fontSize: 15 },
 });
 
 export default function NewEvent() {
@@ -358,5 +275,5 @@ export default function NewEvent() {
   const kind =
     typeof kindRaw === 'string' ? kindRaw : Array.isArray(kindRaw) ? kindRaw[0] : undefined;
   if (kind === 'issue') return <NewMaintenanceIssueScreen estateId={estateId} />;
-  return <NewMaintenanceCalendarScreen estateId={estateId} />;
+  return <MaintenanceForm estateId={estateId} />;
 }

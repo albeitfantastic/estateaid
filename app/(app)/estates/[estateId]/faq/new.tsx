@@ -1,11 +1,10 @@
-import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { FocusInput } from '@/components/ui/focus-input';
-import { ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
-import { ThemedText } from '@/components/themed-text';
+import { FilledButton, ScreenScroll, ScreenShell } from '@/components/ui/screen-layout';
 import { useFaqStore } from '@/store/faq-store';
 import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
@@ -21,7 +20,6 @@ export default function NewFaq() {
   const params = useLocalSearchParams<{ estateId: string }>();
   const estateId = paramString(params.estateId);
   const router = useRouter();
-  const { colors } = useScreenTheme();
   const { addFaq, getFaqsByEstate } = useFaqStore();
 
   const [question, setQuestion] = useState('');
@@ -66,33 +64,33 @@ export default function NewFaq() {
   }
 
   return (
-    <ScreenShell
-      title={t('titles.newFaq')}
-      headerRight={
-        <TouchableOpacity onPress={submit} disabled={saving} accessibilityState={{ disabled: saving }}>
-          <ThemedText
-            style={{
-              color: saving ? colors.icon : colors.tint,
-              fontWeight: '600',
-              fontSize: 16,
-              opacity: saving ? 0.5 : 1,
-            }}
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </ThemedText>
-        </TouchableOpacity>
-      }
-    >
-      <ScreenScroll contentContainerStyle={styles.form} gap={20} keyboardShouldPersistTaps="handled">
-        <FocusInput label="Question *" placeholder="What guests often ask…" value={question} onChangeText={setQuestion} multiline numberOfLines={2} textAlignVertical="top" style={styles.multiInput} />
-        <FocusInput label="Answer *" placeholder="Your detailed answer…" value={answer} onChangeText={setAnswer} multiline numberOfLines={6} textAlignVertical="top" style={styles.answerInput} />
+    <ScreenShell title={t('titles.newFaq')}>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
+        <FocusInput label="Question" value={question} onChangeText={setQuestion} />
+
+        <FocusInput
+          label="Answer"
+          value={answer}
+          onChangeText={setAnswer}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          style={styles.answer}
+        />
+
+        <FilledButton
+          label={t('common.save')}
+          onPress={() => void submit()}
+          disabled={!question.trim() || !answer.trim()}
+          loading={saving}
+          style={{ marginTop: 20 }}
+        />
       </ScreenScroll>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { paddingTop: 8, gap: 20 },
-  multiInput: { height: 70, paddingTop: 14 },
-  answerInput: { height: 150, paddingTop: 14 },
+  form: { paddingTop: 8 },
+  answer: { minHeight: 120 },
 });

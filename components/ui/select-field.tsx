@@ -15,9 +15,16 @@ type Props<T extends string | number> = {
   value: T;
   options: SelectOption<T>[];
   onChange: (value: T) => void;
+  action?: { label: string; onPress: () => void };
 };
 
-export function SelectField<T extends string | number>({ label, value, options, onChange }: Props<T>) {
+export function SelectField<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+  action,
+}: Props<T>) {
   const { t } = useTranslation();
   const { colors } = useScreenTheme();
   const [open, setOpen] = useState(false);
@@ -79,6 +86,24 @@ export function SelectField<T extends string | number>({ label, value, options, 
                 );
               })}
             </ScrollView>
+            {action ? (
+              <TouchableOpacity
+                style={[styles.row, styles.actionRow, { borderTopColor: colors.border }]}
+                onPress={() => {
+                  setOpen(false);
+                  action.onPress();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={action.label}
+              >
+                <View style={styles.actionInner}>
+                  <IconSymbol name="plus" size={16} color={colors.tint} />
+                  <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>
+                    {action.label}
+                  </ThemedText>
+                </View>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </Pressable>
       </Modal>
@@ -133,4 +158,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  actionRow: {
+    borderBottomWidth: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  actionInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

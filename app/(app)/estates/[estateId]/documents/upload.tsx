@@ -1,12 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { FocusInput, inputBaseStyle } from '@/components/ui/focus-input';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ScreenScroll, ScreenShell, SectionLabel, useScreenTheme } from '@/components/ui/screen-layout';
+import { SelectField } from '@/components/ui/select-field';
+import { FilledButton, ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 import { uploadEstateDocumentFile } from '@/lib/estate-document-storage';
@@ -14,7 +16,7 @@ import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
 import { useAuthStore } from '@/store/auth-store';
 import { useDocumentStore } from '@/store/document-store';
-import { DocumentCategory } from '@/types';
+import { DOCUMENT_CATEGORIES, type DocumentCategory } from '@/types';
 
 type PickedFile = {
   uri: string;
@@ -22,9 +24,6 @@ type PickedFile = {
   mimeType?: string | null;
   size?: number | null;
 };
-
-const CATEGORIES: DocumentCategory[] = ['guide', 'manual', 'rule', 'emergency', 'other'];
-const CATEGORY_LABELS: Record<DocumentCategory, string> = { guide: 'Guide', manual: 'Manual', rule: 'House Rules', emergency: 'Emergency', other: 'Other' };
 
 export default function UploadDocument() {
   const { t } = useTranslation();
@@ -47,7 +46,7 @@ export default function UploadDocument() {
     if (allowed) return;
     openHostCapabilityDenied(estateId, 'documents.upload', docsPath);
     router.replace(docsPath as never);
-  }, [allowed, docsPath, router]);
+  }, [allowed, docsPath, estateId, router]);
 
   if (!allowed) {
     return <ThemedView style={{ flex: 1 }} />;
@@ -61,7 +60,7 @@ export default function UploadDocument() {
       if (result.canceled || result.assets.length === 0) return;
       setPickedFile(result.assets[0]);
       if (!title.trim()) setTitle(result.assets[0].name.replace(/\.[^./]+$/, ''));
-    } catch (e) {
+    } catch {
       Alert.alert(
         'Development build required',
         'Document picker was added after your last native build. Rebuild the Maison development client (npm run eas:dev:ios or eas:dev:android), install it, then try again.'
@@ -70,8 +69,14 @@ export default function UploadDocument() {
   }
 
   async function submit() {
-    if (!isRequired(title)) { Alert.alert('Required', 'Please enter a document title.'); return; }
-    if (!pickedFile) { Alert.alert('Required', 'Please choose a file to upload.'); return; }
+    if (!isRequired(title)) {
+      Alert.alert('Required', 'Please enter a document title.');
+      return;
+    }
+    if (!pickedFile) {
+      Alert.alert('Required', 'Please choose a file to upload.');
+      return;
+    }
 
     setUploading(true);
     const documentId = generateUuidV4();
@@ -98,67 +103,76 @@ export default function UploadDocument() {
   }
 
   return (
-    <ScreenShell
-      title={t('titles.uploadDocument')}
-      headerRight={
-        <TouchableOpacity onPress={() => void submit()} disabled={uploading}>
-          {uploading ? (
-            <ActivityIndicator color={colors.tint} />
-          ) : (
-            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
-          )}
-        </TouchableOpacity>
-      }
-    >
-      <ScreenScroll contentContainerStyle={styles.form} gap={20} keyboardShouldPersistTaps="handled">
+    <ScreenShell title={t('titles.uploadDocument')}>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
         <View style={styles.field}>
-          <SectionLabel>File *</SectionLabel>
+          <ThemedText style={[inputBaseStyle.label, { color: colors.icon }]}>File</ThemedText>
           <TouchableOpacity
-            style={[styles.filePicker, { borderColor: colors.icon + '44' }]}
+            style={[
+              styles.filePicker,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+              },
+            ]}
             onPress={() => void pickFile()}
+            activeOpacity={0.7}
           >
             <IconSymbol name="doc.fill" size={20} color={colors.tint} />
-            <ThemedText numberOfLines={1} style={{ flex: 1, color: pickedFile ? colors.text : colors.icon }}>
+            <ThemedText
+              numberOfLines={1}
+              style={{ flex: 1, color: pickedFile ? colors.text : colors.textSecondary }}
+            >
               {pickedFile ? pickedFile.name : 'Choose a file'}
             </ThemedText>
           </TouchableOpacity>
         </View>
-        <View style={styles.field}>
-          <SectionLabel>Title *</SectionLabel>
-          <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]} placeholder="Document title" placeholderTextColor={colors.icon} value={title} onChangeText={setTitle} />
-        </View>
-        <View style={styles.field}>
-          <SectionLabel>Description</SectionLabel>
-          <TextInput style={[styles.input, styles.multi, { color: colors.text, borderColor: colors.icon + '44' }]} placeholder="Brief description" placeholderTextColor={colors.icon} value={description} onChangeText={setDescription} multiline numberOfLines={3} textAlignVertical="top" />
-        </View>
-        <View style={styles.field}>
-          <SectionLabel>Category</SectionLabel>
-          <View style={styles.pills}>
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.pill, { borderColor: colors.tint + '55' }, category === cat && { backgroundColor: colors.tint }]}
-                onPress={() => setCategory(cat)}
-              >
-                <ThemedText style={[styles.pillText, { color: category === cat ? colors.textOnBrand : colors.text }]}>
-                  {CATEGORY_LABELS[cat]}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+
+        <FocusInput label="Title" value={title} onChangeText={setTitle} />
+
+        <FocusInput
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          style={styles.description}
+        />
+
+        <SelectField
+          label="Category"
+          value={category}
+          options={DOCUMENT_CATEGORIES.map((cat) => ({
+            value: cat,
+            label: t(`documentsList.categories.${cat}`),
+          }))}
+          onChange={setCategory}
+        />
+
+        <FilledButton
+          label={t('common.save')}
+          onPress={() => void submit()}
+          disabled={!title.trim() || !pickedFile}
+          loading={uploading}
+          style={{ marginTop: 20 }}
+        />
       </ScreenScroll>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { paddingTop: 8, gap: 20 },
+  form: { paddingTop: 8 },
   field: { gap: 6 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  filePicker: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  multi: { height: 80, paddingTop: 12 },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  pillText: { fontSize: 13, fontWeight: '500' },
+  filePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 50,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+  },
+  description: { minHeight: 120 },
 });

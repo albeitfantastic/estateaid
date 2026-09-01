@@ -1,4 +1,34 @@
-export type DocumentCategory = 'guide' | 'manual' | 'rule' | 'emergency' | 'other';
+export type DocumentCategory =
+  | 'emergency'
+  | 'rule'
+  | 'guide'
+  | 'manual'
+  | 'insurance'
+  | 'contract'
+  | 'inventory'
+  | 'access'
+  | 'utility'
+  | 'warranty'
+  | 'invoice'
+  | 'floorplan'
+  | 'other';
+
+/** Display order for the upload picker and the documents list. */
+export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
+  'emergency',
+  'rule',
+  'guide',
+  'manual',
+  'insurance',
+  'contract',
+  'inventory',
+  'access',
+  'utility',
+  'warranty',
+  'invoice',
+  'floorplan',
+  'other',
+];
 
 export interface EstateDocument {
   id: string;

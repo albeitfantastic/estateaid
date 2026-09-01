@@ -85,7 +85,9 @@ export default function BlockStay() {
     const accepted = getInvitationsByEstate(selectedEstateId).filter(
       (inv) => inv.status === 'accepted' && inv.guestId
     );
-    const guestIds = [...new Set(accepted.map((inv) => inv.guestId!))];
+    const guestIds = [...new Set(accepted.map((inv) => inv.guestId!))].filter(
+      (id) => id !== currentUser?.id
+    );
     const guests = guestIds.map((id) => {
       const inv = accepted.find((i) => i.guestId === id);
       return {
@@ -169,6 +171,10 @@ export default function BlockStay() {
     router.back();
   }
 
+  function goToCalendarStays() {
+    router.replace('/(app)/calendar?segment=stays' as never);
+  }
+
   const canSubmit =
     !!selectedEstateId &&
     selectedGuestIds.length > 0 &&
@@ -178,7 +184,7 @@ export default function BlockStay() {
     !(selectedEstateId && from && to && hasConflict(selectedEstateId, from, to));
 
   return (
-    <ScreenShell title={t('estateHub.addStay')}>
+    <ScreenShell title={t('estateHub.addStay')} onBack={goToCalendarStays}>
       <ScreenScroll gap={24} contentContainerStyle={styles.scroll}>
         <View style={styles.section}>
           <SectionLabel>{t('blockDates.property')}</SectionLabel>

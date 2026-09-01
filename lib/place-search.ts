@@ -7,6 +7,13 @@ export type PlaceSuggestion = {
   title: string;
   /** Optional secondary line in the suggestion list. */
   detail?: string;
+  /** Google place_id when the result came from Places. */
+  placeId?: string;
+};
+
+export type PlaceSearchOptions = {
+  /** Include businesses (restaurants, shops) as well as street addresses. */
+  includeBusinesses?: boolean;
 };
 
 function googlePlacesKey(): string | null {
@@ -26,7 +33,8 @@ export function endPlaceSearchSession(): void {
 
 export async function searchPlaces(
   query: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: PlaceSearchOptions
 ): Promise<PlaceSuggestion[]> {
   const q = query.trim();
   if (q.length < 2) return [];
@@ -34,7 +42,7 @@ export async function searchPlaces(
   const key = googlePlacesKey();
   if (key) {
     try {
-      const google = await searchGooglePlaces(q, key, signal);
+      const google = await searchGooglePlaces(q, key, signal, options);
       if (google.length > 0) return google;
     } catch (e) {
       if (signal?.aborted) throw e;
@@ -44,17 +52,63 @@ export async function searchPlaces(
   return searchPhoton(q, signal);
 }
 
+/** Business name plus street-level address, without duplicating the name. */
+export function composePlaceLabel(name?: string, formattedAddress?: string): string {
+  const n = name?.trim() ?? '';
+  const addr = formattedAddress?.trim() ?? '';
+  if (n && addr && !addr.toLowerCase().startsWith(n.toLowerCase())) {
+    return `${n}, ${addr}`;
+  }
+  return addr || n;
+}
+
+/** Fill in street number + business name from Place Details (same autocomplete session). */
+export async function resolvePlace(suggestion: PlaceSuggestion): Promise<PlaceSuggestion> {
+  const key = googlePlacesKey();
+  const placeId = suggestion.placeId;
+  if (!key || !placeId) return suggestion;
+  if (!googleSessionToken) googleSessionToken = generateUuidV4();
+
+  const url = new URL('https://maps.googleapis.com/maps/api/place/details/json');
+  url.searchParams.set('place_id', placeId);
+  url.searchParams.set('fields', 'place_id,name,formatted_address');
+  url.searchParams.set('key', key);
+  url.searchParams.set('sessiontoken', googleSessionToken);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return suggestion;
+  const json = (await res.json()) as {
+    status?: string;
+    result?: { place_id?: string; name?: string; formatted_address?: string };
+  };
+  if (json.status !== 'OK' || !json.result) return suggestion;
+  const label = composePlaceLabel(json.result.name, json.result.formatted_address);
+  if (!label) return suggestion;
+  return {
+    ...suggestion,
+    placeId: json.result.place_id ?? placeId,
+    label,
+    title: json.result.name ?? suggestion.title,
+    detail: json.result.formatted_address ?? suggestion.detail,
+  };
+}
+
 async function searchGooglePlaces(
   query: string,
   key: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: PlaceSearchOptions
 ): Promise<PlaceSuggestion[]> {
   if (!googleSessionToken) googleSessionToken = generateUuidV4();
   const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
   url.searchParams.set('input', query);
   url.searchParams.set('key', key);
-  url.searchParams.set('types', 'geocode');
   url.searchParams.set('sessiontoken', googleSessionToken);
+  // Default stays address-only so property location search stays cities/streets.
+  // Activities omit this so restaurants and other businesses appear with street numbers.
+  if (!options?.includeBusinesses) {
+    url.searchParams.set('types', 'geocode');
+  }
 
   const res = await fetch(url.toString(), { signal });
   if (!res.ok) throw new Error(`Google Places HTTP ${res.status}`);
@@ -71,6 +125,7 @@ async function searchGooglePlaces(
   }
   return (json.predictions ?? []).slice(0, 6).map((p) => ({
     id: p.place_id,
+    placeId: p.place_id,
     label: p.description,
     title: p.structured_formatting?.main_text ?? p.description,
     detail: p.structured_formatting?.secondary_text,
@@ -82,6 +137,9 @@ type PhotonFeature = {
     osm_id?: number;
     osm_type?: string;
     name?: string;
+    housenumber?: string;
+    street?: string;
+    postcode?: string;
     city?: string;
     state?: string;
     country?: string;
@@ -131,14 +189,30 @@ function uniqueParts(parts: (string | undefined)[]): string[] {
 function formatPhoton(
   p: PhotonFeature['properties'] | undefined
 ): Pick<PlaceSuggestion, 'label' | 'title' | 'detail'> | null {
-  if (!p?.name) return null;
+  if (!p) return null;
+  const streetLine = [p.housenumber, p.street].filter(Boolean).join(' ').trim();
   const cityLike = p.type === 'city' || p.type === 'town' || p.type === 'village';
-  const parts = cityLike
-    ? uniqueParts([p.name, p.country])
-    : uniqueParts([p.name, p.city, p.state, p.country]);
-  if (parts.length === 0) return null;
+  if (cityLike && p.name) {
+    const parts = uniqueParts([p.name, p.country]);
+    return {
+      title: parts[0]!,
+      label: parts.join(', '),
+      detail: parts.slice(1).join(', ') || undefined,
+    };
+  }
+
+  const name = p.name?.trim();
+  const nameIsStreet =
+    !!name && !!streetLine && name.toLowerCase() === streetLine.toLowerCase();
+  const title = (!nameIsStreet && name) || streetLine || name;
+  if (!title) return null;
+
+  const cityLine = [p.postcode, p.city].filter(Boolean).join(' ').trim() || p.city;
+  const head =
+    !nameIsStreet && name && streetLine ? `${name}, ${streetLine}` : title;
+  const parts = uniqueParts([head, cityLine, p.state, p.country]);
   return {
-    title: parts[0]!,
+    title,
     label: parts.join(', '),
     detail: parts.slice(1).join(', ') || undefined,
   };

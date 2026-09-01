@@ -14,6 +14,7 @@ import { Layout } from '@/constants/theme';
 import {
   beginPlaceSearchSession,
   endPlaceSearchSession,
+  resolvePlace,
   searchPlaces,
   type PlaceSuggestion,
 } from '@/lib/place-search';
@@ -24,9 +25,19 @@ type Props = {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
+  /** Include restaurants and other businesses, not only geocoded streets/cities. */
+  includeBusinesses?: boolean;
+  onSelectPlace?: (place: PlaceSuggestion) => void;
 };
 
-export function LocationSearchField({ label, value, onChangeText, placeholder }: Props) {
+export function LocationSearchField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  includeBusinesses,
+  onSelectPlace,
+}: Props) {
   const t = useAppTheme();
   const colors = t.colors;
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -57,7 +68,7 @@ export function LocationSearchField({ label, value, onChangeText, placeholder }:
     const requestId = ++requestIdRef.current;
     const timer = setTimeout(() => {
       setLoading(true);
-      void searchPlaces(q, controller.signal)
+      void searchPlaces(q, controller.signal, { includeBusinesses })
         .then((rows) => {
           if (requestId !== requestIdRef.current) return;
           setSuggestions(rows);
@@ -77,16 +88,22 @@ export function LocationSearchField({ label, value, onChangeText, placeholder }:
       clearTimeout(timer);
       controller.abort();
     };
-  }, [value, searching]);
+  }, [value, searching, includeBusinesses]);
 
-  function pick(row: PlaceSuggestion) {
+  async function pick(row: PlaceSuggestion) {
     skipSearchRef.current = true;
-    endPlaceSearchSession();
-    beginPlaceSearchSession();
-    onChangeText(row.label);
     setSuggestions([]);
-    setLoading(false);
-    Keyboard.dismiss();
+    setLoading(true);
+    try {
+      const resolved = await resolvePlace(row);
+      onChangeText(resolved.label);
+      onSelectPlace?.(resolved);
+    } finally {
+      endPlaceSearchSession();
+      beginPlaceSearchSession();
+      setLoading(false);
+      Keyboard.dismiss();
+    }
   }
 
   return (
@@ -120,7 +137,7 @@ export function LocationSearchField({ label, value, onChangeText, placeholder }:
           {suggestions.map((row, i) => (
             <Pressable
               key={row.id}
-              onPress={() => pick(row)}
+              onPress={() => void pick(row)}
               accessibilityRole="button"
               accessibilityLabel={row.label}
               style={({ pressed }) => [
