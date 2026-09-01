@@ -19,6 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Layout } from '@/constants/theme';
 import { useAccountContext, useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
+import { openEstateHub } from '@/lib/open-estate-hub';
 import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 
@@ -115,7 +116,7 @@ export default function EstatesList() {
               <View key={estate.id} style={styles.cardWrap}>
                 <EstateCard
                   estate={estate}
-                  onPress={() => router.push(`/(app)/estates/${estate.id}` as never)}
+                  onPress={() => openEstateHub(estate.id)}
                 />
                 {uncoveredHost && role === 'owner' && (
                   <View style={[styles.downgradeBadge, { backgroundColor: colors.border }]}>

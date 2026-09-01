@@ -28,6 +28,7 @@ import { EstateColors, Layout, Radius } from '@/constants/theme';
 import { trialDaysRemaining } from '@/lib/access-tier-core';
 import { useAccountContext, useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { openEstateCreatePaywall, openUpgradePaywall } from '@/lib/maison-pro-upgrade';
+import { openEstateHub } from '@/lib/open-estate-hub';
 import { homeEmphasisFor, type OnboardingUseCase } from '@/lib/onboarding-starters';
 import { fetchProfileUseCase } from '@/lib/use-case-profile';
 import { setPushMasterEnabled } from '@/lib/notifications';
@@ -284,7 +285,7 @@ export default function HomeDashboard() {
         const estate = estateById[s.estateId];
         const isOwnerStay = stayIsSelf(s, currentUser?.id);
         const guestLabel = isOwnerStay
-          ? `${currentUser?.name?.split(' ')[0] ?? t('common.you')} ${t('ownerHome.youSuffix')}`
+          ? (currentUser?.name?.split(' ')[0] ?? t('common.you'))
           : resolveStayOccupantName(s, { profilesById: profileById, guestProfiles });
         const dotColor = estateColorMap[s.estateId] ?? colors.tint;
         const relLabel = getStayRelativeLabel(s.from, s.to, todayStr);
@@ -450,11 +451,13 @@ export default function HomeDashboard() {
         imageUrl: h.estate.coverImageUrl,
         accessibilityLabel: h.estate.name,
         eyebrow: stay ? t('ownerHome.nextStay') : h.estate.location,
-        title: stay ? stay.guestLabel : h.estate.name,
+        title: h.estate.name,
         subtitle: stay
-          ? `${h.estate.name} · ${formatDateRange(stay.stay.from, stay.stay.to)}`
+          ? `${stay.guestLabel} · ${formatDateRange(stay.stay.from, stay.stay.to)}`
           : t('ownerHome.noStayOnProperty'),
-        onPress: () => router.push(`/(app)/estates/${h.estate.id}` as never),
+        onPress: () => {
+          openEstateHub(h.estate.id, { fromHome: true });
+        },
       };
     });
   }, [propertyHeroes, router, t]);
@@ -766,9 +769,7 @@ export default function HomeDashboard() {
                   icon="building.2.fill"
                   title={t('ownerHome.busiestProperty')}
                   subtitle={`${estateById[yearBusiest.estateId]?.name ?? ''} · ${t('ownerHome.nightsCount', { count: yearBusiest.nights })}`}
-                  onPress={() =>
-                    router.push(`/(app)/estates/${yearBusiest.estateId}` as never)
-                  }
+                  onPress={() => openEstateHub(yearBusiest.estateId, { fromHome: true })}
                   isLast={!yearGuest && yearSpend <= 0}
                 />
               ) : null}

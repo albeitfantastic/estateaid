@@ -77,7 +77,7 @@ export default function BlockStay() {
     const ownerEntry = currentUser
       ? [{
           key: `u:${currentUser.id}`,
-          name: t('blockDates.youSuffix', { name: currentUser.name }),
+          name: currentUser.name,
           subtitle: currentUser.email,
         }]
       : [];
@@ -94,19 +94,24 @@ export default function BlockStay() {
         subtitle: inv?.guestEmail ?? '',
       };
     });
+    const managedIds = new Set(estates.map((e) => e.id));
     const offline = guestProfiles
-      .filter((p) => p.estateId === selectedEstateId)
+      .filter((p) => managedIds.has(p.estateId))
+      .sort((a, b) => a.name.localeCompare(b.name))
       .map((p) => ({
         key: `p:${p.id}`,
         name: p.name,
         subtitle: t('blockDates.offlineBadge'),
       }));
     return [...ownerEntry, ...guests, ...offline];
-  }, [selectedEstateId, currentUser, getInvitationsByEstate, profileById, guestProfiles, t]);
+  }, [selectedEstateId, currentUser, getInvitationsByEstate, profileById, guestProfiles, estates, t]);
 
   function pickEstate(id: string) {
     setSelectedEstateId(id);
-    setSelectedGuestIds([]);
+    const selfKey = currentUser ? `u:${currentUser.id}` : null;
+    setSelectedGuestIds((prev) =>
+      prev.filter((key) => key.startsWith('p:') || key === selfKey)
+    );
     setFrom(null);
     setTo(null);
   }

@@ -13,7 +13,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -29,6 +29,7 @@ import {
   type ThemeColors,
 } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { agentDebugLog } from '@/lib/agent-debug-log';
 
 export function useScreenTheme() {
   const colorScheme = useColorScheme();
@@ -65,11 +66,19 @@ export function ScreenShell({
   style,
 }: ScreenShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { colors } = useScreenTheme();
   const { t } = useTranslation();
 
   function handleBack() {
+    // #region agent log
+    agentDebugLog('C', 'screen-layout.tsx:handleBack', 'back pressed', {
+      pathname,
+      hasOnBack: !!onBack,
+      canGoBack: router.canGoBack(),
+    });
+    // #endregion
     if (onBack) onBack();
     else router.back();
   }

@@ -58,7 +58,7 @@ export function SplashScreenOverlay({ isHydrated, onDone }: Props) {
   }));
 
   return (
-    <Animated.View style={[styles.container, rootStyle]} pointerEvents="auto">
+    <Animated.View style={[styles.container, rootStyle, { pointerEvents: 'auto' }]}>
       <SplashScreenAnimation />
     </Animated.View>
   );

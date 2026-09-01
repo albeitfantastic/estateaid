@@ -2,9 +2,11 @@ import { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import i18n from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { MC } from '@/components/paywall/paywall-tokens';
+import '@/lib/i18n';
 import { PrimaryButton } from '@/components/paywall/ui/PrimaryButton';
 import { SecondaryButton } from '@/components/paywall/ui/SecondaryButton';
 
@@ -108,7 +110,7 @@ export function buildPaywallTrustHref(source: string, returnTo?: string) {
 }
 
 export function UpgradeSheetHost() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(undefined, { i18n });
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [sheet, setSheet] = useState<SheetState>(null);

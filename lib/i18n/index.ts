@@ -49,15 +49,31 @@ const resources = {
   pt: { translation: deepMergeTranslations(enCatalog, pt) },
 } as const;
 
+const I18N_INIT = {
+  compatibilityJSON: 'v4' as const,
+  resources,
+  lng: 'en',
+  fallbackLng: 'en',
+  interpolation: { escapeValue: false },
+};
+
+let initPromise: Promise<void> | null = null;
+
+/** Register the i18next instance immediately so web SSR can call useTranslation. */
+export function ensureI18n(): Promise<void> {
+  if (i18n.isInitialized) return Promise.resolve();
+  if (!initPromise) {
+    initPromise = Promise.resolve(
+      i18n.use(initReactI18next).init(I18N_INIT)
+    ).then(() => undefined);
+  }
+  return initPromise;
+}
+
+void ensureI18n();
+
 export async function initI18n(): Promise<void> {
-  if (i18n.isInitialized) return;
-  await i18n.use(initReactI18next).init({
-    compatibilityJSON: 'v4',
-    resources,
-    lng: 'en',
-    fallbackLng: 'en',
-    interpolation: { escapeValue: false },
-  });
+  await ensureI18n();
 }
 
 export async function hydrateStoredLanguage(): Promise<void> {

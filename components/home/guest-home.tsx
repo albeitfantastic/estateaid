@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/screen-layout';
 import { Layout } from '@/constants/theme';
 import { formatDateRange, today } from '@/lib/date-utils';
+import { openEstateHub } from '@/lib/open-estate-hub';
 import type { Estate, Stay } from '@/types';
 
 type Props = {
@@ -66,7 +67,7 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
         eyebrow: stay ? t('guestHome.nextStay') : h.estate.location,
         title: h.estate.name,
         subtitle: stay ? formatDateRange(stay.from, stay.to) : t('ownerHome.noStayOnProperty'),
-        onPress: () => router.push(`/(app)/estates/${h.estate.id}` as never),
+        onPress: () => openEstateHub(h.estate.id, { fromHome: true }),
       };
     });
   }, [propertyHeroes, router, t]);
@@ -132,7 +133,7 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
         )}
         <OutlineButton
           label={t('guestLanding.viewProperty')}
-          onPress={() => router.push(`/(app)/estates/${visibleEstate.id}` as never)}
+          onPress={() => openEstateHub(visibleEstate.id, { fromHome: true })}
         />
       </View>
     </ScreenScroll>

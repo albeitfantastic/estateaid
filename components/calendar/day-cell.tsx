@@ -102,7 +102,7 @@ export function DayCell({
 
 const styles = StyleSheet.create({
   cell: {
-    width: `${100 / 7}%`,
+    width: '100%',
     alignItems: 'center',
     paddingVertical: 6,
     minHeight: 52,

@@ -26,10 +26,12 @@ import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { agentDebugLog } from '@/lib/agent-debug-log';
+import { leaveEstateHub, useEstateHubIntent } from '@/lib/open-estate-hub';
 
 const OWNER_ITEMS: {
   labelKey: string;
@@ -99,7 +101,11 @@ function HubCover({
 
 export default function EstateHub() {
   const { t } = useTranslation();
-  const { estateId, landing } = useLocalSearchParams<{ estateId: string; landing?: string }>();
+  const { estateId: paramEstateId, landing } = useLocalSearchParams<{ estateId: string; landing?: string }>();
+  const intentId = useEstateHubIntent((s) => s.intentId);
+  const estateIdRaw = Array.isArray(paramEstateId) ? paramEstateId[paramEstateId.length - 1] : paramEstateId;
+  const estateId = intentId ?? estateIdRaw;
+  const pathname = usePathname();
   const router = useRouter();
   const { colors } = useScreenTheme();
   const estates = useEstateStore((s) => s.estates);
@@ -118,6 +124,19 @@ export default function EstateHub() {
   useEffect(() => {
     if (estateId) void fetchCoverage([estateId]);
   }, [estateId, fetchCoverage]);
+
+  // #region agent log
+  useEffect(() => {
+    agentDebugLog('B', 'estates/[estateId]/index.tsx:hub', 'estate hub param', {
+      pathname,
+      estateIdIsArray: Array.isArray(paramEstateId),
+      estateId: estateIdRaw,
+      intentId,
+      resolvedId: estateId,
+      matchedName: estate?.name ?? null,
+    });
+  }, [paramEstateId, estateIdRaw, intentId, estateId, pathname, estate?.name]);
+  // #endregion
 
   const actorRole = useMemo(() => {
     if (!estate || !currentUser) return 'none' as const;
@@ -209,6 +228,7 @@ export default function EstateHub() {
   if (showGuestLanding && estate) {
     return (
       <ScreenShell
+        onBack={leaveEstateHub}
         title={t('guestLanding.invitedYou', {
           name: inviterName || t('common.you'),
           property: estate.name,
@@ -232,6 +252,7 @@ export default function EstateHub() {
     const canEdit = can('property.edit', estateCtx);
     return (
       <ScreenShell
+        onBack={leaveEstateHub}
         headerRight={
           <HostProLockTouchable
             locked={!canEdit}
@@ -307,7 +328,7 @@ export default function EstateHub() {
   }
 
   return (
-    <ScreenShell>
+    <ScreenShell onBack={leaveEstateHub}>
       <ScreenScroll contentContainerStyle={styles.grid}>
         <HubCover
           name={estate.name}

@@ -17,11 +17,10 @@ export function TabBarGlassBackground() {
   }
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFillObject, { pointerEvents: 'none' }]}>
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: t.colors.card }]} />
       <View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFillObject, { backgroundColor: t.colors.primarySoft, opacity: 0.25 }]}
+        style={[StyleSheet.absoluteFillObject, { pointerEvents: 'none', backgroundColor: t.colors.primarySoft, opacity: 0.25 }]}
       />
     </View>
   );

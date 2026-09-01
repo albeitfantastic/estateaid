@@ -133,7 +133,7 @@ export function StaysList({
           ? colors.tint
           : resolveStayOccupantColor(stay, invitations, guestProfiles);
         const guestLabel = isSelf
-          ? `${currentUser?.name?.split(' ')[0] ?? t('common.you')} ${t('ownerHome.youSuffix')}`
+          ? (currentUser?.name?.split(' ')[0] ?? t('common.you'))
           : resolveStayOccupantName(stay, { profilesById: profileById, guestProfiles });
 
         return (

@@ -36,7 +36,7 @@ export function ThemedView({ style, lightColor, darkColor, children, ...otherPro
 
   return (
     <View style={[{ backgroundColor }, style]} {...otherProps}>
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
         <Image
           source={require('@/assets/images/noise.png.png')}
           style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.04 : 0.03 }]}

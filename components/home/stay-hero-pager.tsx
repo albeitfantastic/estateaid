@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { PhotoHero, photoHeroOverlayText } from '@/components/ui/photo-hero';
 import { useScreenTheme } from '@/components/ui/screen-layout';
 import { Layout } from '@/constants/theme';
+import { agentDebugLog } from '@/lib/agent-debug-log';
 
 export type StayHeroPage = {
   id: string;
@@ -77,14 +78,26 @@ export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Pr
 
   if (pages.length === 0) return null;
 
-  const renderPage = ({ item }: { item: StayHeroPage }) => {
+  const renderPage = ({ item, index: pageIndex }: { item: StayHeroPage; index: number }) => {
     return (
       <View style={{ width: width || undefined }}>
         <PhotoHero
           imageUrl={item.imageUrl}
           height={height}
           align="center"
-          onPress={item.onPress}
+          onPress={() => {
+            // #region agent log
+            agentDebugLog('A', 'stay-hero-pager.tsx:onPress', 'hero tile pressed', {
+              pageIndex,
+              pageId: item.id,
+              title: item.title,
+              pagerIndex: index,
+              width,
+              pageCount: pages.length,
+            });
+            // #endregion
+            item.onPress();
+          }}
           accessibilityLabel={item.accessibilityLabel}
         >
           <ThemedText type="overline" style={styles.heroEyebrow} numberOfLines={1}>

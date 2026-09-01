@@ -40,7 +40,7 @@ export default function EditStay() {
   const isOwner = stay ? stayIsSelf(stay, currentUser?.id) : false;
   const guestLabel = stay
     ? isOwner
-      ? `${currentUser?.name?.split(' ')[0] ?? 'You'} (you)`
+      ? (currentUser?.name?.split(' ')[0] ?? t('common.you'))
       : resolveStayOccupantName(stay, { profilesById: profileById, guestProfiles })
     : '';
 
