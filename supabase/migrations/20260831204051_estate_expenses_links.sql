@@ -1,5 +1,6 @@
 -- Expenses may be attributed to a stay or a maintenance event (§14.3). The columns
 -- existed but carried no referential integrity, so a deleted stay left a dangling id.
+-- Version matches remote schema_migrations (applied as estate_expenses_links).
 
 ALTER TABLE public.estate_expenses
   DROP CONSTRAINT IF EXISTS estate_expenses_stay_id_fkey;

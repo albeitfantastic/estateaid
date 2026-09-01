@@ -1,5 +1,6 @@
 -- Persist onboarding Q1–Q3, recipient notification prefs, conversion + re-ask flags.
 -- Per-event reminder lead time for maintenance pushes (spec §14.1).
+-- Version matches remote schema_migrations (applied as profile_quiz_and_notification_prefs).
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS onboarding_quiz jsonb,

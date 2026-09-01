@@ -1,4 +1,5 @@
 -- Per-property expenses (§14.3). Record-keeping only — not financial advice.
+-- Version matches remote schema_migrations (applied as estate_expenses).
 
 CREATE TABLE IF NOT EXISTS public.estate_expenses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,5 +1,6 @@
 -- Handover checklists (§14.3): one template per property, one completion per stay.
 -- Coverage resolves through the property's sponsor via estate_is_covered().
+-- Version matches remote schema_migrations (applied as estate_handover).
 
 CREATE TABLE IF NOT EXISTS public.estate_handover_templates (
   estate_id uuid PRIMARY KEY REFERENCES public.estates(id) ON DELETE CASCADE,
