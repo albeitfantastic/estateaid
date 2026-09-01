@@ -13,7 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { PhotoHero, photoHeroOverlayText } from '@/components/ui/photo-hero';
 import { useScreenTheme } from '@/components/ui/screen-layout';
 import { Layout } from '@/constants/theme';
-import { agentDebugLog } from '@/lib/agent-debug-log';
+import { debugLog1393f3 } from '@/lib/debug-session-1393f3';
 
 export type StayHeroPage = {
   id: string;
@@ -78,26 +78,32 @@ export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Pr
 
   if (pages.length === 0) return null;
 
-  const renderPage = ({ item, index: pageIndex }: { item: StayHeroPage; index: number }) => {
+  const singleBranch = pages.length === 1 || width <= 0;
+
+  // #region agent log
+  debugLog1393f3({
+    hypothesisId: 'B,C,E',
+    location: 'components/home/stay-hero-pager.tsx:render',
+    message: 'pager render',
+    data: {
+      pageCount: pages.length,
+      uniqueIds: new Set(pages.map((p) => p.id)).size,
+      width,
+      singleBranch,
+      showDots: pages.length > 1,
+    },
+    runId: 'post-fix',
+  });
+  // #endregion
+
+  const renderPage = ({ item }: { item: StayHeroPage }) => {
     return (
       <View style={{ width: width || undefined }}>
         <PhotoHero
           imageUrl={item.imageUrl}
           height={height}
           align="center"
-          onPress={() => {
-            // #region agent log
-            agentDebugLog('A', 'stay-hero-pager.tsx:onPress', 'hero tile pressed', {
-              pageIndex,
-              pageId: item.id,
-              title: item.title,
-              pagerIndex: index,
-              width,
-              pageCount: pages.length,
-            });
-            // #endregion
-            item.onPress();
-          }}
+          onPress={item.onPress}
           accessibilityLabel={item.accessibilityLabel}
         >
           <ThemedText type="overline" style={styles.heroEyebrow} numberOfLines={1}>
@@ -118,6 +124,15 @@ export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Pr
     <View
       onLayout={(e) => {
         const w = Math.round(e.nativeEvent.layout.width);
+        const h = Math.round(e.nativeEvent.layout.height);
+        // #region agent log
+        debugLog1393f3({
+          hypothesisId: 'B,C',
+          location: 'components/home/stay-hero-pager.tsx:onLayout',
+          message: 'pager onLayout',
+          data: { w, h, prevWidth: width, pageCount: pages.length },
+        });
+        // #endregion
         if (w > 0 && w !== width) setWidth(w);
       }}
       accessibilityHint={pages.length > 1 ? 'Swipe left or right for other properties' : undefined}
@@ -135,7 +150,7 @@ export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Pr
           directionalLockEnabled
           showsHorizontalScrollIndicator={false}
           decelerationRate="fast"
-          style={{ height }}
+          style={{ width, height }}
           key={width}
           getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
           onMomentumScrollEnd={onMomentumEnd}

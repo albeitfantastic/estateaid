@@ -47,21 +47,21 @@ This exists so that a household co-managing one property pays once, not twice.
 
 ### 2.2 Products
 
-Three packs. Six SKUs total, all in **one** App Store subscription group, ordered Home → Family → Portfolio so up/downgrades prorate natively.
+Three packs. Six SKUs total, all in **one** App Store subscription group, ordered Résidence → Domaine → Héritage so up/downgrades prorate natively.
 
 | Pack | Slots | Annual | Monthly |
 |---|---|---|---|
-| Home | 1 | €59.99 | €6.99 |
-| Family | 3 | €99.99 | €10.99 |
-| Portfolio | 10 | €199.99 | €19.99 |
+| Résidence | 1 | €149.99 | €14.99 |
+| Domaine | 3 | €299.99 | €29.99 |
+| Héritage | 7 | €499.99 | €49.99 |
 
-RevenueCat must resolve the active product to an **integer** slot count (1, 3, or 10). Never a boolean entitlement.
+RevenueCat must resolve the active product to an **integer** slot count (1, 3, or 7). Never a boolean entitlement.
 
-**Paywall UI:** three cards, annual selected by default, Family visually primary. Show a per-property-per-year figure on each card (€60 / €33 / €20) — that column is the pitch. Do **not** render a feature comparison matrix; every pack includes every feature, and the only variable is slot count.
+**Paywall UI:** three cards, annual selected by default, Domaine visually primary. Show a per-property-per-year figure on each card (€150 / €100 / €71) — that column is the pitch. Monthly view shows €X/property/month, never an annual figure under a monthly price. Do **not** render a feature comparison matrix; every pack includes every feature, and the only variable is slot count.
 
 Do not label anything "Most popular" until there is data to support it.
 
-Above 10 properties is not sold. Link to a contact form; grant manually via the mirror.
+Above 7 properties is not sold. Link to a contact form; grant manually via the mirror.
 
 ### 2.3 Over-allocation
 
@@ -72,7 +72,7 @@ If `slotCount` drops below `propertiesSponsored` — downgrade, lapse, refund �
 - Never delete anything.
 
 **Acceptance criteria**
-- Downgrade from Family to Home with 3 properties → all 3 locked, sponsor prompted to choose 1.
+- Downgrade from Domaine to Résidence with 3 properties → all 3 locked, sponsor prompted to choose 1.
 - No data loss at any point.
 
 ---
@@ -196,14 +196,14 @@ Expose as `useCan()` reading from the entitlement store.
 splash → auth → Q1–Q4 → start fork → [property creation | code redemption] → home
 ```
 
-No paywall anywhere in onboarding. A brand-new user must reach a fully working property without seeing a price.
+No paywall in the quiz or start fork. First property create with no free slot is the purchase moment (§6 / §8): store intro on the selected pack, then that SKU auto-renews.
 
 ### 5.2 The start fork (new screen)
 
 After the quiz: **"How do you want to start?"**
 
 - **I have an invite code** → code entry → redeem → land in that property as guest or owner
-- **Add my property** → creation form → trial granted per §6
+- **Add my property** → creation form (no free slot → paywall / store intro per §6)
 
 Notes:
 - A user arriving via deep link (§9.1) **skips the quiz and this fork entirely** — the invite is already resolved. This screen exists for people who received a code by messenger and typed it manually.
@@ -217,7 +217,7 @@ One screen before property creation, not a series. Its button names the action �
 The creation form stays minimal: name, type, optional location. Everything else editable later.
 
 **Acceptance criteria**
-- New signup reaches `/(app)/home` without a paywall.
+- New signup can finish the quiz and fork without a paywall. Creating a property with no free slot opens Trust.
 - `completeOnboarding()` still fires.
 - Returning sign-in with onboarding complete goes straight to home, no quiz.
 
@@ -225,28 +225,28 @@ The creation form stays minimal: name, type, optional location. Everything else 
 
 ## 6. Trial
 
-- Grants **1 slot for 14 days**.
-- Granted on **first property creation**, once per account ever, tracked by `hasUsedTrial`.
-- Delete-and-recreate does not grant a second trial.
-- A user who joined by invite and later creates their first property gets the full trial then. This is the primary organic growth path — instrument it separately from cold signups.
-- Uses the existing `start_app_trial` RPC. That RPC becomes the default path, not the Expo Go fallback.
+- Store **introductory offer**: 14 days free on the pack the user selects (Résidence / Domaine / Héritage, annual default, Domaine highlighted).
+- The App Store or Play Store collects a payment method at start. After 14 days **that SKU auto-renews** unless they cancel in store subscription settings.
+- First property create with no free slot opens the paywall. There is no silent `start_app_trial` grant.
+- Apple/Google decide intro eligibility (once per store account). Delete-and-recreate does not grant a second intro.
+- A user who joined by invite and later creates their first property sees the same store trial.
 
 ### 6.1 Trial must be visible
 
-Granted without interruption but **never hidden**. Omitting it risks a misleading-omission argument under EU/German unfair commercial practices law when features later disappear, and makes expiry feel like a bait-and-switch.
+Granted as a store subscription (intro period) and **never hidden**.
 
 All three required:
 
-1. **Home status line** — quiet, non-modal: *"Maison Pro · 14 days left"*. Tappable → subscription screen. Neutral days 1–10, emphasised from day 11.
-2. **Settings → Subscription** — tier, exact end date, what happens at expiry.
-3. **Terms of Service** — one sentence: length, and that it does not auto-charge.
+1. **Home status line** — quiet, non-modal: *"Trial · 14 days left · used/total slots"*. Tappable → subscription screen. Neutral days 1–10, emphasised from day 11.
+2. **Settings → Subscription** — pack slots, exact trial end date, that the plan renews unless cancelled.
+3. **Terms of Service** — trial length, that the store holds a payment method, and that the plan auto-renews unless cancelled.
 
-Copy must state plainly that no payment is taken and nothing renews. That fact is what keeps this outside subscription-trap regulation.
+Copy must state the **then-price** and auto-renewal above the subscribe CTA. That is what keeps the offer lawful in the EU and US.
 
 **Acceptance criteria**
 - Trial status reachable from home in one tap throughout.
 - No countdown ever appears as an interstitial or blocking modal.
-- Nothing implies a card is on file.
+- The paywall discloses trial → then €X / period → auto-renew → how to cancel, before the store sheet.
 
 ### 6.2 Conversion moments
 
@@ -257,7 +257,7 @@ Three. Do not add a fourth.
 **Day 11** — inline card leading with an inventory of what they made:
 
 > 2 documents · 4 contacts · 1 guest · 6 days blocked
-> Keep managing Dom w Rębrszowie — Maison Home from €59.99/year
+> Keep managing Dom w Rębrszowie — Maison Résidence from €149.99/year
 
 The inventory is the pitch. If all counts are zero, suppress the card and show the setup checklist (§10.2) instead — an inventory of nothing is worse than no pitch.
 
@@ -289,12 +289,11 @@ Everything else is coverage state, not a sales moment. Two sub-cases, which must
 
 | Condition | Behaviour |
 |---|---|
-| `hasUsedTrial === false` | Grant trial, no paywall, straight into the creation form |
-| `hasUsedTrial === true`, no free slot | Paywall |
+| No free slot | Paywall: pick pack, store intro trial (or Subscribe if intro already used) |
 
-`hasUsedTrial === false` and "trial expired" are opposite states. A null `trialEndsAt` and a past `trialEndsAt` produce different behaviour; conflating them causes either double trials or a paywall in front of a first-time host.
+A leftover app-managed `trialEndsAt` on older profiles still grants slots until that date. New accounts do not write `trial_ends_at` from the client.
 
-Retain `paywall-trust` and `paywall-outcome` as the soft-pitch screens, reached only from this trigger. Pitch copy varies by origin: cold signup gets generic; a user who joined by invite first gets copy leading with what they already know works.
+Retain `paywall-trust` as the pack picker and purchase screen. `paywall-outcome` redirects to Trust.
 
 ### 8.1 Replace the dead-end upgrade alert
 
@@ -469,7 +468,7 @@ Recommended but deferred. Pulls in moderation, notification and support obligati
 - **No coach marks.** If the UI needs overlay arrows, fix the UI.
 - **No urgency-styled countdowns.** A neutral "14 days left" is fine; a red ticking clock is a dark pattern and a named target of the forthcoming EU Digital Fairness Act.
 - **No trial extension offers on expiry.** Adds a decision, delays the real one.
-- **No card capture during the trial.** The absence of a payment method is what keeps this outside auto-renewal regulation. Do not compromise it for conversion.
+- **No fake extra trial after a store intro.** Apple/Google already limit introductory offers per account.
 
 Tooltips permitted in exactly two places, both conceptual rather than visual: why guest content unlocks near stay dates, and the difference between blocking and requesting dates.
 
@@ -483,7 +482,7 @@ Client gating is insufficient. A user's write access depends on a **third party'
 - Reject property inserts when the creator has no free slot.
 - Reject host invites beyond `OWNER_CAP`.
 - Reject host-role users attempting sponsor-only actions.
-- Reject a second trial when `hasUsedTrial` is true.
+- Store intro eligibility is enforced by Apple/Google, not `hasUsedTrial`.
 - Distinguishable error codes: `NO_FREE_SLOT`, `OWNER_CAP_REACHED`, `NOT_SPONSOR`, `PROPERTY_UNCOVERED`, `TRIAL_ALREADY_USED`. The client maps each to a specific message.
 - Index the coverage lookup; it runs on nearly every request.
 
@@ -495,7 +494,7 @@ Not optional, easy to forget on mobile.
 
 - **Terms of Service** and **Privacy Policy** — linked from Settings and from the paywall
 - **Impressum** — separately required for a commercial operator based in Germany
-- Trial description in the Terms per §6.1
+- Trial description in the Terms per §6.1 (**legal review required before public launch** — do not invent warranty or consumer-law sections here)
 - Restore Purchases and the RevenueCat Customer Center reachable from Settings without a subscription
 
 This spec reflects design rationale, not legal advice. Have the Terms, Privacy Policy and Impressum reviewed by a lawyer before public launch.
@@ -540,7 +539,7 @@ Ship Phases 1–2 as one release.
 
 1. **Host cap** — 4 total including sponsor, or 4 plus sponsor? Spec assumes the former.
 2. **Slot reuse cooldown** — delete-and-recreate frees a slot immediately. Acceptable; if abuse appears, add a 24h cooldown rather than blocking deletion.
-3. **Above 10 properties** — not sold. Contact form, manual grant. Revisit only if volume justifies it.
+3. **Above 7 properties** — not sold. Contact form, manual grant. Revisit only if volume justifies it.
 4. **Maintenance tile vs tab** — §10.4, needs a decision before Phase 4.
 
 ---
@@ -549,11 +548,11 @@ Ship Phases 1–2 as one release.
 
 Run after every phase.
 
-1. New signup → quiz → fork → "Add my property" → trial granted → property fully writable, no paywall seen.
+1. New signup → quiz → fork → "Add my property" → paywall → store intro on selected pack → property writable.
 2. New signup → fork → "I have an invite code" → redeem → lands in property, no trial, no price shown anywhere.
-3. Invited-first user later creates their own property → full 14-day trial granted then.
-4. Trial used, no free slot → property creation shows the paywall.
-5. Delete property, create another → no second trial.
+3. Invited-first user later creates their own property → same store intro on the selected pack.
+4. Intro already used, no free slot → property creation shows the paywall with Subscribe (no free-trial sentence).
+5. Delete property, create another → no second intro from the app (Apple/Google enforce eligibility).
 6. Host-role user with zero slots: full write access on a covered property; cannot invite hosts, delete it, or transfer sponsorship.
 7. Host cap: invite to the cap → next host invite blocked client- and server-side with distinct messaging; guest invites still work.
 8. Sponsor lapse: all their properties read-only for all roles; named message; host with a free slot transfers in one tap; host without one sees the purchase path.

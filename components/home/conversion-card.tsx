@@ -25,7 +25,7 @@ export function ConversionCard({
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useScreenTheme();
-  const price = SLOT_PACKS.home.annualEur.toFixed(2);
+  const price = SLOT_PACKS.residence.annualEur.toFixed(2);
   const inventoryLine = t('conversion.inventory', {
     documents: inventory.documents,
     contacts: inventory.contacts,
@@ -44,9 +44,11 @@ export function ConversionCard({
   const body =
     kind === 'invite_accepted'
       ? t('conversion.inviteBody')
-      : kind === 'expiry'
-        ? t('conversion.expiryBody')
-        : null;
+      : kind === 'day11'
+        ? t('conversion.day11Body')
+        : kind === 'expiry'
+          ? t('conversion.expiryBody')
+          : null;
 
   return (
     <SurfaceCard variant="outline" padded style={styles.card}>

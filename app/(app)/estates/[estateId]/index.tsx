@@ -26,11 +26,10 @@ import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { agentDebugLog } from '@/lib/agent-debug-log';
 import { leaveEstateHub, useEstateHubIntent } from '@/lib/open-estate-hub';
 
 const OWNER_ITEMS: {
@@ -105,7 +104,6 @@ export default function EstateHub() {
   const intentId = useEstateHubIntent((s) => s.intentId);
   const estateIdRaw = Array.isArray(paramEstateId) ? paramEstateId[paramEstateId.length - 1] : paramEstateId;
   const estateId = intentId ?? estateIdRaw;
-  const pathname = usePathname();
   const router = useRouter();
   const { colors } = useScreenTheme();
   const estates = useEstateStore((s) => s.estates);
@@ -124,19 +122,6 @@ export default function EstateHub() {
   useEffect(() => {
     if (estateId) void fetchCoverage([estateId]);
   }, [estateId, fetchCoverage]);
-
-  // #region agent log
-  useEffect(() => {
-    agentDebugLog('B', 'estates/[estateId]/index.tsx:hub', 'estate hub param', {
-      pathname,
-      estateIdIsArray: Array.isArray(paramEstateId),
-      estateId: estateIdRaw,
-      intentId,
-      resolvedId: estateId,
-      matchedName: estate?.name ?? null,
-    });
-  }, [paramEstateId, estateIdRaw, intentId, estateId, pathname, estate?.name]);
-  // #endregion
 
   const actorRole = useMemo(() => {
     if (!estate || !currentUser) return 'none' as const;

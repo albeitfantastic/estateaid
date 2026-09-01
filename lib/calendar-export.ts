@@ -214,12 +214,13 @@ async function resolveTargets(
 async function upsertDraft(
   entityKey: string,
   draft: NativeEventDraft,
-  force: boolean
+  force: boolean,
+  target?: DeviceCalendar
 ): Promise<boolean> {
   const uid = currentUserId();
   if (!uid) return false;
   const prefs = await getCalendarExportPrefs(uid);
-  const targets = await resolveTargets(prefs, force);
+  const targets = target ? [target] : await resolveTargets(prefs, force);
   if (targets.length === 0) return false;
 
   const map = await readMap(uid);
@@ -230,6 +231,14 @@ async function upsertDraft(
     const existing = prev.find((r) => r.calendarId === cal.id)?.eventId;
     const eventId = await upsertNativeEvent(cal.id, existing, draft);
     if (eventId) next.push({ calendarId: cal.id, eventId });
+  }
+
+  if (target) {
+    const targetIds = new Set(targets.map((c) => c.id));
+    const kept = prev.filter((r) => !targetIds.has(r.calendarId));
+    map[entityKey] = [...kept, ...next];
+    await writeMap(uid, map);
+    return next.length > 0;
   }
 
   const dropped = prev.filter((r) => !next.some((n) => n.calendarId === r.calendarId));
@@ -321,21 +330,24 @@ export function removeExportedEvent(eventId: string): void {
   void removeEntity(eventMapKey(eventId));
 }
 
-export async function addStayToCalendar(stay: Stay): Promise<boolean> {
+export async function addStayToCalendar(stay: Stay, calendar: DeviceCalendar): Promise<boolean> {
   const ok = await requestCalendarAccess();
   if (!ok) return false;
   const draft = stayDraft(stay);
   if (!draft) return false;
-  return upsertDraft(stayMapKey(stay.id), draft, true);
+  return upsertDraft(stayMapKey(stay.id), draft, true, calendar);
 }
 
-export async function addEstateEventToCalendar(event: EstateEvent): Promise<boolean> {
+export async function addEstateEventToCalendar(
+  event: EstateEvent,
+  calendar: DeviceCalendar
+): Promise<boolean> {
   const ok = await requestCalendarAccess();
   if (!ok) return false;
   if (!canExportEstateEvent(event)) return false;
   const draft = eventDraft(event);
   if (!draft) return false;
-  return upsertDraft(eventMapKey(event.id), draft, true);
+  return upsertDraft(eventMapKey(event.id), draft, true, calendar);
 }
 
 export async function enableCalendarExport(

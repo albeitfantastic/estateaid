@@ -20,7 +20,7 @@ import {
   sdkMaxSlotCount,
   Purchases,
 } from '@/lib/revenuecat-client';
-import { slotEntitlementIds } from '@/lib/subscription-config';
+import { storeTrialEndsAtFromCustomerInfo } from '@/lib/revenuecat-purchase';
 import { fetchSubscriptionEntitlements, rowGrantsAccess } from '@/lib/subscription-access';
 import { useAuthStore } from '@/store/auth-store';
 import type { SubscriptionEntitlementRow } from '@/types/subscription';
@@ -35,6 +35,8 @@ export type SubscriptionContextValue = {
   sdkMaisonProActive: boolean;
   entitlementIds: string[];
   expiresAt: string | null;
+  /** ISO end of an active store intro/trial period, if any. */
+  storeTrialEndsAt: string | null;
   managementUrl: string | null;
   primaryRow: SubscriptionEntitlementRow | null;
   error: string | null;
@@ -52,6 +54,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [rows, setRows] = useState<SubscriptionEntitlementRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sdkSlotCount, setSdkSlotCount] = useState(0);
+  const [storeTrialEndsAt, setStoreTrialEndsAt] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
     if (!currentUserId) {
@@ -75,6 +78,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       const info = await fetchCustomerInfoSafe();
       if (info) {
         setSdkSlotCount(sdkMaxSlotCount(info));
+        setStoreTrialEndsAt(storeTrialEndsAtFromCustomerInfo(info));
       }
     }
     await refetch();
@@ -87,11 +91,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const listener = (info: CustomerInfo) => {
       if (cancelled) return;
       setSdkSlotCount(sdkMaxSlotCount(info));
+      setStoreTrialEndsAt(storeTrialEndsAtFromCustomerInfo(info));
     };
 
     async function run() {
       if (Platform.OS === 'web') {
         setSdkSlotCount(0);
+        setStoreTrialEndsAt(null);
         await refetch();
         return;
       }
@@ -105,6 +111,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       if (!currentUserId) {
         await logOutRevenueCatUser();
         setSdkSlotCount(0);
+        setStoreTrialEndsAt(null);
         setRows([]);
         setError(null);
         setLoading(false);
@@ -118,9 +125,11 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           listener(info);
         } catch {
           setSdkSlotCount(0);
+          setStoreTrialEndsAt(null);
         }
       } else {
         setSdkSlotCount(0);
+        setStoreTrialEndsAt(null);
       }
 
       await refetch();
@@ -179,6 +188,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       sdkMaisonProActive: sdkSlotCount > 0,
       entitlementIds: rows.map((r) => r.entitlement_id),
       expiresAt: primaryRow?.expires_at ?? null,
+      storeTrialEndsAt,
       managementUrl: null,
       primaryRow,
       error,
@@ -186,7 +196,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       syncPurchasesAndRefetch,
       presentManageSubscriptions: () => presentManageSubscriptions(),
     }),
-    [loading, slotCount, sdkSlotCount, rows, primaryRow, error, refetch, syncPurchasesAndRefetch]
+    [loading, slotCount, sdkSlotCount, storeTrialEndsAt, rows, primaryRow, error, refetch, syncPurchasesAndRefetch]
   );
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;

@@ -94,7 +94,7 @@ interface EventState {
   updateIssueMessage: (
     eventId: string,
     messageId: string,
-    patch: { body?: string; taggedContactId?: string | null }
+    patch: { body?: string; taggedContactId?: string | null; taggedHostId?: string | null }
   ) => Promise<void>;
   updateIssueStatus: (eventId: string, status: IssueStatus) => Promise<void>;
   updateIssueFields: (
@@ -221,13 +221,16 @@ export const useEventStore = create<EventState>()(
             reportWriteFailure(error.message);
             return;
           }
+          const { hostUserIdsForEstate } = await import('@/lib/estate-host-ids');
+          const { sendCategorizedPush, sendCategorizedPushToMany } = await import('@/lib/notifications');
           const fromGuest = Boolean(ev.guestId && message.authorId === ev.guestId);
+          const alreadyNotified = new Set<string>();
           if (fromGuest) {
-            const { hostUserIdsForEstate } = await import('@/lib/estate-host-ids');
-            const { sendCategorizedPushToMany } = await import('@/lib/notifications');
+            const hosts = hostUserIdsForEstate(ev.estateId).filter((id) => id !== message.authorId);
+            hosts.forEach((id) => alreadyNotified.add(id));
             void sendCategorizedPushToMany(
               'maintenance',
-              hostUserIdsForEstate(ev.estateId).filter((id) => id !== message.authorId),
+              hosts,
               `New message: ${ev.title}`,
               message.body.slice(0, 120),
               { type: 'maintenance', estateId: ev.estateId, eventId }
@@ -242,12 +245,29 @@ export const useEventStore = create<EventState>()(
               ev.estateId,
               today()
             );
-            if (!onStay) return;
-            void getPushToken(ev.guestId).then((token) =>
-              sendPush(token, `New message: ${ev.title}`, message.body.slice(0, 120), {
-                estateId: ev.estateId,
-                eventId,
-              })
+            if (onStay) {
+              alreadyNotified.add(ev.guestId);
+              void getPushToken(ev.guestId).then((token) =>
+                sendPush(token, `New message: ${ev.title}`, message.body.slice(0, 120), {
+                  estateId: ev.estateId,
+                  eventId,
+                })
+              );
+            }
+          }
+          const taggedHostId = message.taggedHostId;
+          if (
+            taggedHostId &&
+            taggedHostId !== message.authorId &&
+            !alreadyNotified.has(taggedHostId) &&
+            hostUserIdsForEstate(ev.estateId).includes(taggedHostId)
+          ) {
+            void sendCategorizedPush(
+              'maintenance',
+              taggedHostId,
+              i18n.t('pushCopy.issueTaggedTitle', { title: ev.title }),
+              message.body.slice(0, 120),
+              { type: 'maintenance', estateId: ev.estateId, eventId }
             );
           }
         }
@@ -271,11 +291,20 @@ export const useEventStore = create<EventState>()(
                       ? undefined
                       : patch.taggedContactId;
                 }
+                if (patch.taggedHostId !== undefined) {
+                  next.taggedHostId =
+                    patch.taggedHostId === null || patch.taggedHostId === ''
+                      ? undefined
+                      : patch.taggedHostId;
+                }
                 return next;
               }),
             };
           }),
         }));
+        const prevMessage = previous
+          .find((e) => e.id === eventId)
+          ?.messages?.find((m) => m.id === messageId);
         const ev = get().events.find((x) => x.id === eventId);
         if (ev && isIssueTask(ev)) {
           const { error } = await supabase
@@ -289,6 +318,26 @@ export const useEventStore = create<EventState>()(
           if (error) {
             set({ events: previous });
             reportWriteFailure(error.message);
+            return;
+          }
+          const nextMessage = ev.messages?.find((m) => m.id === messageId);
+          const taggedHostId = nextMessage?.taggedHostId;
+          if (
+            taggedHostId &&
+            taggedHostId !== prevMessage?.taggedHostId &&
+            taggedHostId !== nextMessage?.authorId
+          ) {
+            const { hostUserIdsForEstate } = await import('@/lib/estate-host-ids');
+            if (hostUserIdsForEstate(ev.estateId).includes(taggedHostId)) {
+              const { sendCategorizedPush } = await import('@/lib/notifications');
+              void sendCategorizedPush(
+                'maintenance',
+                taggedHostId,
+                i18n.t('pushCopy.issueTaggedTitle', { title: ev.title }),
+                (nextMessage?.body ?? '').slice(0, 120),
+                { type: 'maintenance', estateId: ev.estateId, eventId }
+              );
+            }
           }
         }
       },

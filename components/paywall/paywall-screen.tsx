@@ -12,22 +12,17 @@ import type { PurchasesOffering } from 'react-native-purchases';
 
 import { GroupedList, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
 import { Layout } from '@/constants/theme';
-import { Purchases, isRevenueCatConfigured, isEntitlementActiveInCustomerInfo } from '@/lib/revenuecat-client';
+import { Purchases, isRevenueCatConfigured } from '@/lib/revenuecat-client';
 import {
   EXIT_OFFERING_ID,
   MAISON_PRO_DISPLAY_NAME,
   PRIMARY_ENTITLEMENT_ID,
   RC_PRODUCT_IDS,
-  isPrimaryEntitlementId,
 } from '@/lib/subscription-config';
-import { fetchSubscriptionEntitlements, rowGrantsAccess } from '@/lib/subscription-access';
+import { confirmPurchaseAccess, alertPurchaseResult } from '@/lib/paywall-complete';
 import { isEmbeddedRevenueCatPaywallAvailable, RevenueCatUI } from '@/lib/revenuecat-ui';
 import { useSubscription } from '@/providers/subscription-provider';
 import { useAuthStore } from '@/store/auth-store';
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
 
 interface PaywallScreenProps {
   /**
@@ -125,50 +120,21 @@ export function PaywallScreen({
     };
   }, [offeringIdentifier]);
 
-  const pollMirrorUntilActive = useCallback(async (maxAttempts = 8) => {
+  const onCompletedFlow = useCallback(async () => {
+    suppressDismissRef.current = true;
     setConfirming(true);
     try {
-      for (let i = 0; i < maxAttempts; i++) {
-        await refetch();
-        await sleep(1500);
-        const { data } = await fetchSubscriptionEntitlements();
-        const row = data?.find((r) => isPrimaryEntitlementId(r.entitlement_id));
-        if (row && rowGrantsAccess(row)) return true;
-      }
+      const status = await confirmPurchaseAccess({
+        refetch,
+        syncPurchasesAndRefetch,
+        refreshProfile,
+        t,
+      });
+      alertPurchaseResult(status, t, leaveOnSuccess);
     } finally {
       setConfirming(false);
     }
-    return false;
-  }, [refetch]);
-
-  const onCompletedFlow = useCallback(async () => {
-    suppressDismissRef.current = true;
-    const ok = await pollMirrorUntilActive();
-    await syncPurchasesAndRefetch().catch(() => undefined);
-    await refreshProfile().catch(() => undefined);
-    let sdkActive = false;
-    try {
-      if (isRevenueCatConfigured()) {
-        const info = await Purchases.getCustomerInfo();
-        sdkActive = isEntitlementActiveInCustomerInfo(info, PRIMARY_ENTITLEMENT_ID);
-      }
-    } catch {
-      sdkActive = false;
-    }
-    if (ok) {
-      Alert.alert(t('paywall.welcomeTitle', { plan }), t('paywall.welcomeBody'), [
-        { text: t('common.ok'), onPress: () => leaveOnSuccess() },
-      ]);
-    } else if (sdkActive) {
-      Alert.alert(t('paywall.welcomeTitle', { plan }), t('paywall.welcomeBody'), [
-        { text: t('common.ok'), onPress: () => leaveOnSuccess() },
-      ]);
-    } else {
-      Alert.alert(t('paywall.processingTitle'), t('paywall.processingBody'), [
-        { text: t('common.ok'), onPress: () => leaveOnSuccess() },
-      ]);
-    }
-  }, [leaveOnSuccess, pollMirrorUntilActive, refreshProfile, syncPurchasesAndRefetch, t, plan]);
+  }, [leaveOnSuccess, refetch, refreshProfile, syncPurchasesAndRefetch, t]);
 
   const rcConfigured = isRevenueCatConfigured();
   const embeddedPaywall = isEmbeddedRevenueCatPaywallAvailable();

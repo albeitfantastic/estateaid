@@ -9,7 +9,7 @@ interface FocusInputProps extends TextInputProps {
   accentColor?: string;
 }
 
-export function FocusInput({ label, accentColor, style, ...props }: FocusInputProps) {
+export function FocusInput({ label, accentColor, style, onFocus, onBlur, ...props }: FocusInputProps) {
   const t = useAppTheme();
   const colors = t.colors;
   const accent = accentColor ?? colors.primary;
@@ -36,8 +36,14 @@ export function FocusInput({ label, accentColor, style, ...props }: FocusInputPr
           style,
         ]}
         placeholderTextColor={colors.textSoft}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
         {...props}
       />
     </View>

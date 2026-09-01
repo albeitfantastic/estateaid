@@ -1,10 +1,10 @@
 /**
  * RevenueCat → Supabase entitlement mirror.
  *
- * Trial vs Pro: the app-managed 14-day window lives in `profiles.trial_*` (RPC `start_app_trial`).
- * This webhook mirrors store/RC entitlements only (e.g. `maison_pro`). Do not mix the two clocks
- * for the same UX period — Pro access after trial is determined here + `user_has_active_entitlement`;
- * in-trial host access uses `trial_ends_at` on the client and `user_has_full_product_access()` in RLS.
+ * Store intro and paid access both land here as active entitlement rows. Slot count comes from
+ * `product_id_to_slots` on the purchased SKU (1 / 3 / 7), including during the 14-day intro.
+ * Leftover app-managed `profiles.trial_ends_at` still exists for accounts already mid old trial;
+ * new users must not receive that RPC grant. Do not mix the two clocks for the same UX period.
  *
  * Security:
  * - verify_jwt=false in config.toml: RevenueCat does not send Supabase JWTs.

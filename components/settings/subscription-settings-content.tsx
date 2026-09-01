@@ -22,14 +22,12 @@ import { isRevenueCatUiAvailable } from '@/lib/revenuecat-ui';
 import { MAISON_PRO_DISPLAY_NAME } from '@/lib/subscription-config';
 import { supportMailto } from '@/lib/support';
 import { useSubscription } from '@/providers/subscription-provider';
-import { useAuthStore } from '@/store/auth-store';
 
 export function SubscriptionSettingsContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useScreenTheme();
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const { slotCount, propertiesSponsored } = useAccountContext();
+  const { slotCount, propertiesSponsored, trialEndsAt } = useAccountContext();
   const {
     isPro,
     sdkMaisonProActive,
@@ -42,18 +40,18 @@ export function SubscriptionSettingsContent() {
   const plan = MAISON_PRO_DISPLAY_NAME;
   const storeLooksActive = isPro || sdkMaisonProActive;
   const hasSlots = slotCount > 0;
-  const trialActive = trialDaysRemaining(currentUser?.trialEndsAt) != null;
+  const trialActive = trialDaysRemaining(trialEndsAt) != null;
 
   const trialEndLabel =
-    currentUser?.trialEndsAt && currentUser.trialEndsAt.length >= 10
-      ? formatDate(currentUser.trialEndsAt.slice(0, 10))
+    trialEndsAt && trialEndsAt.length >= 10
+      ? formatDate(trialEndsAt.slice(0, 10))
       : '—';
 
   const planLine = hasSlots
     ? t('subscriptionSettings.slotsHeld', { count: slotCount })
     : t('subscriptionSettings.noSlots');
 
-  /** §6.1: state the trial length, the end date, and that nothing is charged or renews. */
+  /** §6.1: trial length, end date, and that the plan renews unless cancelled. */
   const subtitleLines = [
     hasSlots
       ? t('subscriptionSettings.slotsInUse', { used: propertiesSponsored, total: slotCount })

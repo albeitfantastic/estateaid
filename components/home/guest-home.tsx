@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/screen-layout';
 import { Layout } from '@/constants/theme';
 import { formatDateRange, today } from '@/lib/date-utils';
+import { debugLog1393f3 } from '@/lib/debug-session-1393f3';
 import { openEstateHub } from '@/lib/open-estate-hub';
 import type { Estate, Stay } from '@/types';
 
@@ -64,13 +65,22 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
         id: h.estate.id,
         imageUrl: h.estate.coverImageUrl,
         accessibilityLabel: h.estate.name,
-        eyebrow: stay ? t('guestHome.nextStay') : h.estate.location,
+        eyebrow: t('guestHome.nextStay'),
         title: h.estate.name,
         subtitle: stay ? formatDateRange(stay.from, stay.to) : t('ownerHome.noStayOnProperty'),
         onPress: () => openEstateHub(h.estate.id, { fromHome: true }),
       };
     });
   }, [propertyHeroes, router, t]);
+
+  // #region agent log
+  debugLog1393f3({
+    hypothesisId: 'A,D',
+    location: 'components/home/guest-home.tsx:stayPages',
+    message: 'guest home pages',
+    data: { estateCount: estates.length, pageCount: stayPages.length },
+  });
+  // #endregion
 
   const visibleHero =
     propertyHeroes[Math.min(propertyIndex, Math.max(propertyHeroes.length - 1, 0))];

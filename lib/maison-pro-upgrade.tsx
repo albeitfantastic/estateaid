@@ -70,7 +70,7 @@ const FEATURE_COPY: Record<UpgradeFeature, { title: string; body: string; source
   },
   coverage_lapse: {
     title: 'Management is paused',
-    body: 'Everything you added is still here. Choose a plan to keep writing — nothing is charged until you subscribe.',
+    body: 'Everything you added is still here. Choose a plan to keep writing.',
     source: 'coverage_lapse',
   },
 };

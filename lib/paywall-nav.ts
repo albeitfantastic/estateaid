@@ -37,3 +37,12 @@ export function resolveReturnTo(returnTo?: string | string[]): string {
   }
   return raw;
 }
+
+/** After a successful purchase, returnTo may include gated screens (e.g. create property). */
+export function resolvePurchaseReturnTo(returnTo?: string | string[]): string {
+  const raw = Array.isArray(returnTo) ? returnTo[0] : returnTo;
+  if (!raw || typeof raw !== 'string') return '/(app)/home';
+  if (!raw.startsWith('/(app)/') && !raw.startsWith('/(onboarding)/')) return '/(app)/home';
+  if (raw.includes('/settings/paywall')) return '/(app)/home';
+  return raw;
+}

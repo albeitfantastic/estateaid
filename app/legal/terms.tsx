@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import { LegalDocument } from '@/components/settings/legal-document';
-import { APP_TRIAL_DAYS } from '@/lib/subscription-config';
+import { STORE_TRIAL_DAYS } from '@/lib/subscription-config';
 
 export default function TermsOfServiceScreen() {
   const { t } = useTranslation();
@@ -15,7 +15,7 @@ export default function TermsOfServiceScreen() {
         { heading: t('legal.termsSlotsHeading'), body: t('legal.termsSlotsBody') },
         {
           heading: t('legal.termsTrialHeading'),
-          body: t('legal.termsTrialBody', { days: APP_TRIAL_DAYS }),
+          body: t('legal.termsTrialBody', { days: STORE_TRIAL_DAYS }),
         },
         { heading: t('legal.termsBillingHeading'), body: t('legal.termsBillingBody') },
         { heading: t('legal.termsContentHeading'), body: t('legal.termsContentBody') },

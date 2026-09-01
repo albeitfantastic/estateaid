@@ -2,18 +2,23 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useScreenTheme } from '@/components/ui/screen-layout';
 import { Radius } from '@/constants/theme';
-import { SLOT_PACKS, type SlotPackId } from '@/lib/subscription-config';
+import {
+  DEFAULT_SLOT_PACK_ID,
+  SLOT_PACKS,
+  SLOT_PACK_ORDER,
+  perPropertyPitch,
+  type BillingCycle,
+  type SlotPackId,
+} from '@/lib/subscription-config';
 
 type Props = {
   selected: SlotPackId;
-  billing: 'annual' | 'monthly';
+  billing: BillingCycle;
   onSelectPack: (id: SlotPackId) => void;
-  onSelectBilling: (b: 'annual' | 'monthly') => void;
+  onSelectBilling: (b: BillingCycle) => void;
 };
 
-const ORDER: SlotPackId[] = ['home', 'family', 'portfolio'];
-
-/** Three slot packs; annual default; Family visually primary (§2.2). */
+/** Three slot packs; annual default; Domaine visually primary (§2.2). */
 export function SlotPackPicker({ selected, billing, onSelectPack, onSelectBilling }: Props) {
   const { colors } = useScreenTheme();
 
@@ -56,11 +61,12 @@ export function SlotPackPicker({ selected, billing, onSelectPack, onSelectBillin
         </Pressable>
       </View>
 
-      {ORDER.map((id) => {
+      {SLOT_PACK_ORDER.map((id) => {
         const pack = SLOT_PACKS[id];
         const on = selected === id;
-        const primary = id === 'family';
+        const primary = id === DEFAULT_SLOT_PACK_ID;
         const price = billing === 'annual' ? pack.annualEur : pack.monthlyEur;
+        const pitch = perPropertyPitch(pack, billing);
         return (
           <Pressable
             key={id}
@@ -83,13 +89,15 @@ export function SlotPackPicker({ selected, billing, onSelectPack, onSelectBillin
                 /{billing === 'annual' ? 'year' : 'month'}
               </Text>
             </Text>
-            <Text style={[styles.perProp, { color: colors.tint }]}>€{pack.perPropertyYearEur}/property/year</Text>
+            <Text style={[styles.perProp, { color: colors.tint }]}>
+              €{pitch.amount}/property/{pitch.unit}
+            </Text>
           </Pressable>
         );
       })}
 
       <Text style={[styles.contact, { color: colors.textSecondary }]}>
-        Need more than 10 properties? Contact support@estateaid.app
+        Need more than 7 properties? Contact support@estateaid.app
       </Text>
     </View>
   );

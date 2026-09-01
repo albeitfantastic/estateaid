@@ -27,9 +27,11 @@ import { Layout, PriorityColors, Radius } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth-store';
 import { useContactStore } from '@/store/contact-store';
 import { useEstateStore } from '@/store/estate-store';
+import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useEventStore } from '@/store/event-store';
 import { useCan } from '@/lib/entitlements/capabilities';
+import { hostsForEstateFrom, type EstateHostKind } from '@/lib/estate-host-ids';
 import { generateId } from '@/lib/id';
 import { formatDate, today } from '@/lib/date-utils';
 import { userHasStayOnEstateOnDate } from '@/lib/stay-occupant';
@@ -66,6 +68,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   const currentUser = useAuthStore((s) => s.currentUser);
   const getEstateById = useEstateStore((s) => s.getEstateById);
   const allContacts = useContactStore((s) => s.contacts);
+  const allInvitations = useInvitationStore((s) => s.invitations);
   const events = useEventStore((s) => s.events);
   const addIssueMessage = useEventStore((s) => s.addIssueMessage);
   const updateIssueMessage = useEventStore((s) => s.updateIssueMessage);
@@ -78,16 +81,18 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   const ticket = events.find((tk) => tk.id === eventId) ?? initialEvent;
   const [reply, setReply] = useState('');
   const [replyTaggedContactId, setReplyTaggedContactId] = useState<string | null>(null);
+  const [replyTaggedHostId, setReplyTaggedHostId] = useState<string | null>(null);
   const [dueModalOpen, setDueModalOpen] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editPriority, setEditPriority] = useState<IssuePriority>('normal');
-  const [contactPickerVisible, setContactPickerVisible] = useState(false);
-  const [contactPickerContext, setContactPickerContext] = useState<'reply' | 'edit'>('reply');
+  const [tagPickerVisible, setTagPickerVisible] = useState(false);
+  const [tagPickerContext, setTagPickerContext] = useState<'reply' | 'edit'>('reply');
   const [editMessageDraft, setEditMessageDraft] = useState<{
     messageId: string;
     body: string;
     taggedContactId: string | null;
+    taggedHostId: string | null;
   } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -110,23 +115,69 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
     return map;
   }, [estateContacts]);
 
+  const estateHosts = useMemo(
+    () => (estateId ? hostsForEstateFrom(estate, allInvitations, estateId) : []),
+    [estate, allInvitations, estateId]
+  );
+
+  const otherHosts = useMemo(
+    () => estateHosts.filter((h) => h.userId !== currentUser?.id),
+    [estateHosts, currentUser?.id]
+  );
+
+  const hostByIdMap = useMemo(() => {
+    const map: Record<string, EstateHostKind> = {};
+    estateHosts.forEach((h) => {
+      map[h.userId] = h.kind;
+    });
+    return map;
+  }, [estateHosts]);
+
+  function hostDisplayName(userId: string): string {
+    const email = allInvitations.find((inv) => inv.guestId === userId && inv.guestEmail)?.guestEmail;
+    return resolveUserDisplayName(userId, profileById, email);
+  }
+
+  function hostRoleLabel(kind: EstateHostKind): string {
+    return kind === 'sponsor'
+      ? t('ticketsHub.threadHostRoleSponsor')
+      : t('ownerInvite.estateRoleCoOwnerLabel');
+  }
+
+  function taggedHostLabel(userId: string): string {
+    const name = hostDisplayName(userId);
+    if (hostByIdMap[userId]) return name;
+    const profileName = profileById[userId]?.name?.trim();
+    if (profileName) return profileName;
+    return t('ticketsHub.threadHostRemoved');
+  }
+
   const activeTicket = ticket;
   const issueOpen = (activeTicket.status ?? 'open') !== 'resolved';
   const guestOnStay = userHasStayOnEstateOnDate(stays, currentUser?.id, estateId, today());
   const canReply = issueOpen && (isEstateOwner || guestOnStay);
 
-  function openContactPicker(ctx: 'reply' | 'edit') {
-    setContactPickerContext(ctx);
-    setContactPickerVisible(true);
+  function openTagPicker(ctx: 'reply' | 'edit') {
+    setTagPickerContext(ctx);
+    setTagPickerVisible(true);
   }
 
   function applyPickedContact(contactId: string | null) {
-    if (contactPickerContext === 'reply') {
+    if (tagPickerContext === 'reply') {
       setReplyTaggedContactId(contactId);
     } else if (editMessageDraft) {
       setEditMessageDraft({ ...editMessageDraft, taggedContactId: contactId });
     }
-    setContactPickerVisible(false);
+    setTagPickerVisible(false);
+  }
+
+  function applyPickedHost(userId: string | null) {
+    if (tagPickerContext === 'reply') {
+      setReplyTaggedHostId(userId);
+    } else if (editMessageDraft) {
+      setEditMessageDraft({ ...editMessageDraft, taggedHostId: userId });
+    }
+    setTagPickerVisible(false);
   }
 
   function sendReply() {
@@ -138,9 +189,11 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
       body: reply.trim(),
       createdAt: new Date().toISOString(),
       ...(replyTaggedContactId ? { taggedContactId: replyTaggedContactId } : {}),
+      ...(replyTaggedHostId ? { taggedHostId: replyTaggedHostId } : {}),
     });
     setReply('');
     setReplyTaggedContactId(null);
+    setReplyTaggedHostId(null);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
 
@@ -154,6 +207,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
     void updateIssueMessage(eventId, editMessageDraft.messageId, {
       body: trimmed,
       taggedContactId: editMessageDraft.taggedContactId,
+      taggedHostId: editMessageDraft.taggedHostId,
     });
     setEditMessageDraft(null);
   }
@@ -192,6 +246,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   }
 
   const taggedReplyContact = replyTaggedContactId ? contactByIdMap[replyTaggedContactId] : undefined;
+  const taggedReplyHostKind = replyTaggedHostId ? hostByIdMap[replyTaggedHostId] : undefined;
   /** Tab bar is `position: 'absolute'` in (app) — without this, the composer sits under the bar. */
   const bottomComposerPad = tabBarHeight + insets.bottom + 10;
 
@@ -306,6 +361,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                           messageId: msg.id,
                           body: msg.body,
                           taggedContactId: msg.taggedContactId ?? null,
+                          taggedHostId: msg.taggedHostId ?? null,
                         })
                       }
                       hitSlop={8}
@@ -323,6 +379,22 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                     ]}
                   >
                     {!isOwnMessage && <ThemedText style={styles.authorName}>{authorName}</ThemedText>}
+                    {msg.taggedHostId ? (
+                      <View
+                        style={[
+                          styles.contactTag,
+                          { backgroundColor: isOwnMessage ? colors.textOnBrand + '22' : colors.tint + '14' },
+                        ]}
+                      >
+                        <IconSymbol name="person.2.fill" size={12} color={isOwnMessage ? colors.textOnBrand : colors.tint} />
+                        <ThemedText
+                          style={[styles.contactTagText, { color: isOwnMessage ? colors.textOnBrand : colors.tint }]}
+                          numberOfLines={2}
+                        >
+                          {t('ticketsHub.threadTaggedHostPrefix')}: {taggedHostLabel(msg.taggedHostId)}
+                        </ThemedText>
+                      </View>
+                    ) : null}
                     {msg.taggedContactId ? (
                       <View
                         style={[
@@ -362,6 +434,18 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
               },
             ]}
           >
+            {replyTaggedHostId ? (
+              <View style={[styles.replyTagRow, { borderColor: colors.icon + '33' }]}>
+                <IconSymbol name="person.2.fill" size={14} color={colors.tint} />
+                <ThemedText style={[styles.replyTagText, { color: colors.text }]} numberOfLines={1}>
+                  {taggedHostLabel(replyTaggedHostId)}
+                  {taggedReplyHostKind ? ` · ${hostRoleLabel(taggedReplyHostKind)}` : ''}
+                </ThemedText>
+                <TouchableOpacity onPress={() => setReplyTaggedHostId(null)} hitSlop={8}>
+                  <IconSymbol name="xmark" size={16} color={colors.icon} />
+                </TouchableOpacity>
+              </View>
+            ) : null}
             {replyTaggedContactId ? (
               <View style={[styles.replyTagRow, { borderColor: colors.icon + '33' }]}>
                 <IconSymbol name="person.fill" size={14} color={colors.tint} />
@@ -387,7 +471,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
               />
               <TouchableOpacity
                 style={[styles.tagReplyBtn, { borderColor: colors.icon + '44' }]}
-                onPress={() => openContactPicker('reply')}
+                onPress={() => openTagPicker('reply')}
                 accessibilityRole="button"
                 accessibilityLabel={t('ticketsHub.threadTagContact')}
               >
@@ -505,13 +589,30 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
               </ThemedText>
               <TouchableOpacity
                 style={[styles.smallBtn, { borderColor: colors.tint }]}
-                onPress={() => openContactPicker('edit')}
+                onPress={() => openTagPicker('edit')}
               >
                 <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 13 }}>
                   {t('ticketsHub.threadPickContactTitle')}
                 </ThemedText>
               </TouchableOpacity>
             </View>
+            {editMessageDraft?.taggedHostId ? (
+              <View style={[styles.replyTagRow, { borderColor: colors.icon + '33', marginBottom: 8 }]}>
+                <IconSymbol name="person.2.fill" size={14} color={colors.tint} />
+                <ThemedText style={[styles.replyTagText, { color: colors.text }]} numberOfLines={1}>
+                  {taggedHostLabel(editMessageDraft.taggedHostId)}
+                </ThemedText>
+                <TouchableOpacity
+                  onPress={() =>
+                    editMessageDraft &&
+                    setEditMessageDraft({ ...editMessageDraft, taggedHostId: null })
+                  }
+                  hitSlop={8}
+                >
+                  <ThemedText style={{ color: colors.tint, fontSize: 13 }}>{t('ticketsHub.threadClearHostTag')}</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ) : null}
             {editMessageDraft?.taggedContactId ? (
               <View style={[styles.replyTagRow, { borderColor: colors.icon + '33', marginBottom: 8 }]}>
                 <IconSymbol name="person.fill" size={14} color={colors.tint} />
@@ -539,8 +640,8 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
         </Pressable>
       </Modal>
 
-      <Modal visible={contactPickerVisible} animationType="slide" transparent>
-        <Pressable style={styles.pickerOverlay} onPress={() => setContactPickerVisible(false)}>
+      <Modal visible={tagPickerVisible} animationType="slide" transparent>
+        <Pressable style={styles.pickerOverlay} onPress={() => setTagPickerVisible(false)}>
           <View
             style={[styles.pickerSheet, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}
             onStartShouldSetResponder={() => true}
@@ -549,20 +650,59 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
               <ThemedText type="defaultSemiBold" style={{ fontSize: 17 }}>
                 {t('ticketsHub.threadPickContactTitle')}
               </ThemedText>
-              <TouchableOpacity onPress={() => setContactPickerVisible(false)} hitSlop={12}>
+              <TouchableOpacity onPress={() => setTagPickerVisible(false)} hitSlop={12}>
                 <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{t('common.close')}</ThemedText>
               </TouchableOpacity>
             </View>
-            {((contactPickerContext === 'reply' && replyTaggedContactId) ||
-              (contactPickerContext === 'edit' && editMessageDraft?.taggedContactId)) ? (
-              <TouchableOpacity
-                style={[styles.pickerClearRow, { borderBottomColor: colors.icon + '11' }]}
-                onPress={() => applyPickedContact(null)}
-              >
-                <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>{t('ticketsHub.threadClearContactTag')}</ThemedText>
-              </TouchableOpacity>
-            ) : null}
             <ScrollView style={styles.pickerScroll} keyboardShouldPersistTaps="handled">
+              <ThemedText style={[styles.pickerSection, { color: colors.icon }]}>
+                {t('ticketsHub.threadHostsSection')}
+              </ThemedText>
+              {((tagPickerContext === 'reply' && replyTaggedHostId) ||
+                (tagPickerContext === 'edit' && editMessageDraft?.taggedHostId)) ? (
+                <TouchableOpacity
+                  style={[styles.pickerClearRow, { borderBottomColor: colors.icon + '11' }]}
+                  onPress={() => applyPickedHost(null)}
+                >
+                  <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>
+                    {t('ticketsHub.threadClearHostTag')}
+                  </ThemedText>
+                </TouchableOpacity>
+              ) : null}
+              {otherHosts.length === 0 ? (
+                <ThemedText style={[styles.pickerEmpty, { color: colors.icon }]}>
+                  {t('ticketsHub.threadNoHosts')}
+                </ThemedText>
+              ) : (
+                otherHosts.map((h) => (
+                  <TouchableOpacity
+                    key={h.userId}
+                    style={[styles.pickerRow, { borderBottomColor: colors.icon + '11' }]}
+                    onPress={() => applyPickedHost(h.userId)}
+                  >
+                    <ThemedText type="defaultSemiBold" numberOfLines={1}>
+                      {hostDisplayName(h.userId)}
+                    </ThemedText>
+                    <ThemedText style={{ color: colors.icon, fontSize: 13 }} numberOfLines={1}>
+                      {hostRoleLabel(h.kind)}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))
+              )}
+              <ThemedText style={[styles.pickerSection, { color: colors.icon }]}>
+                {t('ticketsHub.threadContactsSection')}
+              </ThemedText>
+              {((tagPickerContext === 'reply' && replyTaggedContactId) ||
+                (tagPickerContext === 'edit' && editMessageDraft?.taggedContactId)) ? (
+                <TouchableOpacity
+                  style={[styles.pickerClearRow, { borderBottomColor: colors.icon + '11' }]}
+                  onPress={() => applyPickedContact(null)}
+                >
+                  <ThemedText style={{ color: colors.tint, fontWeight: '600' }}>
+                    {t('ticketsHub.threadClearContactTag')}
+                  </ThemedText>
+                </TouchableOpacity>
+              ) : null}
               {estateContacts.length === 0 ? (
                 <ThemedText style={[styles.pickerEmpty, { color: colors.icon }]}>
                   {t('ticketsHub.threadNoContacts')}
@@ -730,6 +870,15 @@ const styles = StyleSheet.create({
   },
   pickerClearRow: { paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth },
   pickerScroll: { maxHeight: 400 },
+  pickerSection: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 6,
+  },
   pickerRow: { paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth, gap: 2 },
-  pickerEmpty: { padding: 24, fontSize: 14, lineHeight: 20 },
+  pickerEmpty: { paddingHorizontal: 20, paddingVertical: 12, fontSize: 14, lineHeight: 20 },
 });

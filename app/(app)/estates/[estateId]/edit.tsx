@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
+import { LocationSearchField } from '@/components/ui/location-search-field';
 import { ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -120,7 +121,12 @@ export default function EditEstate() {
         </TouchableOpacity>
 
         <FocusInput label="Name *" placeholder="e.g. Villa Serena" value={name} onChangeText={setName} />
-        <FocusInput label="Location *" placeholder="e.g. Tuscany, Italy" value={location} onChangeText={setLocation} />
+        <LocationSearchField
+          label="Location *"
+          placeholder="Search a city or region"
+          value={location}
+          onChangeText={setLocation}
+        />
         <FocusInput label="Time Zone" placeholder="e.g. Europe/Rome" value={timeZone} onChangeText={setTimeZone} />
         <FocusInput label="Description" placeholder="Optional description…" value={description} onChangeText={setDescription} multiline numberOfLines={4} textAlignVertical="top" style={styles.multiline} />
 

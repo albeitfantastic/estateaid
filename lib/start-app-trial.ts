@@ -9,7 +9,10 @@ export function isTrialRpcMissingError(message: string): boolean {
   return /start_app_trial|schema cache/i.test(message);
 }
 
-/** Starts the one-time 14-day app trial (server: start_app_trial RPC). */
+/**
+ * Leftover app-managed trial RPC. Production uses a store intro on the selected SKU.
+ * Call only from Trust in `__DEV__` when RevenueCat is not configured (Expo web).
+ */
 export async function startAppTrialRpc(): Promise<StartTrialResult> {
   const { data, error } = await supabase.rpc('start_app_trial', {});
 

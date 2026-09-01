@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
+import { LocationSearchField } from '@/components/ui/location-search-field';
 import {
   GroupedList,
   GroupedRow,
@@ -19,11 +20,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
-import { useAccountContext, useCan } from '@/lib/entitlements/capabilities';
+import { useCan } from '@/lib/entitlements/capabilities';
 import { getEstateActorRole } from '@/lib/estate-role';
 import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
 import { generateUuidV4 } from '@/lib/id';
-import { startAppTrialRpc } from '@/lib/start-app-trial';
 import { isRequired } from '@/lib/validators';
 import { ONBOARDING_USE_CASES, type OnboardingUseCase } from '@/lib/onboarding-starters';
 import {
@@ -37,14 +37,11 @@ export default function NewEstate() {
   const router = useRouter();
   const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
-  const patchUser = useAuthStore((s) => s.patchUser);
   const addEstate = useEstateStore((s) => s.addEstate);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
-  const account = useAccountContext();
   const can = useCan();
   const allowed = can('property.create');
-  const needsTrialGrant = !allowed && !account.hasUsedTrial;
   const isCoOwnerElsewhere =
     !!currentUser &&
     allEstates.some((e) => {
@@ -62,10 +59,13 @@ export default function NewEstate() {
   const [propertyType, setPropertyType] = useState<OnboardingUseCase | null>(null);
 
   useEffect(() => {
-    // Trial users may enter create while !allowed; paywall only on explicit create attempts.
-    if (allowed || needsTrialGrant) return;
+    if (allowed) return;
+    openEstateCreatePaywall({
+      isCoOwnerElsewhere,
+      returnTo: '/(app)/estates/new',
+    });
     router.replace('/(app)/estates' as never);
-  }, [allowed, needsTrialGrant, router]);
+  }, [allowed, isCoOwnerElsewhere, router]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -82,7 +82,7 @@ export default function NewEstate() {
     void shouldReaskPropertyType(currentUser.id).then(setReask);
   }, [currentUser, allInvitations, allEstates]);
 
-  if (!allowed && !needsTrialGrant) {
+  if (!allowed) {
     return <ThemedView style={{ flex: 1 }} />;
   }
 
@@ -113,21 +113,6 @@ export default function NewEstate() {
 
     setSaving(true);
     try {
-      if (needsTrialGrant) {
-        const trial = await startAppTrialRpc();
-        if (!trial.ok && trial.code !== 'TRIAL_ALREADY_USED') {
-          Alert.alert('Trial unavailable', trial.reason);
-          return;
-        }
-        if (trial.ok) {
-          patchUser({
-            hasUsedTrial: true,
-            trialEndsAt: trial.trialEndsAt ?? new Date(Date.now() + 14 * 864e5).toISOString(),
-            trialStartedAt: new Date().toISOString(),
-          });
-        }
-      }
-
       const { error, code } = await addEstate(
         {
           id: generateUuidV4(),
@@ -198,7 +183,12 @@ export default function NewEstate() {
         </TouchableOpacity>
 
         <FocusInput label="Name *" placeholder="e.g. Villa Serena" value={name} onChangeText={setName} />
-        <FocusInput label="Location *" placeholder="e.g. Tuscany, Italy" value={location} onChangeText={setLocation} />
+        <LocationSearchField
+          label="Location *"
+          placeholder="Search a city or region"
+          value={location}
+          onChangeText={setLocation}
+        />
         {reask ? (
           <>
             <SectionLabel>{t('onboarding.reaskQ')}</SectionLabel>

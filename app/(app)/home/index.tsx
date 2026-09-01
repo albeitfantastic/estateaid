@@ -44,6 +44,7 @@ import {
   type ConversionKind,
 } from '@/lib/conversion-moments';
 import { addDays, formatDate, formatDateRange, today } from '@/lib/date-utils';
+import { debugLog1393f3 } from '@/lib/debug-session-1393f3';
 import { getEventOccurrences } from '@/lib/event-utils';
 import {
   busiestPropertyNights,
@@ -186,8 +187,22 @@ export default function HomeDashboard() {
   }, [estates]);
 
   const estateById = useMemo(
-    () => Object.fromEntries(estates.map((e) => [e.id, e] as const)),
-    [estates]
+    () => Object.fromEntries(allEstates.map((e) => [e.id, e] as const)),
+    [allEstates]
+  );
+
+  const guestEstates = useMemo(
+    () => allEstates.filter((e) => roleById[e.id] === 'guest'),
+    [allEstates, roleById]
+  );
+  const isGuestOnly = estateIds.length === 0 && guestEstates.length > 0;
+  const accessibleEstates = useMemo(() => {
+    const seen = new Set(estates.map((e) => e.id));
+    return [...estates, ...guestEstates.filter((e) => !seen.has(e.id))];
+  }, [estates, guestEstates]);
+  const accessibleEstateIds = useMemo(
+    () => accessibleEstates.map((e) => e.id),
+    [accessibleEstates]
   );
 
   const pendingCount = useMemo(
@@ -274,7 +289,7 @@ export default function HomeDashboard() {
   // Unified upcoming: merge stays + maintenance sorted by date
   const upcomingStayItems = useMemo((): Extract<UpcomingItem, { kind: 'stay' }>[] => {
     return allStays
-      .filter((s) => estateIds.includes(s.estateId) && s.to >= todayStr)
+      .filter((s) => accessibleEstateIds.includes(s.estateId) && s.to >= todayStr)
       .sort((a, b) => {
         const aActive = a.from <= todayStr && a.to >= todayStr;
         const bActive = b.from <= todayStr && b.to >= todayStr;
@@ -303,7 +318,7 @@ export default function HomeDashboard() {
       });
   }, [
     allStays,
-    estateIds,
+    accessibleEstateIds,
     estateById,
     estateColorMap,
     todayStr,
@@ -357,12 +372,6 @@ export default function HomeDashboard() {
     t,
   ]);
 
-  const guestEstates = useMemo(
-    () => allEstates.filter((e) => roleById[e.id] === 'guest'),
-    [allEstates, roleById]
-  );
-  const isGuestOnly = estateIds.length === 0 && guestEstates.length > 0;
-
   const inventory: ConversionInventory = useMemo(
     () => ({
       documents: allDocuments.filter((d) => estateIds.includes(d.estateId)).length,
@@ -380,7 +389,7 @@ export default function HomeDashboard() {
     });
   }, [estates, coverageById]);
 
-  const trialDays = trialDaysRemaining(currentUser?.trialEndsAt);
+  const trialDays = trialDaysRemaining(account.trialEndsAt);
   const pitchEstateName = estates[0]?.name ?? guestEstates[0]?.name ?? 'Maison';
 
   useEffect(() => {
@@ -411,7 +420,7 @@ export default function HomeDashboard() {
         nextStayByEstate.set(item.stay.estateId, item);
       }
     }
-    return [...estates]
+    return [...accessibleEstates]
       .sort((a, b) => {
         const sa = nextStayByEstate.get(a.id);
         const sb = nextStayByEstate.get(b.id);
@@ -425,7 +434,7 @@ export default function HomeDashboard() {
         estate,
         nextStay: nextStayByEstate.get(estate.id),
       }));
-  }, [estates, upcomingStayItems]);
+  }, [accessibleEstates, upcomingStayItems]);
 
   const usePropertyPager = propertyHeroes.length > 0;
   const visibleHero =
@@ -450,7 +459,7 @@ export default function HomeDashboard() {
         id: h.estate.id,
         imageUrl: h.estate.coverImageUrl,
         accessibilityLabel: h.estate.name,
-        eyebrow: stay ? t('ownerHome.nextStay') : h.estate.location,
+        eyebrow: t('ownerHome.nextStay'),
         title: h.estate.name,
         subtitle: stay
           ? `${stay.guestLabel} · ${formatDateRange(stay.stay.from, stay.stay.to)}`
@@ -462,12 +471,50 @@ export default function HomeDashboard() {
     });
   }, [propertyHeroes, router, t]);
 
+  // #region agent log
+  useEffect(() => {
+    const roles: Record<string, string> = {};
+    for (const [id, role] of Object.entries(roleById)) roles[id.slice(0, 8)] = role;
+    const pageIds = stayHeroPages.map((p) => p.id);
+    debugLog1393f3({
+      hypothesisId: 'A,D,E',
+      location: 'app/(app)/home/index.tsx:stayHero',
+      message: 'home hero inputs',
+      runId: 'post-fix',
+      data: {
+        isGuestOnly,
+        allEstates: allEstates.length,
+        managed: estates.length,
+        guest: guestEstates.length,
+        accessible: accessibleEstates.length,
+        pageCount: stayHeroPages.length,
+        uniquePageIds: new Set(pageIds).size,
+        roles,
+      },
+    });
+  }, [
+    isGuestOnly,
+    allEstates.length,
+    estates.length,
+    guestEstates.length,
+    accessibleEstates.length,
+    stayHeroPages,
+    roleById,
+  ]);
+  // #endregion
+
+  const visibleHeroIsGuest = heroEstate ? roleById[heroEstate.id] === 'guest' : false;
+
   function onHeroPress() {
     if (visibleStay) {
       router.push(`/(app)/stays/${visibleStay.stay.id}` as never);
       return;
     }
     if (heroEstate) {
+      if (visibleHeroIsGuest) {
+        router.push(`/(app)/stays/plan?estateId=${heroEstate.id}` as never);
+        return;
+      }
       router.push(`/(app)/stays/block?estateId=${heroEstate.id}` as never);
       return;
     }
@@ -547,7 +594,13 @@ export default function HomeDashboard() {
             <FilledButton
               tone="accent"
               size="hero"
-              label={visibleStay ? t('ownerHome.viewStay') : t('estateHub.addStay')}
+              label={
+                visibleStay
+                  ? t('ownerHome.viewStay')
+                  : visibleHeroIsGuest
+                    ? t('guestLanding.requestDates')
+                    : t('estateHub.addStay')
+              }
               onPress={onHeroPress}
             />
           </View>

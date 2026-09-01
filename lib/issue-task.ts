@@ -38,6 +38,10 @@ export function normalizeEventMessages(raw: unknown, eventId: string): EstateEve
         row.taggedContactId === null || row.taggedContactId === ''
           ? undefined
           : (row.taggedContactId as string),
+      taggedHostId:
+        row.taggedHostId === null || row.taggedHostId === ''
+          ? undefined
+          : (row.taggedHostId as string),
     };
   });
 }
@@ -51,5 +55,6 @@ export function messagesToDb(messages: EstateEventMessage[]): unknown[] {
     attachmentUris: m.attachmentUris,
     createdAt: m.createdAt,
     taggedContactId: m.taggedContactId,
+    taggedHostId: m.taggedHostId,
   }));
 }

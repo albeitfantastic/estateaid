@@ -74,7 +74,7 @@ export const catalogPartA: Record<string, unknown> = {
     notNow: 'Not now',
     coverageLapseTitle: 'Management is paused',
     coverageLapseBody:
-      'Everything you added is still here. Choose a plan to keep writing — nothing renews until you subscribe.',
+      'Everything you added is still here. Choose a plan to keep writing.',
   },
   calendar: {
     months: [
@@ -243,7 +243,7 @@ export const catalogPartA: Record<string, unknown> = {
       'Maison is sold as property slots rather than account tiers. Holding a slot lets you create and manage one property. Everyone you invite to that property gets full access to it at no cost to them, and being invited never requires a payment.',
     termsTrialHeading: 'Free trial',
     termsTrialBody:
-      'Your first property comes with a {{days}}-day free trial of one property slot. No payment is taken during the trial, we never ask for or store a payment method, and nothing renews or auto-charges at the end of it. When the trial ends, everything you added stays readable and only writing pauses until you choose a plan. The trial is granted once per account.',
+      'Paid plans include a {{days}}-day free trial through the App Store or Google Play on the pack you choose (Résidence, Domaine or Héritage). The store collects a payment method when you start the trial. After the trial, that plan renews automatically at the price and period shown at purchase until you cancel in your store subscription settings. Cancel anytime during the trial to avoid a charge. If coverage ends, everything you added stays readable and only writing pauses. The introductory offer is granted once per store account.',
     termsBillingHeading: 'Paid plans',
     termsBillingBody:
       'Paid slots are sold through the App Store or Google Play, so billing, price changes, renewals, cancellations and refunds are handled by the store under its own terms. Cancel from your store subscription settings at any time. If your slots stop covering a property, nothing is deleted: the property becomes read-only until it is covered again.',
@@ -318,15 +318,15 @@ export const catalogPartA: Record<string, unknown> = {
     noSlots: 'No property slots',
     noSlotsSub:
       'You can still open and read every property you were invited to. A slot is only needed to add your own.',
-    trialUntil: 'Maison Pro trial · ends {{date}}',
+    trialUntil: 'Free trial · ends {{date}}',
     trialNoPayment:
-      'No payment is taken and nothing renews during the trial. When it ends, everything you added stays readable and writing pauses until you choose a plan.',
-    trialLine: 'Maison Pro · {{count}} days left',
-    trialLine_one: 'Maison Pro · {{count}} day left',
-    trialLine_other: 'Maison Pro · {{count}} days left',
-    trialLineWithSlots: 'Family trial · {{count}} days left · {{used}}/{{total}} slots',
-    trialLineWithSlots_one: 'Family trial · {{count}} day left · {{used}}/{{total}} slots',
-    trialLineWithSlots_other: 'Family trial · {{count}} days left · {{used}}/{{total}} slots',
+      'Your plan renews automatically at the price shown at purchase unless you cancel in your Apple ID or Google Play subscriptions. Cancel anytime. If coverage ends, everything you added stays readable.',
+    trialLine: 'Trial · {{count}} days left',
+    trialLine_one: 'Trial · {{count}} day left',
+    trialLine_other: 'Trial · {{count}} days left',
+    trialLineWithSlots: 'Trial · {{count}} days left · {{used}}/{{total}} slots',
+    trialLineWithSlots_one: 'Trial · {{count}} day left · {{used}}/{{total}} slots',
+    trialLineWithSlots_other: 'Trial · {{count}} days left · {{used}}/{{total}} slots',
     slotsLine: 'Maison · {{count}} slots',
     slotsLine_one: 'Maison · {{count}} slot',
     slotsLine_other: 'Maison · {{count}} slots',
@@ -387,6 +387,14 @@ export const catalogPartA: Record<string, unknown> = {
     purchaseErrorFallback: 'Something went wrong.',
     restoreErrorTitle: 'Restore error',
     restoreErrorBody: 'Restore failed.',
+    restorePurchases: 'Restore purchases',
+    startTrialCta: 'Start {{days}}-day free trial',
+    subscribeCta: 'Subscribe',
+    packageMissing:
+      'That plan is not available in the store right now. Try another pack or restore purchases.',
+    devLocalTrialCta: 'Continue with local trial (dev)',
+    devLocalTrialHint:
+      'Dev only: grants an in-app trial without the store. Release builds start a 14-day App Store or Play intro on the selected pack, then that plan renews until you cancel.',
   },
   home: {
     standardSub: 'Guest tools and invites. Upgrade to manage your own properties.',

@@ -7,10 +7,10 @@ export interface User {
   email: string;
   avatarUrl?: string;
   createdAt: string;
-  /** App-managed free trial end (ISO). Grants 1 slot while in the future. */
+  /** Leftover app-managed trial end (ISO). New users use store intro expiration from CustomerInfo. */
   trialEndsAt?: string | null;
   trialStartedAt?: string | null;
-  /** Once true, start_app_trial will not grant again. */
+  /** Once true, start_app_trial will not grant again (legacy / __DEV__ only). */
   hasUsedTrial?: boolean;
   /** Legacy Pro grandfather slot floor from migration. */
   grandfatheredSlots?: number | null;

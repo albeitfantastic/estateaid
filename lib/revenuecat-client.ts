@@ -1,7 +1,12 @@
 import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL, type CustomerInfo } from 'react-native-purchases';
 
-import { getRevenueCatApiKey, entitlementIdsToMatch, slotsForEntitlementId } from '@/lib/subscription-config';
+import {
+  getRevenueCatApiKey,
+  entitlementIdsToMatch,
+  slotsForEntitlementId,
+  slotsForProductId,
+} from '@/lib/subscription-config';
 
 let configured = false;
 
@@ -67,11 +72,14 @@ export function isEntitlementActiveInCustomerInfo(
   );
 }
 
-/** Max slot count from active SDK entitlements. */
+/** Max slot count from the active product (never a boolean entitlement). */
 export function sdkMaxSlotCount(info: CustomerInfo): number {
   let max = 0;
-  for (const id of Object.keys(info.entitlements.active)) {
-    max = Math.max(max, slotsForEntitlementId(id));
+  for (const [id, ent] of Object.entries(info.entitlements.active)) {
+    max = Math.max(max, slotsForEntitlementId(id), slotsForProductId(ent.productIdentifier));
+  }
+  for (const sku of info.activeSubscriptions ?? []) {
+    max = Math.max(max, slotsForProductId(sku));
   }
   return max;
 }

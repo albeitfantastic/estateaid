@@ -22,7 +22,8 @@ export const BENEFITS: Benefit[] = [
   { label: 'Full visibility, even when you\'re away' },
 ];
 
-export const TRUST_LINE = 'No payment due today — start with a free trial';
+export const TRUST_LINE =
+  '14-day free trial, then your selected plan renews automatically until you cancel.';
 
 // ─── Screen 3 — Trial Clarity ─────────────────────────────────────────────────
 
@@ -39,14 +40,14 @@ export const TIMELINE_STEPS: TimelineItem[] = [
   },
   {
     heading: `After ${STORE_TRIAL_DAYS} days`,
-    body: 'You\'ll only be charged if you decide to continue. Cancel anytime in your store subscriptions.',
+    body: 'You will be charged the price shown at purchase unless you cancel. Cancel anytime in your store subscriptions.',
   },
 ];
 
 export const TRIAL_REASSURANCES: Reassurance[] = [
   { label: 'Cancel anytime' },
   { label: 'Reminder before renewal' },
-  { label: 'No commitment during trial' },
+  { label: 'No charge during the trial' },
 ];
 
 // ─── Screen 4 — Outcome ──────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ export const OUTCOME_BODY =
 export const EXIT_TITLE = 'Ready when you are';
 
 export const EXIT_BODY =
-  'Start Maison Pro with a free store trial, or continue exploring on the free plan. Special pricing appears in the store when an exit offer is available.';
+  'Start a 14-day free trial on the pack you choose. After the trial, that plan renews automatically until you cancel in your store subscriptions.';
 
 export const EXIT_OFFER = {
   badge: 'Free trial available',

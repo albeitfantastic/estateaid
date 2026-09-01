@@ -8,6 +8,7 @@ export type DeviceCalendar = {
   id: string;
   title: string;
   kind: CalendarKind;
+  isPrimary: boolean;
 };
 
 type CalendarModule = typeof CalendarNS;
@@ -100,7 +101,12 @@ export async function listWritableCalendars(): Promise<DeviceCalendar[]> {
     if (!cal.allowsModifications) continue;
     const kind = classifyCalendar(cal);
     if (!kind) continue;
-    out.push({ id: cal.id, title: cal.title, kind });
+    out.push({
+      id: cal.id,
+      title: cal.title,
+      kind,
+      isPrimary: !!cal.isPrimary,
+    });
   }
   return out;
 }
@@ -121,8 +127,12 @@ export async function pickCalendarForKind(kind: CalendarKind): Promise<DeviceCal
     }
   }
 
-  const primary = matches.find((c) => /calendar|icloud|google/i.test(c.title));
-  return primary ?? matches[0] ?? null;
+  const primary = matches.find((c) => c.isPrimary);
+  if (primary) return primary;
+
+  const emailTitled = matches.find((c) => c.title.includes('@'));
+  const titleHit = matches.find((c) => /calendar|icloud|google/i.test(c.title));
+  return emailTitled ?? titleHit ?? matches[0] ?? null;
 }
 
 export type NativeEventDraft = {

@@ -8,11 +8,11 @@ What is sold is **property slots**, not a feature tier. Three packs in one App S
 
 | Pack | Slots | Annual | Monthly | Per-property/year pitch |
 |------|-------|--------|---------|-------------------------|
-| Home | 1 | €59.99 | €6.99 | ~€60 |
-| Family | 3 | €99.99 | €10.99 | ~€33 |
-| Portfolio | 10 | €199.99 | €19.99 | ~€20 |
+| Résidence | 1 | €149.99 | €14.99 | €150 |
+| Domaine | 3 | €299.99 | €29.99 | €100 |
+| Héritage | 7 | €499.99 | €49.99 | €71 |
 
-RevenueCat resolves the active product to an integer `slotCount` (1 / 3 / 10). Creating a property consumes one free slot (`sponsorUserId` = creator). Above 10 is not sold — contact for a manual grant.
+RevenueCat resolves the active product to an integer `slotCount` (1 / 3 / 7). Creating a property consumes one free slot (`sponsorUserId` = creator). Above 7 is not sold — contact for a manual grant.
 
 ## Create-only paywall trigger (§8)
 
@@ -22,12 +22,11 @@ The paywall opens from **one condition**:
 
 | Condition | Behaviour |
 |-----------|-----------|
-| `hasUsedTrial === false` | Grant 14-day trial, no paywall, open creation form |
-| `hasUsedTrial === true`, no free slot | Paywall (Home / Family / Portfolio) |
+| No free slot | Paywall (Résidence / Domaine / Héritage) — 14-day store intro on the selected SKU, then auto-renew |
 
 Everything else is **coverage** on the property (reads stay open; writes lock when uncovered). Do not pitch on invite / upload / approve / availability — those are covered-property gates, not sales moments.
 
-Onboarding does **not** open the paywall. Soft pitch screens (`paywall-trust` → `paywall-outcome`) are reached only from the create-estate path (`openEstateCreatePaywall` / upgrade sheet → Choose a plan).
+Onboarding does **not** open the paywall. Soft pitch + purchase (`paywall-trust`) is reached from the create-estate path (`openEstateCreatePaywall` / upgrade sheet → Start trial).
 
 **Estate-scoped coverage:** host tools follow the estate’s **sponsor** slot, not each host’s personal purchases. Never open the upgrade sheet when a host hits a lapsed sponsor — show the named lapse + transfer UI instead (`SponsorCoverageBanner`).
 
@@ -47,10 +46,10 @@ store/estate-coverage-store.ts     covered / sponsor name / role cache
 ## Navigation Flow
 
 ```
-Create property, no free slot, trial already used
+Create property, no free slot
   → upgrade sheet → paywall-trust?source=&returnTo=
-  ↓ Continue
-/(app)/settings/paywall-outcome → RC packages (Home/Family/Portfolio)
+  ↓ Start 14-day free trial / Subscribe
+  Store sheet (intro on selected SKU) → rating once → returnTo
 
 Sponsor lapsed (you are host, not sponsor; invite role `owner`)
   → SponsorCoverageBanner → Take over sponsorship | Upgrade to take over
@@ -61,16 +60,16 @@ Sponsor lapsed (you are host, not sponsor; invite role `owner`)
 
 ## Regression checklist (slots)
 
-- [ ] New signup → Add my property → trial granted → writable, no paywall
+- [ ] New signup → Add my property → paywall → store intro on selected pack → writable
 - [ ] Invite redeem → no trial, lands in property
-- [ ] Trial used, no free slot → create shows paywall with three packs
-- [ ] Delete property → slot frees for reuse (no second trial)
+- [ ] No free slot → create shows paywall with three packs
+- [ ] Delete property → slot frees for reuse (no second intro from the app)
 - [ ] Host on covered estate: full write; cannot invite hosts / delete / transfer
 - [ ] Sponsor lapse: all sponsored properties read-only; named message + transfer
-- [ ] Downgrade Family → Home with 3 properties: all locked until sponsor chooses 1
+- [ ] Downgrade Domaine → Résidence with 3 properties: all locked until sponsor chooses 1
 
 ---
 
 ## Expo Go / no RC key
 
-Outcome can still call `startAppTrialRpc` when RevenueCat is unavailable (fallback only).
+Trust shows a native-only hint. `__DEV__` may still call `startAppTrialRpc` so Expo web can create locally — never in a release build.

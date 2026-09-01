@@ -7,7 +7,6 @@ import { Layout } from '@/constants/theme';
 import { trialDaysRemaining } from '@/lib/access-tier-core';
 import { useAccountContext } from '@/lib/entitlements/capabilities';
 import { APP_TRIAL_DAYS } from '@/lib/subscription-config';
-import { useAuthStore } from '@/store/auth-store';
 import { useSubscription } from '@/providers/subscription-provider';
 
 /** Quiet home status: trial days + used/available slots. Emphasised from day 11. */
@@ -15,9 +14,8 @@ export function TrialStatusLine() {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useScreenTheme();
-  const trialEndsAt = useAuthStore((s) => s.currentUser?.trialEndsAt);
   const { slotCount, primaryRow } = useSubscription();
-  const { propertiesSponsored } = useAccountContext();
+  const { propertiesSponsored, trialEndsAt } = useAccountContext();
   const days = trialDaysRemaining(trialEndsAt);
 
   if (days == null) {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { deriveSlotCount, hasUsedTrialFlag } from '@/lib/access-tier-core';
+import { deriveSlotCount, effectiveTrialEndsAt, hasUsedTrialFlag } from '@/lib/access-tier-core';
 import { OWNER_CAP } from '@/lib/entitlements/constants';
 import { getEstateActorRole } from '@/lib/estate-role';
 import { useAuthStore } from '@/store/auth-store';
@@ -48,6 +48,8 @@ export interface AccountContext {
   slotCount: number;
   propertiesSponsored: number;
   hasUsedTrial: boolean;
+  /** Active store intro or leftover app-trial end, ISO. */
+  trialEndsAt: string | null;
 }
 
 export interface PropertyContext {
@@ -171,7 +173,7 @@ export function can(
 export function useAccountContext(): AccountContext {
   const currentUser = useAuthStore((s) => s.currentUser);
   const estates = useEstateStore((s) => s.estates);
-  const { slotCount } = useSubscription();
+  const { slotCount, storeTrialEndsAt } = useSubscription();
   return useMemo(() => {
     const propertiesSponsored = estates.filter((e) => e.sponsorUserId === currentUser?.id).length;
     return {
@@ -182,8 +184,9 @@ export function useAccountContext(): AccountContext {
         trialEndsAt: currentUser?.trialEndsAt,
         trialStartedAt: currentUser?.trialStartedAt,
       }),
+      trialEndsAt: effectiveTrialEndsAt(storeTrialEndsAt, currentUser?.trialEndsAt),
     };
-  }, [currentUser, estates, slotCount]);
+  }, [currentUser, estates, slotCount, storeTrialEndsAt]);
 }
 
 export function resolveEstateContext(

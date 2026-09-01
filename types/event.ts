@@ -25,6 +25,8 @@ export interface EstateEventMessage {
   createdAt: string;
   /** Linked row from this property's contacts list */
   taggedContactId?: string;
+  /** App user id of another host with access to this property */
+  taggedHostId?: string;
 }
 
 export interface EstateEvent {
