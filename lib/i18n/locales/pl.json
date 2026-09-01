@@ -390,5 +390,28 @@
     "settings": "Ustawienia",
     "expand": "Rozwin",
     "collapse": "Zwin"
+  },
+  "calendarSettings": {
+    "title": "Kalendarz",
+    "destinations": "Kalendarze",
+    "master": "Dodawaj pobyty i wydarzenia do mojego kalendarza",
+    "masterSub": "Potwierdzone pobyty i wydarzenia z data trafiaja do wybranych kalendarzy.",
+    "apple": "Kalendarz Apple",
+    "appleSub": "Aplikacja Kalendarz na tym iPhonie",
+    "google": "Kalendarz Google",
+    "googleSub": "Konto Google na tym telefonie",
+    "googleMissing": "Kalendarza Google nie ma jeszcze na tym telefonie. iPhone: Ustawienia → Kalendarz → Konta → Dodaj konto → Google. Android: dodaj konto Google w ustawieniach.",
+    "appleMissing": "Kalendarz Apple jest tylko na iPhonie.",
+    "permissionDenied": "Dostep do kalendarza jest wylaczony. Wlacz go w ustawieniach systemu, aby eksportowac pobyty.",
+    "webOnly": "Eksport do kalendarza dziala w aplikacji na iPhone i Android, nie w przegladarce.",
+    "add": "Dodaj do kalendarza",
+    "update": "Zaktualizuj w kalendarzu",
+    "added": "Dodano do kalendarza.",
+    "failed": "Nie udalo sie dodac do kalendarza."
+  },
+  "calendarExport": {
+    "stayTitle": "{{guest}} w {{property}}",
+    "stayNotes": "Pobyt w {{property}}. Dodane przez Maison.",
+    "eventNotes": "{{property}}. Dodane przez Maison."
   }
 }

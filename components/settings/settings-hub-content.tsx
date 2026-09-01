@@ -25,13 +25,14 @@ const MENU_ITEMS: { icon: string; labelKey?: string; label?: string; dest?: Sett
   { icon: 'person.fill', labelKey: 'common.profile', dest: 'profile' },
   { icon: 'globe', labelKey: 'common.language', dest: 'language' },
   { icon: 'bell.fill', labelKey: 'common.notifications', dest: 'notifications' },
+  { icon: 'calendar', labelKey: 'calendarSettings.title', dest: 'calendar' },
   { icon: 'creditcard.fill', labelKey: 'settingsHub.manageSubscription', dest: 'subscription' },
 ];
 
 export function SettingsHubContent() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { colors, cardShadow } = useScreenTheme();
+  const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const themePreference = useAuthStore((s) => s.themePreference);
   const setThemePreference = useAuthStore((s) => s.setThemePreference);
@@ -58,22 +59,16 @@ export function SettingsHubContent() {
 
   return (
     <ScreenScroll contentContainerStyle={styles.list}>
-      <View
-        style={[
-          styles.profileCard,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-          cardShadow,
-        ]}
-      >
+      <View style={[styles.profileCard, { borderColor: colors.border }]}>
         <View style={[styles.avatar, { backgroundColor: colors.tint }]}>
           <ThemedText style={[styles.avatarText, { color: colors.textOnBrand }]}>{initials}</ThemedText>
         </View>
-        <View style={{ flex: 1 }}>
-          <ThemedText type="defaultSemiBold" style={{ fontSize: 16 }}>
-            {currentUser?.name}
-          </ThemedText>
-          <ThemedText style={[styles.email, { color: colors.textSecondary }]}>{currentUser?.email}</ThemedText>
-        </View>
+        <ThemedText type="display" style={styles.profileName} numberOfLines={2}>
+          {currentUser?.name}
+        </ThemedText>
+        <ThemedText style={[styles.email, { color: colors.textSecondary }]}>
+          {currentUser?.email}
+        </ThemedText>
         <View style={[styles.slotBadge, { backgroundColor: colors.tint + '18' }]}>
           <ThemedText style={[styles.slotText, { color: colors.tint }]}>{slotLabel}</ThemedText>
         </View>
@@ -172,20 +167,20 @@ export function SettingsHubContent() {
 }
 
 const styles = StyleSheet.create({
-  list: { paddingTop: Layout.sectionGap - 8, gap: Layout.sectionGap },
+  list: { paddingTop: 8, gap: Layout.sectionGap },
   profileCard: {
-    flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 14,
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
-  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 18, fontWeight: '700' },
-  email: { fontSize: 12, marginTop: 2 },
-  slotBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  slotText: { fontSize: 11, fontWeight: '700' },
+  avatar: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  avatarText: { fontSize: 22, fontWeight: '700' },
+  profileName: { textAlign: 'center' },
+  email: { fontSize: 14, textAlign: 'center' },
+  slotBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, marginTop: 4 },
+  slotText: { fontSize: 12, fontWeight: '600' },
   signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',

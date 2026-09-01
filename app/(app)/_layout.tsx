@@ -48,7 +48,7 @@ export default function AppTabLayout() {
             },
         tabBarLabelStyle: {
           fontFamily: appTheme.typography.fontFamily.medium,
-          fontSize: 10,
+          fontSize: 12,
           letterSpacing: 0.15,
         },
         tabBarItemStyle: {

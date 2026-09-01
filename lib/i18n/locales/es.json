@@ -390,5 +390,28 @@
     "settings": "Ajustes",
     "expand": "Expandir",
     "collapse": "Contraer"
+  },
+  "calendarSettings": {
+    "title": "Calendario",
+    "destinations": "Calendarios",
+    "master": "Añadir estancias y eventos a mi calendario",
+    "masterSub": "Las estancias confirmadas y los eventos con fecha se añaden a los calendarios que elijas.",
+    "apple": "Calendario de Apple",
+    "appleSub": "La app Calendario de este iPhone",
+    "google": "Google Calendar",
+    "googleSub": "La cuenta de Google de este teléfono",
+    "googleMissing": "Google Calendar aún no está en este teléfono. En iPhone: Ajustes → Calendario → Cuentas → Añadir cuenta → Google. En Android, añade tu cuenta de Google en Ajustes.",
+    "appleMissing": "El calendario de Apple solo está en el iPhone.",
+    "permissionDenied": "El acceso al calendario está desactivado. Actívalo en Ajustes del sistema para exportar estancias.",
+    "webOnly": "La exportación al calendario funciona en la app de iPhone y Android, no en el navegador.",
+    "add": "Añadir al calendario",
+    "update": "Actualizar en el calendario",
+    "added": "Añadido a tu calendario.",
+    "failed": "No se pudo añadir al calendario."
+  },
+  "calendarExport": {
+    "stayTitle": "{{guest}} en {{property}}",
+    "stayNotes": "Estancia en {{property}}. Añadido por Maison.",
+    "eventNotes": "{{property}}. Añadido por Maison."
   }
 }

@@ -18,10 +18,10 @@ const LABEL_KEYS: Record<SetupStepId, string> = {
   contact: 'setupChecklist.contact',
 };
 
-type Props = { estateId: string };
+type Props = { estateId: string; quiet?: boolean };
 
 /** Dismissible first-run checklist above the property hub grid (§10.2). */
-export function SetupChecklist({ estateId }: Props) {
+export function SetupChecklist({ estateId, quiet = false }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useScreenTheme();
@@ -85,9 +85,17 @@ export function SetupChecklist({ estateId }: Props) {
   }
 
   return (
-    <View style={[styles.wrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+    <View
+      style={[
+        styles.wrap,
+        { borderColor: colors.border, backgroundColor: colors.surface },
+        quiet && styles.wrapQuiet,
+      ]}
+    >
       <View style={styles.head}>
-        <Text style={[styles.title, { color: colors.text }]}>{t('setupChecklist.title')}</Text>
+        <Text style={[styles.title, { color: colors.text }, quiet && styles.titleQuiet]}>
+          {t('setupChecklist.title')}
+        </Text>
         <Pressable onPress={() => void dismiss()}>
           <Text style={[styles.dismiss, { color: colors.textSecondary }]}>
             {t('setupChecklist.dismiss')}
@@ -128,8 +136,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
   },
+  wrapQuiet: {
+    borderWidth: StyleSheet.hairlineWidth,
+    opacity: 0.92,
+  },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 16, fontWeight: '700' },
+  titleQuiet: { fontSize: 14, fontWeight: '600' },
   dismiss: { fontSize: 13 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   rowNext: { borderRadius: 8, paddingHorizontal: 8 },

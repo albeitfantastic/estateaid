@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ThemedText } from '@/components/themed-text';
 import { FilledButton, OutlineButton, useScreenTheme } from '@/components/ui/screen-layout';
 import { SurfaceCard } from '@/components/ui/surface-card';
-import { Layout, Radius } from '@/constants/theme';
+import { Radius } from '@/constants/theme';
 import type { ConversionInventory, ConversionKind } from '@/lib/conversion-moments';
 import { SLOT_PACKS } from '@/lib/subscription-config';
 
@@ -49,7 +49,7 @@ export function ConversionCard({
         : null;
 
   return (
-    <SurfaceCard variant="elevated" padded style={styles.card}>
+    <SurfaceCard variant="outline" padded style={styles.card}>
       <ThemedText type="defaultSemiBold" style={styles.title}>
         {title}
       </ThemedText>
@@ -69,10 +69,10 @@ export function ConversionCard({
 }
 
 const styles = StyleSheet.create({
-  card: { marginBottom: Layout.sectionGap, gap: 8, borderRadius: Radius.lg },
-  title: { fontSize: 16 },
-  body: { fontSize: 14, lineHeight: 20 },
-  inventory: { fontSize: 13, lineHeight: 18 },
-  pitch: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  actions: { gap: 8, marginTop: 4 },
+  card: { marginBottom: 0, gap: 10, borderRadius: Radius.lg },
+  title: { fontSize: 17, textAlign: 'center' },
+  body: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  inventory: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  pitch: { fontSize: 14, fontWeight: '600', lineHeight: 21, textAlign: 'center' },
+  actions: { gap: 8, marginTop: 8 },
 });

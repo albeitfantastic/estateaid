@@ -16,6 +16,7 @@ import { useContext, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { AddToCalendarButton } from '@/components/calendar/add-to-calendar-button';
 import { Avatar } from '@/components/ui/avatar';
 import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -237,6 +238,12 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
           ) : null}
         </View>
       )}
+
+      {activeTicket.date ? (
+        <View style={styles.calBtn}>
+          <AddToCalendarButton event={activeTicket} />
+        </View>
+      ) : null}
 
       {isEstateOwner ? (
         <View style={[styles.statusPicker, { backgroundColor: colors.background, borderColor: colors.icon + '33' }]}>
@@ -596,6 +603,7 @@ const styles = StyleSheet.create({
   dueRowText: { flex: 1, gap: 4 },
   dueLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   dueEditBtn: { paddingVertical: 4 },
+  calBtn: { paddingHorizontal: Layout.screenPaddingX, paddingVertical: 12 },
   statusPicker: { paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, gap: 8 },
   statusPickerLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   statusOptions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },

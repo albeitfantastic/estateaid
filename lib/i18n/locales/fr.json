@@ -390,5 +390,28 @@
     "settings": "Reglages",
     "expand": "Developper",
     "collapse": "Replier"
+  },
+  "calendarSettings": {
+    "title": "Calendrier",
+    "destinations": "Calendriers",
+    "master": "Ajouter les sejours et evenements a mon calendrier",
+    "masterSub": "Les sejours confirmes et les evenements dates sont ajoutes aux calendriers que tu choisis.",
+    "apple": "Calendrier Apple",
+    "appleSub": "L'app Calendrier de cet iPhone",
+    "google": "Google Agenda",
+    "googleSub": "Le compte Google de ce telephone",
+    "googleMissing": "Google Agenda n'est pas encore sur ce telephone. iPhone : Reglages → Calendrier → Comptes → Ajouter un compte → Google. Android : ajoute ton compte Google dans les reglages.",
+    "appleMissing": "Le calendrier Apple n'existe que sur iPhone.",
+    "permissionDenied": "L'acces au calendrier est desactive. Autorise-le dans les reglages systeme pour exporter les sejours.",
+    "webOnly": "L'export calendrier fonctionne sur iPhone et Android, pas dans le navigateur.",
+    "add": "Ajouter au calendrier",
+    "update": "Mettre a jour dans le calendrier",
+    "added": "Ajoute a ton calendrier.",
+    "failed": "Impossible d'ajouter cela au calendrier."
+  },
+  "calendarExport": {
+    "stayTitle": "{{guest}} a {{property}}",
+    "stayNotes": "Sejour a {{property}}. Ajoute par Maison.",
+    "eventNotes": "{{property}}. Ajoute par Maison."
   }
 }

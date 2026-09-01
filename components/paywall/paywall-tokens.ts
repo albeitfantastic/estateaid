@@ -1,24 +1,20 @@
 /**
  * Maison paywall design tokens.
- * Canvas and chrome match the app (cream + forest). The subscribe CTA uses
+ * Canvas and chrome match the app (cool bone + espresso). The subscribe CTA uses
  * `colors.accent` (terracotta) via PrimaryButton — not `MC.brand`.
  */
 export const MC = {
-  // Backgrounds — same cream canvas as the app
-  bg: '#F5F1E8',
-  surface: '#FBF8F2',
+  bg: '#F2F1ED',
+  surface: '#F2F1ED',
 
-  // Text (charcoal + stone)
-  text: '#1C1B18',
+  text: '#141311',
   textSecondary: '#5C5852',
 
-  // Brand chrome — forest green. Terracotta is the subscribe CTA only (`colors.accent`).
-  brand: '#1F4D3D',
-  tint: '#E3EDE8',
+  brand: '#2C2823',
+  tint: '#E6E4DF',
 
-  // Borders
-  border: '#DDD4C6',
-  borderStrong: '#1F4D3D',
+  border: '#D5D3CE',
+  borderStrong: '#2C2823',
 
   // Spacing
   hPad: 24,

@@ -23,7 +23,7 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: Emp
           <IconSymbol name={icon as never} size={32} color={colors.primary} />
         </View>
       )}
-      <ThemedText style={styles.title}>{title}</ThemedText>
+      <ThemedText type="subtitle" style={styles.title}>{title}</ThemedText>
       {subtitle && (
         <ThemedText style={[styles.subtitle, { color: colors.textMuted }]}>{subtitle}</ThemedText>
       )}
@@ -58,11 +58,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 17,
-    fontWeight: '600',
     textAlign: 'center',
-    fontFamily: 'Manrope_600SemiBold',
-    letterSpacing: -0.2,
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 14,
@@ -76,7 +73,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 28,
     paddingVertical: 12,
-    borderRadius: 20,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },

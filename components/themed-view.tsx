@@ -9,24 +9,24 @@ export type ThemedViewProps = ViewProps & {
 };
 
 const LIGHT_PAPER: [string, string, string] = [
-  'rgba(230, 216, 195, 0.06)',
-  'rgba(245, 241, 232, 0.00)',
-  'rgba(230, 216, 195, 0.04)',
+  'rgba(200, 198, 192, 0.08)',
+  'rgba(242, 241, 237, 0.00)',
+  'rgba(190, 188, 182, 0.05)',
 ];
 const DARK_PAPER: [string, string, string] = [
-  'rgba(28, 38, 34, 0.14)',
-  'rgba(18, 26, 23, 0.00)',
-  'rgba(28, 38, 34, 0.10)',
+  'rgba(44, 40, 35, 0.14)',
+  'rgba(20, 19, 17, 0.00)',
+  'rgba(44, 40, 35, 0.10)',
 ];
 const LIGHT_VIGNETTE: [string, string, string] = [
-  'rgba(31, 77, 61, 0.03)',
-  'rgba(31, 77, 61, 0.00)',
-  'rgba(31, 77, 61, 0.03)',
+  'rgba(44, 40, 35, 0.03)',
+  'rgba(44, 40, 35, 0.00)',
+  'rgba(44, 40, 35, 0.03)',
 ];
 const DARK_VIGNETTE: [string, string, string] = [
-  'rgba(123, 163, 148, 0.05)',
-  'rgba(123, 163, 148, 0.00)',
-  'rgba(123, 163, 148, 0.06)',
+  'rgba(201, 192, 180, 0.05)',
+  'rgba(201, 192, 180, 0.00)',
+  'rgba(201, 192, 180, 0.06)',
 ];
 
 export function ThemedView({ style, lightColor, darkColor, children, ...otherProps }: ThemedViewProps) {

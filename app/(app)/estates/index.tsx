@@ -87,7 +87,7 @@ export default function EstatesList() {
           onAction={canCreate ? onAdd : () => router.push('/(app)/estates/join' as never)}
         />
       ) : (
-        <ScreenScroll contentContainerStyle={styles.list} gap={16}>
+        <ScreenScroll contentContainerStyle={styles.list} gap={0}>
           {estates.map((estate) => {
             const role = roleById[estate.id] ?? 'none';
             const coverage = coverageById[estate.id];
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  list: { gap: 16 },
+  list: { gap: 20, paddingTop: 8 },
   cardWrap: { position: 'relative' },
   downgradeBadge: {
     position: 'absolute',

@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AddToCalendarButton } from '@/components/calendar/add-to-calendar-button';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
@@ -137,6 +138,8 @@ export default function EditStay() {
             </View>
           )}
         </View>
+
+        <AddToCalendarButton stay={stay} />
 
         <TouchableOpacity
           style={[styles.deleteBtn, { backgroundColor: colors.error + '12', borderColor: colors.error + '30' }]}

@@ -2,6 +2,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useScreenTheme } from '@/components/ui/screen-layout';
+import { Layout } from '@/constants/theme';
 
 export type Segment<T extends string> = {
   key: T;
@@ -24,13 +25,16 @@ export function SegmentedControl<T extends string>({
   const { colors } = useScreenTheme();
 
   return (
-    <View style={[styles.row, { backgroundColor: colors.background }]}>
+    <View style={[styles.row, { borderBottomColor: colors.border }]}>
       {segments.map((segment) => {
         const active = segment.key === value;
         return (
           <TouchableOpacity
             key={segment.key}
-            style={[styles.btn, active && { backgroundColor: colors.tint }]}
+            style={[
+              styles.btn,
+              { borderBottomColor: active ? colors.text : 'transparent' },
+            ]}
             onPress={() => onChange(segment.key)}
             activeOpacity={0.8}
             accessibilityRole="button"
@@ -38,18 +42,18 @@ export function SegmentedControl<T extends string>({
             accessibilityLabel={segment.label}
           >
             <ThemedText
-              style={[styles.label, active ? { color: colors.textOnBrand } : { color: colors.text }]}
+              style={[
+                styles.label,
+                { color: active ? colors.text : colors.textSecondary },
+                active && styles.labelActive,
+              ]}
               numberOfLines={1}
             >
               {segment.label}
             </ThemedText>
             {segment.badge != null && segment.badge > 0 ? (
-              <View
-                style={[styles.badge, { backgroundColor: active ? colors.textOnBrand : colors.tint }]}
-              >
-                <ThemedText
-                  style={[styles.badgeText, { color: active ? colors.tint : colors.textOnBrand }]}
-                >
+              <View style={[styles.badge, { backgroundColor: colors.accent }]}>
+                <ThemedText style={[styles.badgeText, { color: colors.textOnBrand }]}>
                   {segment.badge}
                 </ThemedText>
               </View>
@@ -62,18 +66,25 @@ export function SegmentedControl<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 12, gap: 8 },
+  row: {
+    flexDirection: 'row',
+    paddingHorizontal: Layout.screenPaddingX,
+    marginBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   btn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    minHeight: Layout.touchMin,
+    borderBottomWidth: 2,
+    marginBottom: -StyleSheet.hairlineWidth,
   },
-  label: { fontSize: 12, fontWeight: '600' },
+  label: { fontSize: 13, fontWeight: '500', letterSpacing: 0.4 },
+  labelActive: { fontWeight: '700' },
   badge: {
     minWidth: 18,
     height: 18,

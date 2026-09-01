@@ -2,37 +2,51 @@
 
 Shared primitives live in `components/ui/screen-layout.tsx`. Reference implementations: `components/availability/availability-rules-screen.tsx`, `components/settings/settings-hub-content.tsx`.
 
+The look is **editorial hospitality**, not iOS Settings. Light canvas is cool bone `#F2F1ED` with ink type. Brand chrome is espresso. Display type is for **photo heroes only**. List screens use a left-aligned 28pt title.
+
 ## When to use what
 
 | Pattern | Component | Notes |
 |---------|-----------|-------|
-| Screen chrome | `ScreenShell` | Back (optional), 28pt title, `headerRight` slot |
+| Screen chrome | `ScreenShell` | Back (44pt, optional), left 28pt title. No empty well when `showBack={false}` |
+| Photo overlay | `PhotoHero` | Full-bleed cover + ink scrim; cream text only on the scrim; `type="display"` here |
 | Scroll body | `ScreenScroll` | `Layout.screenPaddingX`, safe bottom inset |
 | Intro / helper copy | `ScreenFootnote` | 14pt secondary text above content |
-| Static section title | `SectionLabel` | Uppercase 12pt label — no action link |
+| Static section title | `SectionLabel` | Uppercase 13pt medium — editorial, not a 12pt form stamp |
 | Actionable section title | `SectionHeader` | Title + “See all” link |
-| Inset list card | `GroupedList` | `surface` bg, `Radius.lg`, hairline border, elevation |
-| List row | `GroupedRow` | 44pt min, 36×36 icon well, trailing slot |
-| Secondary CTA | `OutlineButton` | Full-width bordered tint button |
+| Inset list | `GroupedList` | Hairline only — no elevated paper vs canvas |
+| List row | `GroupedRow` | 44pt min; tappable rows show a chevron unless `trailing` is set |
+| Primary CTA | `FilledButton` | Espresso fill; `tone="accent"` (terracotta) for hero / upgrade; `size="hero"` on Home only |
+| Secondary CTA | `OutlineButton` | Full-width bordered espresso |
 | Form modal (iOS) | `FormSheet` | pageSheet with Cancel \| Title \| Save |
 | Form fields in sheet | `GroupedFormSection` | Bordered field group inside sheet |
 | Empty list | `EmptyState` | Inside `GroupedList` |
 | Theme on screens | `useScreenTheme()` | Prefer over mixing `Colors[…]` + `useAppTheme()` |
 
-Forest green (`tint`) is brand chrome — tabs, icons, OutlineButton, in-app FilledButton. Terracotta (`accent`) is paywall / upgrade CTAs only. Do not use green for small body text.
+Espresso (`tint`) is brand chrome — selected tab, icons, OutlineButton, in-app FilledButton. Warm olive is calendar available / my stay / success. Terracotta (`accent`) is the living accent — Home hero CTA, hub primary, paywall. Do not use chrome for small body text.
+
+## Hero vs grouped row
+
+Use a **hero** when the screen has one next event or one property: Home, property list cards, property hub header. One photo, display type, **one** action (photo and button share the same destination).
+
+Use a **grouped row** for everything else: settings, contacts, documents, FAQ, the remaining hub destinations after the two primary actions. Do not turn a destination screen into a grid of equal-weight tiles.
 
 ## Spacing & typography
 
 - Horizontal inset: `Layout.screenPaddingX`
 - Section gap: `Layout.sectionGap`
 - Row min height: `Layout.touchMin` (44pt)
-- Title: 28pt bold in shell header
-- Section labels: uppercase, letter-spacing 0.6
+- List title: 28pt left in shell header
+- Display 36pt: photo overlays only
+- Body 16pt; captions and stat labels 14pt sentence case
+- Tab labels: 12pt
+- Section labels: uppercase 13pt, letter-spacing 1.4
+- Cards / photo frames: `Radius.lg` (22); buttons stay `Radius.md` (14)
 
 ## Grouped list vs SurfaceCard
 
-- **GroupedList** — settings-style rows, availability rules, contacts, guests, requests
-- **SurfaceCard** — standalone dashboard tiles or marketing blocks with heavier radius (28)
+- **GroupedList** — settings rows, availability rules, contacts, guests, requests. Same field as the canvas; hairline separators. Tappable rows get a chevron.
+- **SurfaceCard** — standalone blocks that still need a border (conversion). Prefer `outline` over `elevated`.
 
 ## Migration verification
 
@@ -43,6 +57,7 @@ After changing a screen:
 - [ ] Lists in `GroupedList` + `GroupedRow` (not individual bordered boxes)
 - [ ] Static sections use `SectionLabel`
 - [ ] Secondary actions use `OutlineButton`
+- [ ] Overlay text on photos sits on the ink scrim
 - [ ] Light + dark mode spot-check
 
 ## Grep for leftovers

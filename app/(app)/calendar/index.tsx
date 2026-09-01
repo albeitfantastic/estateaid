@@ -23,7 +23,7 @@ import {
   SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { CalendarColors } from '@/constants/theme';
+import { CalendarColors, Layout } from '@/constants/theme';
 import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/availability-rule-blocking';
 import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
 import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
@@ -283,7 +283,7 @@ export default function CalendarScreen() {
       />
 
       {segment === 'month' && (
-        <ScreenScroll>
+        <ScreenScroll gap={0}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -296,8 +296,7 @@ export default function CalendarScreen() {
                   key={estate.id}
                   style={[
                     styles.estatePill,
-                    { borderColor: colors.tint + '44' },
-                    active && { backgroundColor: colors.tint, borderColor: colors.tint },
+                    active && { borderBottomColor: colors.text },
                   ]}
                   onPress={() => pickEstate(estate.id)}
                   activeOpacity={0.8}
@@ -306,7 +305,11 @@ export default function CalendarScreen() {
                   accessibilityLabel={estate.name}
                 >
                   <ThemedText
-                    style={[styles.estatePillText, { color: active ? colors.textOnBrand : colors.text }]}
+                    style={[
+                      styles.estatePillText,
+                      { color: active ? colors.text : colors.textSecondary },
+                      active && styles.estatePillTextActive,
+                    ]}
                   >
                     {estate.name}
                   </ThemedText>
@@ -460,12 +463,7 @@ export default function CalendarScreen() {
             </View>
           )}
 
-          <View
-            style={[
-              styles.calendarWrap,
-              { backgroundColor: colors.background, borderColor: colors.border },
-            ]}
-          >
+          <View style={styles.calendarWrap}>
             <MonthGrid
               year={viewYear}
               month={viewMonth}
@@ -583,7 +581,7 @@ export default function CalendarScreen() {
             }
           />
         ) : (
-          <ScreenScroll>
+          <ScreenScroll gap={0}>
             {managesAny && (
               <>
                 <SectionLabel>{t('calendarTab.staysManagedSection')}</SectionLabel>
@@ -630,7 +628,7 @@ export default function CalendarScreen() {
             }
           />
         ) : (
-          <ScreenScroll>
+          <ScreenScroll gap={0}>
             {managesAny && incomingRequests.length > 0 && (
               <>
                 <SectionLabel>{t('calendarTab.requestsIncomingSection')}</SectionLabel>
@@ -655,18 +653,26 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  estateRow: { gap: 8, paddingVertical: 4, marginBottom: 16 },
-  estatePill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  estatePillText: { fontSize: 13, fontWeight: '600' },
+  estateRow: { gap: 16, paddingVertical: 4, marginBottom: 12 },
+  estatePill: {
+    paddingHorizontal: 2,
+    paddingVertical: 8,
+    minHeight: Layout.touchMin,
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  estatePillText: { fontSize: 15, fontWeight: '500' },
+  estatePillTextActive: { fontWeight: '700' },
 
   nav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 14,
   },
-  navBtn: { padding: 8 },
-  monthLabel: { fontSize: 18 },
+  navBtn: { padding: 8, minWidth: Layout.touchMin, minHeight: Layout.touchMin, alignItems: 'center', justifyContent: 'center' },
+  monthLabel: { letterSpacing: -0.6, fontSize: 22, lineHeight: 28 },
 
   infoCard: {
     flexDirection: 'row',
@@ -689,7 +695,7 @@ const styles = StyleSheet.create({
   eventDot: { width: 7, height: 7, borderRadius: 3.5 },
   eventTitle: { fontSize: 12, fontWeight: '500' },
 
-  calendarWrap: { padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 14 },
+  calendarWrap: { paddingVertical: 8, marginBottom: 14 },
 
   legendToggle: {
     flexDirection: 'row',

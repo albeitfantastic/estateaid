@@ -2,17 +2,23 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SetupChecklist } from '@/components/ui/setup-checklist';
 import { SponsorCoverageBanner } from '@/components/ui/sponsor-coverage-banner';
-import { ScreenScroll, ScreenShell, FilledButton, OutlineButton, useScreenTheme } from '@/components/ui/screen-layout';
-import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { PhotoHero, photoHeroOverlayText } from '@/components/ui/photo-hero';
+import {
+  ScreenScroll,
+  ScreenShell,
+  FilledButton,
+  OutlineButton,
+  GroupedList,
+  GroupedRow,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
+import { Layout, Radius, Spacing } from '@/constants/theme';
 import { useCan, type Capability } from '@/lib/entitlements/capabilities';
 import type { UpgradeFeature } from '@/lib/maison-pro-upgrade';
 import { addDays, today } from '@/lib/date-utils';
 import { getEstateActorRole } from '@/lib/estate-role';
-import { hubEmphasisRoutes, type OnboardingUseCase } from '@/lib/onboarding-starters';
-import { fetchProfileUseCase } from '@/lib/use-case-profile';
-import { nextSetupStep, SETUP_STEP_TILE } from '@/lib/setup-progress';
+import { nextSetupStep, SETUP_STEPS } from '@/lib/setup-progress';
 import { useAuthStore } from '@/store/auth-store';
 import { useContactStore } from '@/store/contact-store';
 import { useDocumentStore } from '@/store/document-store';
@@ -22,8 +28,8 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 const OWNER_ITEMS: {
@@ -60,37 +66,34 @@ const GUEST_ITEMS: GuestHubItem[] = [
   { labelKey: 'estateHub.activity', icon: 'clock.fill', route: 'activity', alwaysOn: false },
 ];
 
-function EstateHeaderTitle({
+function HubCover({
   name,
   location,
+  imageUrl,
   guestBadge,
 }: {
   name: string;
   location: string;
+  imageUrl?: string | null;
   guestBadge?: boolean;
 }) {
   const { t } = useTranslation();
-  const { colors } = useScreenTheme();
   return (
-    <View style={styles.headerText}>
-      {guestBadge ? (
-        <View style={styles.nameRow}>
-          <ThemedText type="title" style={styles.name} numberOfLines={1}>
-            {name}
-          </ThemedText>
-          <View style={[styles.guestBadge, { backgroundColor: colors.tintMuted }]}>
-            <ThemedText style={[styles.guestBadgeText, { color: colors.tint }]}>{t('common.guest')}</ThemedText>
+    <View style={styles.coverWrap}>
+      <PhotoHero imageUrl={imageUrl} height={240} edgeToEdge>
+        {guestBadge ? (
+          <View style={styles.guestBadge}>
+            <ThemedText style={styles.guestBadgeText}>{t('common.guest')}</ThemedText>
           </View>
-        </View>
-      ) : (
-        <ThemedText type="title" style={styles.name} numberOfLines={1}>
+        ) : null}
+        <ThemedText type="display" style={styles.coverName} numberOfLines={2}>
           {name}
         </ThemedText>
-      )}
-      <View style={styles.locationRow}>
-        <IconSymbol name="map.fill" size={13} color={colors.icon} />
-        <ThemedText style={[styles.location, { color: colors.icon }]}>{location}</ThemedText>
-      </View>
+        <View style={styles.locationRow}>
+          <IconSymbol name="map.fill" size={13} color={photoHeroOverlayText} />
+          <ThemedText style={styles.coverLocation}>{location}</ThemedText>
+        </View>
+      </PhotoHero>
     </View>
   );
 }
@@ -99,7 +102,7 @@ export default function EstateHub() {
   const { t } = useTranslation();
   const { estateId, landing } = useLocalSearchParams<{ estateId: string; landing?: string }>();
   const router = useRouter();
-  const { colors, cardShadow } = useScreenTheme();
+  const { colors } = useScreenTheme();
   const estates = useEstateStore((s) => s.estates);
   const estate = estates.find((e) => e.id === estateId);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -112,16 +115,10 @@ export default function EstateHub() {
   const can = useCan();
   const estateCtx = { estateId: estateId as string };
   const fetchCoverage = useEstateCoverageStore((s) => s.fetchCoverage);
-  const [useCase, setUseCase] = useState<OnboardingUseCase | null>(null);
 
   useEffect(() => {
     if (estateId) void fetchCoverage([estateId]);
   }, [estateId, fetchCoverage]);
-
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    void fetchProfileUseCase(currentUser.id).then(setUseCase);
-  }, [currentUser?.id]);
 
   const actorRole = useMemo(() => {
     if (!estate || !currentUser) return 'none' as const;
@@ -131,8 +128,6 @@ export default function EstateHub() {
   const isHost = actorRole === 'sponsor' || actorRole === 'owner';
   const showGuestLanding = !isHost && landing === '1';
   const nextStep = estateId ? nextSetupStep(estateId) : null;
-  const nextTile = nextStep ? SETUP_STEP_TILE[nextStep] : null;
-  const emphasisRoutes = hubEmphasisRoutes(useCase);
 
   const inviterName = useMemo(() => {
     if (!currentUser) return '';
@@ -237,9 +232,19 @@ export default function EstateHub() {
 
   if (isHost) {
     const canEdit = can('property.edit', estateCtx);
+    const nextDef = nextStep ? SETUP_STEPS.find((s) => s.id === nextStep) : null;
+    const primaryHref = nextDef
+      ? nextDef.route(estateId as string)
+      : `/(app)/stays/block?estateId=${estateId}`;
+    const primaryLabel = nextStep
+      ? t(`setupChecklist.${nextStep}`)
+      : t('ownerHome.blockDates');
+    const secondaryHref = nextStep
+      ? `/(app)/calendar?estateId=${estateId}`
+      : `/(app)/estates/${estateId}/guests/invite`;
+    const secondaryLabel = nextStep ? t('tabs.calendar') : t('ownerHome.inviteUser');
     return (
       <ScreenShell
-        title={<EstateHeaderTitle name={estate.name} location={estate.location} />}
         headerRight={
           <HostProLockTouchable
             locked={!canEdit}
@@ -255,18 +260,27 @@ export default function EstateHub() {
         }
       >
         <ScreenScroll contentContainerStyle={styles.grid} bottomInset={Spacing.xl}>
+          <HubCover name={estate.name} location={estate.location} imageUrl={estate.coverImageUrl} />
           <SponsorCoverageBanner estateId={estateId as string} />
           {estate.description ? (
-            <ThemedText style={[styles.description, { color: colors.icon }]}>{estate.description}</ThemedText>
+            <ThemedText style={[styles.description, { color: colors.textSecondary }]}>
+              {estate.description}
+            </ThemedText>
           ) : null}
-          <SetupChecklist estateId={estateId as string} />
-          <View style={styles.tiles}>
-            {OWNER_ITEMS.map((item) => {
+          <FilledButton
+            tone="accent"
+            label={primaryLabel}
+            onPress={() => router.push(primaryHref as never)}
+          />
+          <OutlineButton
+            label={secondaryLabel}
+            onPress={() => router.push(secondaryHref as never)}
+          />
+          <GroupedList style={styles.destList}>
+            {OWNER_ITEMS.map((item, i) => {
               const canOpen = can(item.cap, estateCtx);
               const locked = !canOpen;
               const count = tileCountLabel(item.countKey);
-              const isNext = item.route === nextTile;
-              const emphasised = isNext || emphasisRoutes.includes(item.route);
               return (
                 <HostProLockTouchable
                   key={item.route}
@@ -275,80 +289,76 @@ export default function EstateHub() {
                   estateId={estateId}
                   returnTo={`/(app)/estates/${estateId}/${item.route}`}
                   onPress={() => router.push(`/(app)/estates/${estateId}/${item.route}` as never)}
-                  style={[
-                    styles.tile,
-                    {
-                      backgroundColor: emphasised ? colors.tintMuted : colors.surface,
-                      borderColor: isNext ? colors.tint : emphasised ? colors.tintMuted : colors.border,
-                      opacity: count == null && !locked ? 0.85 : 1,
-                    },
-                    cardShadow,
-                  ]}
+                  style={styles.rowPress}
                 >
-                  <IconSymbol name={item.icon as never} size={28} color={colors.tint} />
-                  <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
-                    {t(item.labelKey)}
-                    {count != null ? ` · ${count}` : ''}
-                  </ThemedText>
+                  <GroupedRow
+                    icon={item.icon}
+                    title={t(item.labelKey)}
+                    trailing={
+                      <View style={styles.rowTrail}>
+                        {count != null ? (
+                          <ThemedText style={[styles.count, { color: colors.textSecondary }]}>
+                            {count}
+                          </ThemedText>
+                        ) : null}
+                        <IconSymbol name="chevron.right" size={14} color={colors.textSecondary} />
+                      </View>
+                    }
+                    isLast={i === OWNER_ITEMS.length - 1}
+                  />
                 </HostProLockTouchable>
               );
             })}
-          </View>
+          </GroupedList>
         </ScreenScroll>
       </ScreenShell>
     );
   }
 
   return (
-    <ScreenShell
-      title={<EstateHeaderTitle name={estate.name} location={estate.location} guestBadge />}
-    >
+    <ScreenShell>
       <ScreenScroll contentContainerStyle={styles.grid} bottomInset={Spacing.xl}>
-        <View style={styles.tiles}>
-          {GUEST_ITEMS.map((item) => {
-            const key = 'href' in item ? item.href : item.route;
+        <HubCover
+          name={estate.name}
+          location={estate.location}
+          imageUrl={estate.coverImageUrl}
+          guestBadge
+        />
+        <FilledButton
+          tone="accent"
+          label={t('estateHub.requestDates')}
+          onPress={() => router.push(`/(app)/stays/plan?estateId=${estateId}` as never)}
+        />
+        <OutlineButton
+          label={t('estateHub.myStays')}
+          onPress={() =>
+            router.push(`/(app)/calendar?segment=stays&estateId=${estateId}` as never)
+          }
+        />
+        <GroupedList style={styles.destList}>
+          {GUEST_ITEMS.filter(
+            (item): item is Extract<GuestHubItem, { route: string }> => 'route' in item
+          ).map((item, i, list) => {
             const unlocked = item.alwaysOn || hasContextAccess;
             return (
-              <TouchableOpacity
-                key={key}
+              <GroupedRow
+                key={item.route}
+                icon={item.icon}
+                title={t(item.labelKey)}
+                subtitle={
+                  unlocked ? undefined : (contextUnlockLabel ?? t('estateHub.unlocks3DaysBefore'))
+                }
+                onPress={
+                  unlocked
+                    ? () => router.push(`/(app)/estates/${estateId}/${item.route}` as never)
+                    : undefined
+                }
                 disabled={!unlocked}
-                onPress={() => {
-                  if ('href' in item) {
-                    if (item.href === 'plan') {
-                      router.push(`/(app)/stays/plan?estateId=${estateId}` as never);
-                    } else {
-                      router.push(
-                        `/(app)/calendar?segment=stays&estateId=${estateId}` as never
-                      );
-                    }
-                    return;
-                  }
-                  router.push(`/(app)/estates/${estateId}/${item.route}` as never);
-                }}
-                style={[
-                  styles.tile,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    opacity: unlocked ? 1 : 0.55,
-                  },
-                  cardShadow,
-                ]}
-                activeOpacity={0.75}
-              >
-                <IconSymbol name={item.icon as never} size={28} color={colors.tint} />
-                <ThemedText type="defaultSemiBold" style={styles.tileLabel}>
-                  {t(item.labelKey)}
-                </ThemedText>
-                {!unlocked ? (
-                  <ThemedText style={[styles.contextHint, { color: colors.icon }]}>
-                    {contextUnlockLabel ?? t('estateHub.unlocks3DaysBefore')}
-                  </ThemedText>
-                ) : null}
-              </TouchableOpacity>
+                isLast={i === list.length - 1}
+              />
             );
           })}
-        </View>
+        </GroupedList>
       </ScreenScroll>
     </ScreenShell>
   );
@@ -356,26 +366,28 @@ export default function EstateHub() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  headerText: { flex: 1, minWidth: 0 },
-  name: { fontSize: 22, fontFamily: Fonts.heading },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  guestBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.sm },
-  guestBadgeText: { fontSize: 11, fontWeight: '700' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  location: { fontSize: 13 },
+  coverWrap: {
+    marginHorizontal: -Layout.screenPaddingX,
+    marginTop: -8,
+    marginBottom: 16,
+  },
+  coverName: { color: photoHeroOverlayText },
+  coverLocation: { color: photoHeroOverlayText, fontSize: 14 },
+  guestBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.sm,
+    backgroundColor: 'rgba(245,241,232,0.18)',
+    marginBottom: 6,
+  },
+  guestBadgeText: { fontSize: 12, fontWeight: '700', color: photoHeroOverlayText },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   editBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   grid: { paddingTop: 8 },
-  description: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  tile: {
-    width: '47%',
-    flexGrow: 1,
-    minHeight: 100,
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-    gap: 10,
-  },
-  tileLabel: { fontSize: 15 },
-  contextHint: { fontSize: 11, lineHeight: 14, marginTop: 2 },
+  description: { fontSize: 16, lineHeight: 24, marginBottom: 16, textAlign: 'center' },
+  destList: { marginTop: 28 },
+  rowPress: { width: '100%' },
+  rowTrail: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  count: { fontSize: 15, fontWeight: '600' },
 });

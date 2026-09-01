@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { AddToCalendarButton } from '@/components/calendar/add-to-calendar-button';
 import { IssueThreadScreen } from '@/components/maintenance/issue-thread-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -175,6 +176,8 @@ function EditMaintenanceForm({ event: initial }: { event: EstateEvent }) {
             <RecurrenceFields value={recurrence} onChange={setRecurrence} showFrequency={false} />
           </>
         )}
+
+        <AddToCalendarButton event={event} />
 
         <FilledButton
           label="Save Changes"

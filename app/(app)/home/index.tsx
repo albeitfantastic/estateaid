@@ -12,13 +12,20 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { OverAllocationChooser } from '@/components/ui/over-allocation-chooser';
-import { StatusBadge } from '@/components/ui/badge';
-import { ScreenScroll, ScreenShell, SectionHeader, useScreenTheme } from '@/components/ui/screen-layout';
-import { SurfaceCard } from '@/components/ui/surface-card';
+import { PhotoHero, photoHeroOverlayText } from '@/components/ui/photo-hero';
+import {
+  FilledButton,
+  GroupedList,
+  GroupedRow,
+  ScreenScroll,
+  ScreenShell,
+  SectionHeader,
+  useScreenTheme,
+} from '@/components/ui/screen-layout';
 import { SetupChecklist } from '@/components/ui/setup-checklist';
 import { TrialStatusLine } from '@/components/ui/trial-status-line';
 import { BootstrapErrorBanner } from '@/components/ui/bootstrap-error-banner';
-import { EstateColors, Layout, Radius, PriorityColors, type ThemeColors } from '@/constants/theme';
+import { EstateColors, Layout, Radius } from '@/constants/theme';
 import { trialDaysRemaining } from '@/lib/access-tier-core';
 import { useAccountContext, useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { openEstateCreatePaywall, openUpgradePaywall } from '@/lib/maison-pro-upgrade';
@@ -60,8 +67,6 @@ const PRIORITY_ORDER: Record<IssuePriority, number> = {
   normal: 2,
   low: 3,
 };
-
-const PRIORITY_BAR = PriorityColors;
 
 function getMaintenanceRelativeLabel(
   nextDate: string,
@@ -144,7 +149,6 @@ export default function HomeDashboard() {
 
   const canInvite = estateIds.some((id) => can('guests.invite', id));
   const canApprove = estateIds.some((id) => can('stays.approve', id));
-  const canWriteEvents = estateIds.some((id) => can('events.write', id));
   const canAddEstate = can('property.create');
   const isCoOwnerElsewhere = useMemo(
     () => Object.values(roleById).some((role) => role === 'owner'),
@@ -182,17 +186,6 @@ export default function HomeDashboard() {
     [allStayRequests, estateIds]
   );
 
-  const openIssuesCount = useMemo(
-    () =>
-      allMaintenanceEvents.filter(
-        (ev) =>
-          estateIds.includes(ev.estateId) &&
-          isIssueTask(ev) &&
-          isIssueOpenStatus(ev.status)
-      ).length,
-    [allMaintenanceEvents, estateIds]
-  );
-
   const guestsCount = useMemo(() => {
     const ids = new Set(
       allInvitations
@@ -222,8 +215,6 @@ export default function HomeDashboard() {
       })
       .slice(0, 3);
   }, [allMaintenanceEvents, estateIds]);
-
-  const hasAttentionItems = heroIssues.length > 0;
 
   // Unified upcoming: merge stays + maintenance sorted by date
   const upcomingItems = useMemo((): UpcomingItem[] => {
@@ -294,8 +285,6 @@ export default function HomeDashboard() {
     t,
   ]);
 
-  const firstName = currentUser?.name?.split(' ')[0] ?? '';
-
   const guestEstates = useMemo(
     () => allEstates.filter((e) => roleById[e.id] === 'guest'),
     [allEstates, roleById]
@@ -356,21 +345,53 @@ export default function HomeDashboard() {
     return t('ownerHome.everythingLooksGood');
   }, [heroIssues, upcomingItems, todayStr, t]);
 
+  const nextStayItem = useMemo(
+    () => upcomingItems.find((i): i is Extract<UpcomingItem, { kind: 'stay' }> => i.kind === 'stay'),
+    [upcomingItems]
+  );
+  const arrivingStay = useMemo(
+    () =>
+      upcomingItems.find(
+        (i): i is Extract<UpcomingItem, { kind: 'stay' }> =>
+          i.kind === 'stay' && (i.isActive || i.stay.from === todayStr)
+      ),
+    [upcomingItems, todayStr]
+  );
+  const featuredIssue = heroIssues[0];
+  const heroStay =
+    arrivingStay ??
+    (featuredIssue && (featuredIssue.priority === 'urgent' || featuredIssue.priority === 'high')
+      ? undefined
+      : nextStayItem);
+  const heroIssue = heroStay ? undefined : featuredIssue;
+  const heroEstate =
+    heroStay?.estate ?? (heroIssue ? estateById[heroIssue.estateId] : estates[0]);
+  const extraIssues = heroIssues.filter((ev) => ev.id !== heroIssue?.id);
+  const upcomingRest = upcomingItems.filter(
+    (item) => !(heroStay && item.kind === 'stay' && item.stay.id === heroStay.stay.id)
+  );
+
+  function onHeroPress() {
+    if (heroStay) {
+      router.push(`/(app)/stays/${heroStay.stay.id}` as never);
+      return;
+    }
+    if (heroIssue) {
+      router.push(`/(app)/estates/${heroIssue.estateId}/events/${heroIssue.id}` as never);
+      return;
+    }
+    router.push('/(app)/stays/block' as never);
+  }
+
   return (
     <ScreenShell
       showBack={false}
       title={
-        <View style={{ flex: 1 }}>
-          <ThemedText type="title" style={styles.greeting}>
-            {t('ownerHome.hello', { name: firstName })}
-          </ThemedText>
-          <ThemedText type="caption" style={[styles.sub, { color: heroIssues.length > 0 && !isGuestOnly ? colors.warning : colors.success }]}>
-            {isGuestOnly
-              ? t('guestHome.subtitleEmpty')
-              : dynamicSubtitle}
-          </ThemedText>
-          {!isGuestOnly ? <TrialStatusLine /> : null}
-        </View>
+        !isGuestOnly ? (
+          <View style={styles.headerStatus}>
+            <TrialStatusLine />
+          </View>
+        ) : undefined
       }
       headerRight={
         <TouchableOpacity
@@ -388,7 +409,7 @@ export default function HomeDashboard() {
           accessibilityRole="button"
           accessibilityLabel={t('ownerHome.settingsMenu')}
         >
-          <IconSymbol name="line.3.horizontal" size={22} color={colors.tint} />
+          <IconSymbol name="gearshape.fill" size={22} color={colors.tint} />
         </TouchableOpacity>
       }
     >
@@ -424,419 +445,239 @@ export default function HomeDashboard() {
         />
       ) : (
       <ScreenScroll
-        contentContainerStyle={{ paddingBottom: Layout.sectionGap + 12 }}
+        gap={0}
+        contentContainerStyle={styles.scroll}
       >
         <OverAllocationChooser />
-        {conversionKind && conversionKind !== 'checklist' ? (
-          <ConversionCard
-            kind={conversionKind}
-            inventory={inventory}
-            propertyName={pitchEstateName}
-            onChoosePlan={() => openUpgradePaywall('coverage_lapse', '/(app)/home')}
-            onDismiss={
-              conversionKind === 'invite_accepted' && currentUser
-                ? () => {
-                    void markInviteConversionSeen(currentUser.id);
-                    setInviteSeen(true);
-                  }
-                : undefined
-            }
-          />
-        ) : conversionKind === 'checklist' && estates[0] ? (
-          <SetupChecklist estateId={estates[0].id} />
+
+        {heroEstate ? (
+          <View style={styles.heroBlock}>
+            <PhotoHero
+              imageUrl={heroEstate.coverImageUrl}
+              height={280}
+              align="center"
+              onPress={onHeroPress}
+              accessibilityLabel={heroEstate.name}
+            >
+              <ThemedText type="overline" style={styles.heroEyebrow} numberOfLines={1}>
+                {heroStay
+                  ? t('ownerHome.nextStay')
+                  : heroIssue
+                    ? t('ownerHome.needsAttention')
+                    : heroEstate.location}
+              </ThemedText>
+              <ThemedText type="display" style={styles.heroTitle} numberOfLines={2}>
+                {heroStay ? heroStay.guestLabel : heroIssue ? heroIssue.title : heroEstate.name}
+              </ThemedText>
+              <ThemedText style={styles.heroSub} numberOfLines={2}>
+                {heroStay
+                  ? `${heroEstate.name} · ${formatDateRange(heroStay.stay.from, heroStay.stay.to)}`
+                  : heroIssue
+                    ? `${heroEstate.name}${
+                        heroIssue.date
+                          ? ` · ${t('ownerHome.dueDate', { date: formatDate(heroIssue.date) })}`
+                          : ''
+                      }`
+                    : dynamicSubtitle}
+              </ThemedText>
+            </PhotoHero>
+            <FilledButton
+              tone="accent"
+              size="hero"
+              label={
+                heroStay
+                  ? t('ownerHome.viewStay')
+                  : heroIssue
+                    ? t('common.open')
+                    : t('ownerHome.blockDates')
+              }
+              onPress={onHeroPress}
+            />
+          </View>
         ) : null}
-        {/* ── Needs Attention (hero) ─────────────────────────────── */}
-        {hasAttentionItems && (
-          <View style={styles.attentionHeader}>
-            <SectionHeader title={t('ownerHome.needsAttention')} />
-          </View>
-        )}
 
-        {heroIssues.length > 0 && (
-          <View style={styles.heroList}>
-            {heroIssues.map((issue) => {
-              const estateName = estateById[issue.estateId]?.name ?? '—';
-              const pri = issue.priority ?? 'normal';
-              const barColor = PRIORITY_BAR[pri];
-              const isUrgent = issue.priority === 'urgent';
-              const isHigh = issue.priority === 'high';
-              return (
-                <NextActionCard
-                  key={issue.id}
-                  issue={issue}
-                  estateName={estateName}
-                  barColor={barColor}
-                  isUrgent={isUrgent}
-                  isHigh={isHigh}
-                  colors={colors}
-                  onPress={() =>
-                    router.push(
-                      `/(app)/estates/${issue.estateId}/events/${issue.id}` as never
-                    )
-                  }
-                />
-              );
-            })}
-          </View>
-        )}
-
-        {!hasAttentionItems && (
-          <View
-            style={[
-              styles.allClear,
-              { backgroundColor: colors.success + '10', borderColor: colors.success + '28' },
-            ]}
+        <View style={[styles.statBand, { borderColor: colors.border }]}>
+          <HostProLockTouchable
+            locked={false}
+            onPress={() => router.push('/(app)/estates' as never)}
+            style={styles.statCell}
           >
-            <IconSymbol name="checkmark.circle.fill" size={16} color={colors.success} />
-            <ThemedText style={[styles.allClearText, { color: colors.success }]}>
-              {t('ownerHome.allClear')}
+            <ThemedText type="statValue" style={styles.statValue}>
+              {estates.length}
             </ThemedText>
-          </View>
-        )}
-
-        {/* ── Overview strip ─────────────────────────────────────── */}
-        <SurfaceCard variant="elevated" style={styles.overviewCard}>
-          <View style={styles.overviewRow}>
-            <HostProLockTouchable
-              locked={false}
-              onPress={() => router.push('/(app)/estates' as never)}
-              style={styles.overviewStatWrap}
-            >
-              <View style={styles.overviewStatContent}>
-                <IconSymbol name="building.2.fill" size={15} color={colors.tint} />
-                <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
-                  {estates.length}
-                </ThemedText>
-                <ThemedText style={[styles.overviewLabel, { color: colors.textSecondary }]}>
-                  {t('ownerHome.properties')}
-                </ThemedText>
-              </View>
-            </HostProLockTouchable>
-
-            <View style={[styles.overviewDivider, { backgroundColor: colors.border }]} />
-
-            <HostProLockTouchable
-              locked={!canInvite}
-              feature="guests.invite"
-              onPress={() => router.push('/(app)/guests' as never)}
-              style={styles.overviewStatWrap}
-            >
-              <View style={styles.overviewStatContent}>
-                <IconSymbol name="person.2.fill" size={15} color={colors.tint} />
-                <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
-                  {guestsCount}
-                </ThemedText>
-                <ThemedText style={[styles.overviewLabel, { color: colors.textSecondary }]}>
-                  {t('ownerHome.guests')}
-                </ThemedText>
-              </View>
-            </HostProLockTouchable>
-
-            <View style={[styles.overviewDivider, { backgroundColor: colors.border }]} />
-
-            <HostProLockTouchable
-              locked={false}
-              showLock={!canApprove}
-              feature="stays.approve"
-              onPress={() => router.push('/(app)/calendar?segment=requests' as never)}
-              style={styles.overviewStatWrap}
-            >
-              <View style={styles.overviewStatContent}>
-                <IconSymbol name="tray.fill" size={15} color={colors.tint} />
-                <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
-                  {pendingCount}
-                </ThemedText>
-                <ThemedText style={[styles.overviewLabel, { color: colors.textSecondary }]}>
-                  {t('ownerHome.requests')}
-                </ThemedText>
-              </View>
-            </HostProLockTouchable>
-
-            <View style={[styles.overviewDivider, { backgroundColor: colors.border }]} />
-
-            <TouchableOpacity
-              onPress={() => router.push('/(app)/maintenance' as never)}
-              style={[styles.overviewStatWrap, styles.overviewStatContent]}
-              activeOpacity={0.75}
-            >
-              <IconSymbol name="exclamationmark.triangle.fill" size={15} color={colors.tint} />
-              <ThemedText type="statValue" style={[styles.overviewVal, { color: colors.tint }]}>
-                {openIssuesCount}
-              </ThemedText>
-              <ThemedText style={[styles.overviewLabel, { color: colors.textSecondary }]}>
-                {t('ownerHome.openIssues')}
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
-        </SurfaceCard>
-
-        {/* ── Quick Actions ──────────────────────────────────────── */}
-        <View style={styles.quickActionRow}>
-          <HostProLockTouchable
-            locked={false}
-            onPress={() => router.push('/(app)/stays/block' as never)}
-            style={styles.quickActionTouchable}
-          >
-            <View style={[styles.quickActionCard, { backgroundColor: colors.tint }]}>
-              <View style={[styles.quickActionIconWrap, { backgroundColor: colors.textOnBrand + '26' }]}>
-                <IconSymbol name="calendar.badge.plus" size={18} color={colors.textOnBrand} />
-              </View>
-              <ThemedText style={[styles.quickActionTitle, { color: colors.textOnBrand }]} numberOfLines={1}>
-                {t('ownerHome.blockDates')}
-              </ThemedText>
-              <ThemedText style={[styles.quickActionSub, { color: colors.textOnBrand }]} numberOfLines={2}>
-                {t('ownerHome.blockDatesSub')}
-              </ThemedText>
-            </View>
+            <ThemedText type="statLabel" style={[styles.statLabel, { color: colors.textSecondary }]}>
+              {t('ownerHome.properties')}
+            </ThemedText>
           </HostProLockTouchable>
-
+          <View style={[styles.statRule, { backgroundColor: colors.border }]} />
+          <HostProLockTouchable
+            locked={!canInvite}
+            feature="guests.invite"
+            onPress={() => router.push('/(app)/guests' as never)}
+            style={styles.statCell}
+          >
+            <ThemedText type="statValue" style={styles.statValue}>
+              {guestsCount}
+            </ThemedText>
+            <ThemedText type="statLabel" style={[styles.statLabel, { color: colors.textSecondary }]}>
+              {t('ownerHome.guests')}
+            </ThemedText>
+          </HostProLockTouchable>
+          <View style={[styles.statRule, { backgroundColor: colors.border }]} />
           <HostProLockTouchable
             locked={false}
-            showLock={!canWriteEvents}
-            feature="events.write"
-            onPress={() => router.push('/(app)/maintenance' as never)}
-            style={styles.quickActionTouchable}
+            showLock={!canApprove}
+            feature="stays.approve"
+            onPress={() => router.push('/(app)/calendar?segment=requests' as never)}
+            style={styles.statCell}
           >
-            <View style={[styles.quickActionCard, { backgroundColor: colors.tint }]}>
-              <View style={[styles.quickActionIconWrap, { backgroundColor: colors.textOnBrand + '26' }]}>
-                <IconSymbol name="wrench.fill" size={18} color={colors.textOnBrand} />
-              </View>
-              <ThemedText style={[styles.quickActionTitle, { color: colors.textOnBrand }]} numberOfLines={1}>
-                {t('maintenanceOverview.screenTitle')}
-              </ThemedText>
-              <ThemedText style={[styles.quickActionSub, { color: colors.textOnBrand }]} numberOfLines={2}>
-                {t('ownerHome.maintenanceQuickSub')}
-              </ThemedText>
-            </View>
+            <ThemedText type="statValue" style={styles.statValue}>
+              {pendingCount}
+            </ThemedText>
+            <ThemedText type="statLabel" style={[styles.statLabel, { color: colors.textSecondary }]}>
+              {t('ownerHome.requests')}
+            </ThemedText>
           </HostProLockTouchable>
         </View>
 
-        {/* ── Upcoming (unified) ─────────────────────────────────── */}
-        <SectionHeader
-          title={t('ownerHome.upcoming')}
-          actionLabel={t('ownerHome.seeAll')}
-          onAction={() => router.push('/(app)/calendar' as never)}
-        />
+        {extraIssues.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader title={t('ownerHome.needsAttention')} />
+            <GroupedList>
+              {extraIssues.map((issue, i) => (
+                <GroupedRow
+                  key={issue.id}
+                  icon="exclamationmark.triangle.fill"
+                  title={issue.title}
+                  subtitle={estateById[issue.estateId]?.name}
+                  onPress={() =>
+                    router.push(`/(app)/estates/${issue.estateId}/events/${issue.id}` as never)
+                  }
+                  isLast={i === extraIssues.length - 1}
+                />
+              ))}
+            </GroupedList>
+          </View>
+        ) : null}
 
-        {estates.length === 0 ? (
-          <EmptyState
-            icon="building.2.fill"
-            title={useCaseTip.tipTitle}
-            subtitle={useCaseTip.tipBody}
-            onAction={() => {
-              if (canAddEstate) {
-                router.push('/(app)/estates/new' as never);
-                return;
+        {conversionKind && conversionKind !== 'checklist' ? (
+          <View style={styles.section}>
+            <ConversionCard
+              kind={conversionKind}
+              inventory={inventory}
+              propertyName={pitchEstateName}
+              onChoosePlan={() => openUpgradePaywall('coverage_lapse', '/(app)/home')}
+              onDismiss={
+                conversionKind === 'invite_accepted' && currentUser
+                  ? () => {
+                      void markInviteConversionSeen(currentUser.id);
+                      setInviteSeen(true);
+                    }
+                  : undefined
               }
-              if (isCoOwnerElsewhere) {
-                openEstateCreatePaywall({ isCoOwnerElsewhere: true, returnTo: '/(app)/estates/new' });
-                return;
-              }
-              router.push('/(app)/estates/join' as never);
-            }}
-            actionLabel={
-              canAddEstate
-                ? t('estatesList.addEstate')
-                : isCoOwnerElsewhere
-                  ? t('access.upgradeCta', { defaultValue: 'Upgrade to Maison Pro' })
-                  : t('estatesList.enterCode')
-            }
-          />
-        ) : upcomingItems.length === 0 ? (
-          <EmptyState
-            icon="calendar"
-            title={t('ownerHome.noUpcomingTitle')}
-            actionLabel={t('ownerHome.browseCalendar')}
+            />
+          </View>
+        ) : conversionKind === 'checklist' && estates[0] ? (
+          <View style={styles.section}>
+            <SetupChecklist estateId={estates[0].id} quiet />
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <SectionHeader
+            title={t('ownerHome.upcoming')}
+            actionLabel={t('ownerHome.seeAll')}
             onAction={() => router.push('/(app)/calendar' as never)}
           />
-        ) : (
-          <View style={styles.upcomingList}>
-            {upcomingItems.map((item) => {
-              if (item.kind === 'stay') {
-                const isActive = item.isActive;
-                const relColor = isActive ? colors.success : colors.tint;
+
+          {estates.length === 0 ? (
+            <EmptyState
+              icon="building.2.fill"
+              title={useCaseTip.tipTitle}
+              subtitle={useCaseTip.tipBody}
+              onAction={() => {
+                if (canAddEstate) {
+                  router.push('/(app)/estates/new' as never);
+                  return;
+                }
+                if (isCoOwnerElsewhere) {
+                  openEstateCreatePaywall({ isCoOwnerElsewhere: true, returnTo: '/(app)/estates/new' });
+                  return;
+                }
+                router.push('/(app)/estates/join' as never);
+              }}
+              actionLabel={
+                canAddEstate
+                  ? t('estatesList.addEstate')
+                  : isCoOwnerElsewhere
+                    ? t('access.upgradeCta', { defaultValue: 'Upgrade to Maison Pro' })
+                    : t('estatesList.enterCode')
+              }
+            />
+          ) : upcomingRest.length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title={t('ownerHome.noUpcomingTitle')}
+              actionLabel={t('ownerHome.browseCalendar')}
+              onAction={() => router.push('/(app)/calendar' as never)}
+            />
+          ) : (
+            <GroupedList>
+              {upcomingRest.map((item, i) => {
+                const isLast = i === upcomingRest.length - 1;
+                if (item.kind === 'stay') {
+                  const isActive = item.isActive;
+                  const relColor = isActive ? colors.success : colors.tint;
+                  return (
+                    <GroupedRow
+                      key={item.stay.id}
+                      icon="person.fill"
+                      iconColor={item.dotColor}
+                      title={item.guestLabel}
+                      subtitle={`${item.estate?.name} · ${formatDateRange(item.stay.from, item.stay.to)}`}
+                      onPress={() => router.push('/(app)/calendar?segment=stays' as never)}
+                      isLast={isLast}
+                      trailing={
+                        <View style={[styles.relBadge, { backgroundColor: relColor + '18' }]}>
+                          <ThemedText style={[styles.relBadgeText, { color: relColor }]}>
+                            {item.relLabel}
+                          </ThemedText>
+                        </View>
+                      }
+                    />
+                  );
+                }
                 return (
-                  <HostProLockTouchable
-                    key={item.stay.id}
-                    locked={false}
-                    onPress={() => router.push('/(app)/calendar?segment=stays' as never)}
-                    style={styles.upcomingRowOuter}
-                  >
-                    <SurfaceCard
-                      variant="elevated"
-                      padded
-                      accentColor={item.dotColor}
-                      accentWidth={4}
-                      contentStyle={styles.upcomingRowInner}
-                    >
-                      <IconSymbol
-                        name="person.fill"
-                        size={14}
-                        color={colors.icon}
-                        style={styles.upcomingTypeIcon}
-                      />
-                      <View style={styles.upcomingInfo}>
-                        <ThemedText
-                          type="defaultSemiBold"
-                          style={styles.upcomingTitle}
-                          numberOfLines={1}
-                        >
-                          {item.guestLabel}
-                        </ThemedText>
-                        <ThemedText
-                          type="caption"
-                          style={{ color: colors.textSecondary }}
-                          numberOfLines={1}
-                        >
-                          {item.estate?.name} · {formatDateRange(item.stay.from, item.stay.to)}
-                        </ThemedText>
-                      </View>
-                      <View
-                        style={[styles.relBadge, { backgroundColor: relColor + '18' }]}
-                      >
-                        <ThemedText style={[styles.relBadgeText, { color: relColor }]}>
+                  <GroupedRow
+                    key={`${item.event.id}-${item.nextDate}`}
+                    icon="wrench.fill"
+                    iconColor={item.dotColor}
+                    title={item.event.title}
+                    subtitle={`${item.estate?.name ?? '—'} · ${formatDate(item.nextDate)} · ${item.typeLabel}`}
+                    onPress={() =>
+                      router.push(
+                        `/(app)/estates/${item.event.estateId}/events/${item.event.id}` as never
+                      )
+                    }
+                    isLast={isLast}
+                    trailing={
+                      <View style={[styles.relBadge, { backgroundColor: colors.tint + '18' }]}>
+                        <ThemedText style={[styles.relBadgeText, { color: colors.tint }]}>
                           {item.relLabel}
                         </ThemedText>
                       </View>
-                    </SurfaceCard>
-                  </HostProLockTouchable>
+                    }
+                  />
                 );
-              }
-
-              // maintenance
-              return (
-                <HostProLockTouchable
-                  key={`${item.event.id}-${item.nextDate}`}
-                  locked={false}
-                  onPress={() =>
-                    router.push(
-                      `/(app)/estates/${item.event.estateId}/events/${item.event.id}` as never
-                    )
-                  }
-                  style={styles.upcomingRowOuter}
-                >
-                  <SurfaceCard
-                    variant="elevated"
-                    padded
-                    accentColor={item.dotColor}
-                    accentWidth={4}
-                    contentStyle={styles.upcomingRowInner}
-                  >
-                    <IconSymbol
-                      name="wrench.fill"
-                      size={14}
-                      color={colors.icon}
-                      style={styles.upcomingTypeIcon}
-                    />
-                    <View style={styles.upcomingInfo}>
-                      <ThemedText
-                        type="defaultSemiBold"
-                        style={styles.upcomingTitle}
-                        numberOfLines={1}
-                      >
-                        {item.event.title}
-                      </ThemedText>
-                      <ThemedText
-                        type="caption"
-                        style={{ color: colors.textSecondary }}
-                        numberOfLines={1}
-                      >
-                        {item.estate?.name ?? '—'} · {formatDate(item.nextDate)} · {item.typeLabel}
-                      </ThemedText>
-                    </View>
-                    <View style={[styles.relBadge, { backgroundColor: colors.tint + '18' }]}>
-                      <ThemedText style={[styles.relBadgeText, { color: colors.tint }]}>
-                        {item.relLabel}
-                      </ThemedText>
-                    </View>
-                  </SurfaceCard>
-                </HostProLockTouchable>
-              );
-            })}
-          </View>
-        )}
+              })}
+            </GroupedList>
+          )}
+        </View>
       </ScreenScroll>
       )}
     </ScreenShell>
   );
 }
-
-// ── NextActionCard ─────────────────────────────────────────────────────────────
-
-interface NextActionCardProps {
-  issue: EstateEvent;
-  estateName: string;
-  barColor: string;
-  isUrgent: boolean;
-  isHigh: boolean;
-  colors: ThemeColors;
-  onPress: () => void;
-}
-
-function NextActionCard({
-  issue,
-  estateName,
-  barColor,
-  isUrgent,
-  isHigh,
-  colors,
-  onPress,
-}: NextActionCardProps) {
-  const { t } = useTranslation();
-  const bgTint = isUrgent
-    ? colors.error + '16'
-    : isHigh
-    ? colors.warning + '12'
-    : colors.surface;
-  const borderTint = isUrgent
-    ? colors.error + '40'
-    : isHigh
-    ? colors.warning + '38'
-    : colors.border;
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.72}
-      style={[
-        styles.nextActionCard,
-        {
-          backgroundColor: bgTint,
-          borderColor: borderTint,
-        },
-      ]}
-    >
-      <View style={[styles.nextActionBar, { backgroundColor: barColor }]} />
-      <View style={styles.nextActionBody}>
-        <View style={styles.nextActionTitleRow}>
-          <ThemedText type="defaultSemiBold" numberOfLines={1} style={[styles.nextActionTitle, { flex: 1 }]}>
-            {issue.title}
-          </ThemedText>
-          {isUrgent && (
-            <View style={[styles.urgentChip, { backgroundColor: colors.error + '20', borderColor: colors.error + '50' }]}>
-              <ThemedText style={[styles.urgentChipText, { color: colors.error }]}>
-                {t('ownerHome.urgentChip')}
-              </ThemedText>
-            </View>
-          )}
-        </View>
-        <ThemedText style={[styles.nextActionMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-          {estateName}
-          {issue.date ? ` · ${t('ownerHome.dueDate', { date: formatDate(issue.date) })}` : ''}
-        </ThemedText>
-      </View>
-      <View style={styles.nextActionRight}>
-        <StatusBadge status={issue.status ?? 'open'} />
-        <View style={[styles.openBtn, { borderColor: colors.border }]}>
-          <ThemedText style={[styles.openBtnText, { color: colors.tint }]}>{t('common.open')}</ThemedText>
-          <IconSymbol name="chevron.right" size={11} color={colors.tint} />
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// ── Styles ─────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   menuBtn: {
@@ -846,143 +687,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  greeting: { fontSize: 30, fontWeight: '700', letterSpacing: -0.8 },
-  sub: { marginTop: 4 },
+  headerStatus: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: Layout.touchMin,
+  },
+  scroll: { paddingTop: 12, paddingBottom: Layout.sectionGap + 24 },
 
-  // Hero / Needs Attention
-  attentionHeader: { marginTop: 6 },
-  heroList: { gap: 10, marginBottom: 14 },
-
-  nextActionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    minHeight: 70,
+  heroBlock: { gap: 16, marginTop: 4, marginBottom: 8 },
+  heroEyebrow: {
+    color: photoHeroOverlayText,
+    opacity: 0.85,
+    textAlign: 'center',
   },
-  nextActionBar: { width: 7, alignSelf: 'stretch' },
-  nextActionBody: { flex: 1, paddingVertical: 14, paddingHorizontal: 13, gap: 4 },
-  nextActionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nextActionTitle: { fontSize: 15 },
-  nextActionMeta: { fontSize: 12 },
-  nextActionRight: { alignItems: 'flex-end', gap: 7, paddingRight: 14, paddingLeft: 4 },
-  urgentChip: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  urgentChipText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6 },
-  openBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  openBtnText: { fontSize: 12, fontWeight: '600' },
-
-  // All clear
-  allClear: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: Layout.sectionGap,
-  },
-  allClearText: { fontSize: 13, fontWeight: '500' },
-
-  // Overview strip
-  overviewCard: { marginBottom: Layout.sectionGap },
-  overviewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-  },
-  /** Outer cell in overview row (HostProLockTouchable applies style to wrapper View). */
-  overviewStatWrap: { flex: 1 },
-  /** Shared column layout for icon + value + label (inside pressable). */
-  overviewStatContent: {
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 2,
-    width: '100%',
-  },
-  overviewDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 28,
-    marginHorizontal: 2,
-  },
-  overviewVal: { fontSize: 19, fontWeight: '700', lineHeight: 23 },
-  overviewLabel: {
-    fontSize: 9,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+  heroTitle: { color: photoHeroOverlayText, textAlign: 'center' },
+  heroSub: {
+    color: photoHeroOverlayText,
+    fontSize: 15,
+    opacity: 0.92,
     textAlign: 'center',
   },
 
-  // Quick actions — equal width/height tiles
-  quickActionRow: {
+  statBand: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 10,
-    marginBottom: Layout.sectionGap,
+    alignItems: 'center',
+    marginTop: 28,
+    marginBottom: 8,
+    paddingVertical: 22,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  quickActionTouchable: { flex: 1, alignSelf: 'stretch' },
-  quickActionCard: {
+  statCell: {
     flex: 1,
-    minHeight: 118,
-    borderRadius: Radius.lg,
-    paddingVertical: 13,
-    paddingHorizontal: 12,
-    gap: 6,
-    justifyContent: 'flex-start',
-  },
-  quickActionIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: Layout.touchMin,
+    gap: 6,
   },
-  quickActionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+  statRule: { width: StyleSheet.hairlineWidth, height: 36 },
+  statValue: {
+    fontSize: 32,
+    lineHeight: 36,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    textAlign: 'center',
   },
-  quickActionSub: {
-    fontSize: 11,
-    opacity: 0.68,
-    lineHeight: 16,
-    minHeight: 32,
-  },
+  statLabel: { textAlign: 'center' },
 
-  // Upcoming
-  upcomingList: { gap: 8, marginBottom: 8 },
-  upcomingRowOuter: { marginBottom: 0 },
-  upcomingRowInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-    paddingRight: 10,
-    gap: 10,
-  },
-  upcomingTypeIcon: { marginLeft: 2, opacity: 0.65 },
-  upcomingInfo: { flex: 1, gap: 2 },
-  upcomingTitle: { fontSize: 14 },
+  section: { marginTop: 28 },
 
   relBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: Radius.sm,
-    marginRight: 2,
   },
-  relBadgeText: { fontSize: 11, fontWeight: '600' },
+  relBadgeText: { fontSize: 12, fontWeight: '600' },
 });

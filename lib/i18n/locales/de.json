@@ -390,5 +390,28 @@
     "settings": "Einstellungen",
     "expand": "Ausklappen",
     "collapse": "Einklappen"
+  },
+  "calendarSettings": {
+    "title": "Kalender",
+    "destinations": "Kalender",
+    "master": "Aufenthalte und Termine in meinen Kalender legen",
+    "masterSub": "Bestätigte Aufenthalte und datierte Objekteinträge kommen in die Kalender, die du wählst.",
+    "apple": "Apple-Kalender",
+    "appleSub": "Die Kalender-App auf diesem iPhone",
+    "google": "Google Kalender",
+    "googleSub": "Das Google-Konto auf diesem Telefon",
+    "googleMissing": "Google Kalender ist noch nicht auf diesem Telefon. iPhone: Einstellungen → Kalender → Accounts → Account hinzufügen → Google. Android: Google-Konto in den Einstellungen hinzufügen.",
+    "appleMissing": "Apple-Kalender gibt es nur auf dem iPhone.",
+    "permissionDenied": "Kalenderzugriff ist aus. Erlaube ihn in den Systemeinstellungen, um Aufenthalte zu exportieren.",
+    "webOnly": "Kalenderexport funktioniert in der iPhone- und Android-App, nicht im Browser.",
+    "add": "Zum Kalender hinzufügen",
+    "update": "Im Kalender aktualisieren",
+    "added": "In deinen Kalender gelegt.",
+    "failed": "Konnte das nicht in den Kalender legen."
+  },
+  "calendarExport": {
+    "stayTitle": "{{guest}} in {{property}}",
+    "stayNotes": "Aufenthalt in {{property}}. Von Maison hinzugefügt.",
+    "eventNotes": "{{property}}. Von Maison hinzugefügt."
   }
 }

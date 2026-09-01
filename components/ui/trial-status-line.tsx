@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { useScreenTheme } from '@/components/ui/screen-layout';
+import { Layout } from '@/constants/theme';
 import { trialDaysRemaining } from '@/lib/access-tier-core';
 import { APP_TRIAL_DAYS } from '@/lib/subscription-config';
 import { useAuthStore } from '@/store/auth-store';
@@ -54,7 +55,7 @@ export function TrialStatusLine() {
 }
 
 const styles = StyleSheet.create({
-  row: { paddingVertical: 6 },
+  row: { paddingVertical: 2, minHeight: Layout.touchMin, justifyContent: 'center' },
   neutral: { fontSize: 13 },
   emph: { fontSize: 13, fontWeight: '700' },
 });

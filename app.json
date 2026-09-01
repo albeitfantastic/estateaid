@@ -14,7 +14,10 @@
       "associatedDomains": ["applinks:estateaid.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "LSApplicationQueriesSchemes": ["whatsapp", "tg", "sms"]
+        "LSApplicationQueriesSchemes": ["whatsapp", "tg", "sms"],
+        "NSCalendarsUsageDescription": "Maison adds stays and property events to your calendar.",
+        "NSCalendarsFullAccessUsageDescription": "Maison adds stays and property events to your calendar.",
+        "NSCalendarsWriteOnlyAccessUsageDescription": "Maison adds stays and property events to your calendar."
       }
     },
     "android": {
@@ -26,7 +29,9 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECEIVE_BOOT_COMPLETED"
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ],
       "queries": [
         { "scheme": "whatsapp" },
@@ -56,6 +61,12 @@
       "expo-router",
       "expo-notifications",
       "expo-document-picker",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Maison adds stays and property events to your calendar."
+        }
+      ],
       [
         "expo-splash-screen",
         {

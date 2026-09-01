@@ -1,59 +1,56 @@
 import type { BlurTint } from 'expo-blur';
 import type { ViewStyle } from 'react-native';
 
-/** Deep forest green — brand chrome, in-app filled buttons, icons (not captions). */
-export const BrandTint = '#1F4D3D' as const;
+/** Espresso ink — brand chrome, in-app filled buttons, icons (not captions). */
+export const BrandTint = '#2C2823' as const;
 
 /**
- * Warm terracotta — paywall / upgrade CTAs only. Darkened from #C4622D so
- * `textOnBrand` (#F8F6F2) meets WCAG AA on the fill (~4.6:1).
+ * Living terracotta — Home hero, hub primary action, selected segments, paywall.
+ * Darkened from #C4622D so `textOnBrand` meets WCAG AA (~4.6:1).
  */
 export const BrandAccent = '#B55220' as const;
 
 /**
- * WCAG AA (relative luminance, rounded):
- * - #1F4D3D on #F5F1E8 ≈ 8.5:1 — icons / 18pt+ labels, never small body text
- * - #1C1B18 on #F5F1E8 ≈ 15.3:1 — body
- * - #5C5852 on #F5F1E8 ≈ 6.3:1 — footnotes (`textSecondary`)
- * - #F8F6F2 on #B55220 ≈ 4.6:1 — paywall CTA (`#C4622D` failed AA at 3.8:1)
- * - #F8F6F2 on #1F4D3D ≈ 8.9:1 — in-app FilledButton (dark uses `primaryFill`, not sage)
- * - #7BA394 on #121A17 ≈ 6.3:1 — dark selected tab icons
+ * Editorial field: cool bone + ink (light), ink + cream (dark).
+ * Surfaces match the canvas — no “cards lighter than page” iOS-Settings mush.
  *
- * Surface strategy: iOS grouped-list — cards sit *lighter* than the canvas.
- * `surface` and `card` are the same elevated paper so GroupedList and SurfaceCard match.
+ * WCAG AA (relative luminance, rounded):
+ * - #141311 on #F2F1ED ≈ 16:1 — body
+ * - #5C5852 on #F2F1ED ≈ 6.2:1 — footnotes
+ * - #2C2823 on #F2F1ED ≈ 13:1 — icons / 18pt+
+ * - #F8F6F2 on #B55220 ≈ 4.6:1 — accent fills
+ * - #F8F6F2 on #2C2823 ≈ 13:1 — in-app FilledButton
+ * - #F5F1E8 on #141311 ≈ 15:1 — dark body
  */
 const light = {
-  background: '#F5F1E8',
-  surface: '#FBF8F2',
-  surfaceMuted: '#F0EBE0',
-  card: '#FBF8F2',
-  cardMuted: '#F0EBE0',
-  backgroundElevated: '#FBF8F2',
-  /** Icon wells — sage wash of primary, same hue */
-  tintMuted: '#E3EDE8',
-  primarySoft: '#E3EDE8',
-  /** Near-black charcoal, not true black */
-  text: '#1C1B18',
+  background: '#F2F1ED',
+  surface: '#F2F1ED',
+  surfaceMuted: '#E8E7E3',
+  card: '#F2F1ED',
+  cardMuted: '#E8E7E3',
+  backgroundElevated: '#F2F1ED',
+  tintMuted: '#E6E4DF',
+  primarySoft: '#E6E4DF',
+  text: '#141311',
   textSecondary: '#5C5852',
   textMuted: '#5C5852',
   textSoft: '#8A857C',
   textOnBrand: '#F8F6F2',
   tint: BrandTint,
   primary: BrandTint,
-  /** Solid fill for FilledButton — same as tint in light; never the dark sage icon color */
   primaryFill: BrandTint,
-  primaryHover: '#2A5C4A',
+  primaryHover: '#3F3932',
   accent: BrandAccent,
   accentSoft: '#E8D0C2',
-  brownMid: '#2A5C4A',
-  border: '#DDD4C6',
-  borderSoft: '#E8DFD2',
+  brownMid: '#3F3932',
+  border: '#D5D3CE',
+  borderSoft: '#E0DEDA',
   icon: BrandTint,
   iconMuted: '#7C776F',
   tabIconDefault: '#7C776F',
   tabIconSelected: BrandTint,
-  success: '#4A7A5C',
-  successSoft: '#E3EDE8',
+  success: '#5C6B4A',
+  successSoft: '#E4E6DC',
   error: '#B65C5C',
   danger: '#B65C5C',
   dangerSoft: '#F3DADA',
@@ -62,34 +59,34 @@ const light = {
 } as const;
 
 const dark = {
-  background: '#121A17',
-  surface: '#1C2622',
-  surfaceMuted: '#17201C',
-  card: '#1C2622',
-  cardMuted: '#24302B',
-  backgroundElevated: '#1C2622',
-  tintMuted: '#1A2E28',
-  primarySoft: '#1A2E28',
-  text: '#F2EEE8',
-  textSecondary: '#B8C4BE',
-  textMuted: '#B8C4BE',
-  textSoft: '#8A9A93',
+  background: '#141311',
+  surface: '#1C1B18',
+  surfaceMuted: '#181714',
+  card: '#1C1B18',
+  cardMuted: '#22211E',
+  backgroundElevated: '#1C1B18',
+  tintMuted: '#2A2723',
+  primarySoft: '#2A2723',
+  text: '#F5F1E8',
+  textSecondary: '#C4BFB6',
+  textMuted: '#C4BFB6',
+  textSoft: '#9A958C',
   textOnBrand: '#F8F6F2',
-  tint: '#7BA394',
-  primary: '#7BA394',
+  tint: '#C9C0B4',
+  primary: '#C9C0B4',
   primaryFill: BrandTint,
-  primaryHover: '#8FB5A6',
+  primaryHover: '#D6CEC2',
   accent: BrandAccent,
   accentSoft: '#3D2A20',
-  brownMid: '#8FB5A6',
-  border: '#2E3C36',
-  borderSoft: '#24302B',
-  icon: '#8FB5A6',
-  iconMuted: '#8A9A93',
-  tabIconDefault: '#8A9A93',
-  tabIconSelected: '#7BA394',
-  success: '#7BA394',
-  successSoft: '#1A2E28',
+  brownMid: '#C9C0B4',
+  border: '#2E2C28',
+  borderSoft: '#242220',
+  icon: '#C9C0B4',
+  iconMuted: '#9A958C',
+  tabIconDefault: '#9A958C',
+  tabIconSelected: '#C9C0B4',
+  success: '#A8B07A',
+  successSoft: '#2A2C24',
   error: '#D08383',
   danger: '#D08383',
   dangerSoft: '#3D2424',
@@ -101,15 +98,15 @@ export const Colors = { light, dark };
 
 /**
  * Calendar / occupancy — functional, not brand chrome.
- * Sage = available (same hue as primary). Terracotta = booked.
+ * Warm olive = available / my stay. Terracotta = booked.
  * Amber = pending. Muted red = issues only.
  */
 export const CalendarColors = {
   light: {
-    available: BrandTint,
-    availableFill: '#1F4D3D1F',
-    availableBorder: '#1F4D3D66',
-    myStay: BrandTint,
+    available: '#5C6B4A',
+    availableFill: '#5C6B4A24',
+    availableBorder: '#5C6B4A66',
+    myStay: '#5C6B4A',
     booked: BrandAccent,
     bookedFill: '#B5522038',
     bookedBorder: '#B5522088',
@@ -117,10 +114,10 @@ export const CalendarColors = {
     issue: '#B65C5C',
   },
   dark: {
-    available: '#7BA394',
-    availableFill: '#7BA39424',
-    availableBorder: '#7BA39466',
-    myStay: BrandTint,
+    available: '#A8B07A',
+    availableFill: '#A8B07A24',
+    availableBorder: '#A8B07A66',
+    myStay: '#A8B07A',
     booked: '#D47845',
     bookedFill: '#D4784538',
     bookedBorder: '#D4784588',
@@ -132,7 +129,7 @@ export const CalendarColors = {
 /** Horizontal padding for screen content (readable line length, touch margins) */
 export const Layout = {
   screenPaddingX: 24,
-  sectionGap: 20,
+  sectionGap: 28,
   touchMin: 44,
 } as const;
 
@@ -204,16 +201,16 @@ export function elevationStyle(
 /** Translucent glass surfaces — tab bars, sheets, Android tab fallback */
 export const Glass = {
   light: {
-    surface: 'rgba(251, 248, 242, 0.94)',
-    border: 'rgba(28, 27, 24, 0.09)',
-    shadow: 'rgba(28, 27, 24, 0.05)',
-    tabBar: 'rgba(251, 248, 242, 0.97)',
+    surface: 'rgba(242, 241, 237, 0.94)',
+    border: 'rgba(20, 19, 17, 0.08)',
+    shadow: 'rgba(20, 19, 17, 0.05)',
+    tabBar: 'rgba(242, 241, 237, 0.97)',
   },
   dark: {
-    surface: 'rgba(28, 38, 34, 0.92)',
-    border: 'rgba(242, 238, 232, 0.10)',
+    surface: 'rgba(28, 27, 24, 0.92)',
+    border: 'rgba(245, 241, 232, 0.10)',
     shadow: 'rgba(0, 0, 0, 0.4)',
-    tabBar: 'rgba(28, 38, 34, 0.96)',
+    tabBar: 'rgba(20, 19, 17, 0.96)',
   },
 };
 
@@ -228,12 +225,12 @@ export const TabBarBlur: Record<
   light: {
     tint: 'systemChromeMaterialLight',
     intensity: 82,
-    brandWash: 'rgba(31, 77, 61, 0.04)',
+    brandWash: 'rgba(181, 82, 32, 0.03)',
   },
   dark: {
     tint: 'systemChromeMaterialDark',
     intensity: 78,
-    brandWash: 'rgba(123, 163, 148, 0.05)',
+    brandWash: 'rgba(201, 192, 180, 0.05)',
   },
 };
 
@@ -254,15 +251,15 @@ export const Spacing = {
 } as const;
 
 /**
- * One radius scale. Cards (GroupedList, SurfaceCard, EstateCard) use `lg` (18).
- * `xxl` (28) remains for circular wells / large avatars, not cards.
+ * Cards and photo frames use `lg` (22). Buttons stay `md` (14).
+ * `xxl` (28) remains for circular wells / large avatars.
  */
 export const Radius = {
   xs: 8,
   sm: 10,
   md: 14,
-  lg: 18,
-  xl: 22,
+  lg: 22,
+  xl: 24,
   xxl: 28,
   full: 9999,
   pill: 9999,

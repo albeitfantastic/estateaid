@@ -9,7 +9,13 @@ import { Layout, Radius, type ThemeColors } from '@/constants/theme';
 import { LEGAL_ROUTES } from '@/lib/legal-routes';
 import { supportMailto } from '@/lib/support';
 
-export type SettingsDestination = 'profile' | 'language' | 'subscription' | 'account' | 'notifications';
+export type SettingsDestination =
+  | 'profile'
+  | 'language'
+  | 'subscription'
+  | 'account'
+  | 'notifications'
+  | 'calendar';
 
 export interface SettingsSheetProps {
   visible: boolean;
@@ -132,6 +138,7 @@ export function SettingsSheet({
           <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
             {menuRow('person.fill', 'Profile', () => go('profile'))}
             {menuRow('globe', 'Language', () => go('language'))}
+            {menuRow('calendar', t('calendarSettings.title'), () => go('calendar'))}
             {menuRow('creditcard.fill', 'Manage subscription', () => go('subscription'))}
             {menuRow(
               isDark ? 'moon.fill' : 'sun.max.fill',

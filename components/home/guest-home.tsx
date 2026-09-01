@@ -5,14 +5,12 @@ import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
+import { PhotoHero, photoHeroOverlayText } from '@/components/ui/photo-hero';
 import {
   FilledButton,
   OutlineButton,
   ScreenScroll,
-  SectionHeader,
-  useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { SurfaceCard } from '@/components/ui/surface-card';
 import { Layout } from '@/constants/theme';
 import { formatDateRange, today } from '@/lib/date-utils';
 import type { Estate, Stay } from '@/types';
@@ -26,7 +24,6 @@ type Props = {
 export function GuestHomeBody({ estates, stays, userId }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
-  const { colors } = useScreenTheme();
   const todayStr = today();
 
   const nextStay = useMemo(() => {
@@ -53,28 +50,31 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
   }
 
   return (
-    <ScreenScroll contentContainerStyle={styles.scroll}>
-      <SectionHeader title={t('guestHome.nextStay')} />
-      {nextStay && nextEstate ? (
-        <SurfaceCard variant="elevated" padded style={styles.stayCard}>
-          <ThemedText type="defaultSemiBold" style={styles.stayTitle}>
-            {nextEstate.name}
-          </ThemedText>
-          <ThemedText style={{ color: colors.textSecondary }}>
-            {formatDateRange(nextStay.from, nextStay.to)}
-          </ThemedText>
-        </SurfaceCard>
-      ) : (
-        <EmptyState
-          icon="calendar"
-          title={t('guestHome.noStayTitle')}
-          subtitle={t('guestHome.noStaySub')}
-        />
-      )}
-
+    <ScreenScroll gap={0} contentContainerStyle={styles.scroll}>
       {nextEstate ? (
-        <View style={styles.actions}>
+        <View style={styles.heroBlock}>
+          <PhotoHero
+            imageUrl={nextEstate.coverImageUrl}
+            height={280}
+            align="center"
+            onPress={() => router.push(`/(app)/estates/${nextEstate.id}` as never)}
+            accessibilityLabel={nextEstate.name}
+          >
+            <ThemedText type="overline" style={styles.heroEyebrow} numberOfLines={1}>
+              {nextStay ? t('guestHome.nextStay') : nextEstate.location}
+            </ThemedText>
+            <ThemedText type="display" style={styles.heroTitle} numberOfLines={2}>
+              {nextEstate.name}
+            </ThemedText>
+            <ThemedText style={styles.heroSub} numberOfLines={2}>
+              {nextStay
+                ? formatDateRange(nextStay.from, nextStay.to)
+                : t('guestHome.noStaySub')}
+            </ThemedText>
+          </PhotoHero>
           <FilledButton
+            tone="accent"
+            size="hero"
             label={t('guestLanding.requestDates')}
             onPress={() =>
               router.push(`/(app)/stays/plan?estateId=${nextEstate.id}` as never)
@@ -85,14 +85,30 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
             onPress={() => router.push(`/(app)/estates/${nextEstate.id}` as never)}
           />
         </View>
-      ) : null}
+      ) : (
+        <EmptyState
+          icon="calendar"
+          title={t('guestHome.noStayTitle')}
+          subtitle={t('guestHome.noStaySub')}
+        />
+      )}
     </ScreenScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: Layout.sectionGap + 12 },
-  stayCard: { marginBottom: Layout.sectionGap, gap: 4 },
-  stayTitle: { fontSize: 16 },
-  actions: { gap: 10, marginTop: 8 },
+  scroll: { paddingBottom: Layout.sectionGap + 24 },
+  heroBlock: { gap: 16 },
+  heroEyebrow: {
+    color: photoHeroOverlayText,
+    opacity: 0.85,
+    textAlign: 'center',
+  },
+  heroTitle: { color: photoHeroOverlayText, textAlign: 'center' },
+  heroSub: {
+    color: photoHeroOverlayText,
+    fontSize: 15,
+    opacity: 0.92,
+    textAlign: 'center',
+  },
 });

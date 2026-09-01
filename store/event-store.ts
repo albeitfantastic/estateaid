@@ -3,6 +3,7 @@ import { isIssueTask, messagesToDb, normalizeEventMessages } from '@/lib/issue-t
 import { getPushToken, sendPush } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { reportWriteFailure } from '@/lib/write-failure';
+import { exportEstateEvent, removeExportedEvent } from '@/lib/calendar-export';
 import i18n from 'i18next';
 import type {
     EstateEvent,
@@ -129,6 +130,7 @@ export const useEventStore = create<EventState>()(
           set((s) => ({ events: s.events.filter((e) => e.id !== event.id) }));
           return { error: error.message };
         }
+        exportEstateEvent(normalized);
         if (isIssueTask(normalized)) {
           const { hostUserIdsForEstate } = await import('@/lib/estate-host-ids');
           const { sendCategorizedPushToMany } = await import('@/lib/notifications');
@@ -176,8 +178,10 @@ export const useEventStore = create<EventState>()(
           if (error) {
             set({ events: previous });
             reportWriteFailure(error.message);
+            return;
           }
         }
+        if (ev) exportEstateEvent(ev);
       },
       deleteEvent: async (id) => {
         const previous = get().events;
@@ -186,7 +190,9 @@ export const useEventStore = create<EventState>()(
         if (error) {
           set({ events: previous });
           reportWriteFailure(error.message);
+          return;
         }
+        removeExportedEvent(id);
       },
       getEventsByEstate: (estateId) => get().events.filter((e) => e.estateId === estateId),
 
@@ -310,7 +316,10 @@ export const useEventStore = create<EventState>()(
         if (error) {
           set({ events: previous });
           reportWriteFailure(error.message);
+          return;
         }
+        const ev = get().events.find((x) => x.id === eventId);
+        if (ev) exportEstateEvent(ev);
       },
       updateIssueStatus: async (eventId, status) => {
         const updatedAt = new Date().toISOString();

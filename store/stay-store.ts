@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useEstateStore } from '@/store/estate-store';
 import { reportWriteFailure } from '@/lib/write-failure';
+import { exportStay, removeExportedStay } from '@/lib/calendar-export';
 import i18n from 'i18next';
 
 function requestFromDb(row: Record<string, unknown>): StayRequest {
@@ -229,7 +230,10 @@ export const useStayStore = create<StayState>()(
           supabase.from('stay_requests').update({ status: 'approved', owner_note: ownerNote ?? null, updated_at: updatedAt }).eq('id', requestId),
         ]).then(([insertRes, updateRes]) => {
           const error = insertRes.error ?? updateRes.error;
-          if (!error) return;
+          if (!error) {
+            exportStay(stay);
+            return;
+          }
           set({ stays: previousStays, stayRequests: previousRequests });
           reportWriteFailure(error.message);
         });
@@ -377,7 +381,10 @@ export const useStayStore = create<StayState>()(
           }).eq('id', requestId),
         ]).then(([insertRes, updateRes]) => {
           const error = insertRes.error ?? updateRes.error;
-          if (!error) return;
+          if (!error) {
+            exportStay(stay);
+            return;
+          }
           set({ stays: previousStays, stayRequests: previousRequests });
           reportWriteFailure(error.message);
         });
@@ -406,6 +413,7 @@ export const useStayStore = create<StayState>()(
           set((s) => ({ stays: s.stays.filter((st) => st.id !== stay.id) }));
           return { error: error.message };
         }
+        exportStay(stay);
         return { error: null };
       },
 
@@ -418,7 +426,12 @@ export const useStayStore = create<StayState>()(
           .from('stays')
           .update({ from, to })
           .eq('id', id)
-          .then(({ error }) => rollbackStays(set, previousStays, error));
+          .then(({ error }) => {
+            rollbackStays(set, previousStays, error);
+            if (error) return;
+            const stay = get().stays.find((st) => st.id === id);
+            if (stay) exportStay(stay);
+          });
       },
 
       deleteStay: (id) => {
@@ -428,7 +441,10 @@ export const useStayStore = create<StayState>()(
           .from('stays')
           .delete()
           .eq('id', id)
-          .then(({ error }) => rollbackStays(set, previousStays, error));
+          .then(({ error }) => {
+            rollbackStays(set, previousStays, error);
+            if (!error) removeExportedStay(id);
+          });
       },
 
       getRequestsByEstate: (estateId) =>

@@ -58,6 +58,8 @@ export const catalogPartB: Record<string, unknown> = {
     urgentChip: 'Urgent',
     dueDate: 'Due {{date}}',
     settingsMenu: 'Settings',
+    viewStay: 'View stay',
+    nextStay: 'Next stay',
   },
   guestStays: {
     title: 'Stays',

@@ -44,7 +44,9 @@ export function useScreenTheme() {
 }
 
 type ScreenShellProps = {
-  title: string | ReactNode;
+  title?: string | ReactNode;
+  /** Display type (36pt) — photo heroes only, not list screens. */
+  largeTitle?: boolean;
   onBack?: () => void;
   showBack?: boolean;
   headerRight?: ReactNode;
@@ -54,6 +56,7 @@ type ScreenShellProps = {
 
 export function ScreenShell({
   title,
+  largeTitle = false,
   onBack,
   showBack = true,
   headerRight,
@@ -77,21 +80,24 @@ export function ScreenShell({
           <TouchableOpacity
             onPress={handleBack}
             style={styles.back}
-            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={t('a11y.back')}
           >
             <IconSymbol name="arrow.left" size={22} color={colors.tint} />
           </TouchableOpacity>
-        ) : (
-          <View style={styles.backPlaceholder} />
-        )}
+        ) : null}
         {typeof title === 'string' ? (
-          <ThemedText type="title" style={styles.title} numberOfLines={1}>
+          <ThemedText
+            type={largeTitle ? 'display' : 'title'}
+            style={largeTitle ? styles.largeTitle : styles.title}
+            numberOfLines={largeTitle ? 2 : 1}
+          >
             {title}
           </ThemedText>
-        ) : (
+        ) : title ? (
           <View style={styles.titleNode}>{title}</View>
+        ) : (
+          <View style={styles.titleNode} />
         )}
         {headerRight ?? <View style={styles.headerRightPlaceholder} />}
       </View>
@@ -109,7 +115,7 @@ export function ScreenScroll({
   children,
   contentContainerStyle,
   bottomInset,
-  gap = 10,
+  gap = 20,
   keyboardShouldPersistTaps = 'handled',
   showsVerticalScrollIndicator = false,
   ...rest
@@ -186,13 +192,12 @@ type GroupedListProps = {
 };
 
 export function GroupedList({ children, style }: GroupedListProps) {
-  const { colors, cardShadow, borderHairline } = useScreenTheme();
+  const { colors, borderHairline } = useScreenTheme();
   return (
     <View
       style={[
         styles.groupCard,
         { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: borderHairline },
-        cardShadow,
         style,
       ]}
     >
@@ -261,6 +266,9 @@ export function GroupedRow({
         {children}
       </View>
       {trailing}
+      {onPress && !trailing ? (
+        <IconSymbol name="chevron.right" size={14} color={colors.textSecondary} />
+      ) : null}
     </>
   );
 
@@ -323,8 +331,10 @@ type FilledButtonProps = {
   disabled?: boolean;
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
-  /** `accent` is paywall / upgrade only — in-app commits stay `brand` (forest green). */
+  /** `accent` is the living terracotta — Home hero, hub primary, paywall. In-app commits stay `brand` (forest). */
   tone?: 'brand' | 'accent';
+  /** Home hero only — 52pt. Default stays 44pt. */
+  size?: 'default' | 'hero';
 };
 
 /** Primary CTA — same ~44pt target as OutlineButton (`Layout.touchMin`). */
@@ -336,13 +346,19 @@ export function FilledButton({
   loading,
   style,
   tone = 'brand',
+  size = 'default',
 }: FilledButtonProps) {
   const { colors } = useScreenTheme();
   const idle = !(disabled || loading);
   const fill = tone === 'accent' ? colors.accent : colors.primaryFill;
   return (
     <TouchableOpacity
-      style={[styles.filledBtn, { backgroundColor: fill, opacity: idle ? 1 : 0.45 }, style]}
+      style={[
+        styles.filledBtn,
+        size === 'hero' && styles.filledBtnHero,
+        { backgroundColor: fill, opacity: idle ? 1 : 0.45 },
+        style,
+      ]}
       onPress={onPress}
       activeOpacity={0.8}
       disabled={!idle}
@@ -455,23 +471,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: 16,
+    paddingBottom: 20,
     gap: 12,
   },
-  back: { padding: 4 },
-  backPlaceholder: { width: 30 },
-  title: { flex: 1, fontSize: 28, fontWeight: '700' },
+  back: {
+    minWidth: Layout.touchMin,
+    minHeight: Layout.touchMin,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -8,
+  },
+  title: { flex: 1, letterSpacing: -0.3, textAlign: 'left' },
+  largeTitle: { flex: 1, letterSpacing: -0.6, textAlign: 'left' },
   titleNode: { flex: 1 },
   headerRightPlaceholder: { width: 26 },
-  scroll: { paddingHorizontal: Layout.screenPaddingX },
-  footnote: { fontSize: 14, lineHeight: 20, marginBottom: 4 },
-  sectionLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.6, marginBottom: 6 },
+  scroll: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 4 },
+  footnote: { fontSize: 14, lineHeight: 22, marginBottom: 8 },
+  sectionLabel: { fontSize: 13, fontWeight: '500', letterSpacing: 1.4, marginBottom: 12 },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    marginBottom: 6,
+    marginBottom: 12,
   },
   sectionAction: { fontSize: 14, fontWeight: '600' },
   groupCard: {
@@ -482,8 +504,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     minHeight: Layout.touchMin,
   },
   rowIcon: {
@@ -516,6 +538,10 @@ const styles = StyleSheet.create({
     minHeight: Layout.touchMin,
     borderRadius: Radius.md,
     marginTop: 4,
+  },
+  filledBtnHero: {
+    minHeight: 52,
+    paddingVertical: 16,
   },
   filledBtnText: { fontSize: 15, fontWeight: '600' },
   sheet: { flex: 1 },

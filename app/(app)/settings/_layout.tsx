@@ -18,12 +18,13 @@ export default function SettingsLayout() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Settings' }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="subscription" options={{ headerShown: false }} />
       <Stack.Screen name="account" options={{ headerShown: false }} />
       <Stack.Screen name="language" options={{ headerShown: false }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />
+      <Stack.Screen name="calendar" options={{ headerShown: false }} />
       <Stack.Screen name="legal/terms" options={{ headerShown: false }} />
       <Stack.Screen name="legal/privacy" options={{ headerShown: false }} />
       <Stack.Screen name="legal/impressum" options={{ headerShown: false }} />

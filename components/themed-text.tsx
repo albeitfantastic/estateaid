@@ -9,6 +9,7 @@ export type ThemedTextProps = TextProps & {
   type?:
     | 'default'
     | 'title'
+    | 'display'
     | 'defaultSemiBold'
     | 'subtitle'
     | 'link'
@@ -43,6 +44,15 @@ export function ThemedText({
         type === 'title'
           ? { fontSize: ts.xxl, lineHeight: lh.xxl, fontFamily: tf.bold, fontWeight: '700' as const }
           : undefined,
+        type === 'display'
+          ? {
+              fontSize: ts.display,
+              lineHeight: lh.display,
+              fontFamily: tf.bold,
+              fontWeight: '700' as const,
+              letterSpacing: -0.8,
+            }
+          : undefined,
         type === 'defaultSemiBold'
           ? { fontSize: ts.md, lineHeight: lh.md, fontFamily: tf.semibold, fontWeight: '600' as const }
           : undefined,
@@ -64,19 +74,17 @@ export function ThemedText({
             }
           : undefined,
         type === 'caption'
-          ? { fontSize: ts.xs, lineHeight: lh.xs, fontFamily: tf.regular, fontWeight: '400' as const }
+          ? { fontSize: ts.sm, lineHeight: lh.sm, fontFamily: tf.regular, fontWeight: '400' as const }
           : undefined,
         type === 'statValue'
           ? { fontSize: ts.xl, lineHeight: lh.xl, fontFamily: tf.bold, fontWeight: '700' as const }
           : undefined,
         type === 'statLabel'
           ? {
-              fontSize: ts.xs,
-              lineHeight: lh.xs,
+              fontSize: ts.sm,
+              lineHeight: lh.sm,
               fontFamily: tf.medium,
               fontWeight: '500' as const,
-              letterSpacing: 0.6,
-              textTransform: 'uppercase' as const,
             }
           : undefined,
         type === 'label'
