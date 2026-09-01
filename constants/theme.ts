@@ -97,15 +97,12 @@ const dark = {
 export const Colors = { light, dark };
 
 /**
- * Calendar / occupancy — functional, not brand chrome.
- * Warm olive = available / my stay. Terracotta = booked.
- * Amber = pending. Muted red = issues only.
+ * Calendar occupancy only — open days stay ink on the canvas.
+ * Olive = my stay. Terracotta = closed / blocked. Guest fills = who is staying.
+ * Amber = pending. Muted red = issues on the day cell, not the legend.
  */
 export const CalendarColors = {
   light: {
-    available: '#5C6B4A',
-    availableFill: '#5C6B4A24',
-    availableBorder: '#5C6B4A66',
     myStay: '#5C6B4A',
     booked: BrandAccent,
     bookedFill: '#B5522038',
@@ -114,9 +111,6 @@ export const CalendarColors = {
     issue: '#B65C5C',
   },
   dark: {
-    available: '#A8B07A',
-    availableFill: '#A8B07A24',
-    availableBorder: '#A8B07A66',
     myStay: '#A8B07A',
     booked: '#D47845',
     bookedFill: '#D4784538',

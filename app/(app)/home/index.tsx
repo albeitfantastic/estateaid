@@ -7,12 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { SettingsSheet, type SettingsDestination } from '@/components/settings/settings-sheet';
 import { ConversionCard } from '@/components/home/conversion-card';
 import { GuestHomeBody } from '@/components/home/guest-home';
+import { StayHeroPager, type StayHeroPage } from '@/components/home/stay-hero-pager';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
 import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { OverAllocationChooser } from '@/components/ui/over-allocation-chooser';
-import { PhotoHero, photoHeroOverlayText } from '@/components/ui/photo-hero';
 import {
   FilledButton,
   GroupedList,
@@ -52,10 +52,12 @@ import { useDocumentStore } from '@/store/document-store';
 import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
-import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
+import { useGuestProfileStore } from '@/store/guest-profile-store';
+import { useProfileStore } from '@/store/profile-store';
 import { useEventStore } from '@/store/event-store';
 import { useStayStore } from '@/store/stay-store';
 import { isIssueOpenStatus, isIssueTask } from '@/lib/issue-task';
+import { resolveStayOccupantName, stayIsSelf } from '@/lib/stay-occupant';
 import type { Estate, EstateEvent, IssuePriority, Stay } from '@/types';
 
 const MAINTENANCE_HOME_HORIZON_DAYS = 120;
@@ -132,6 +134,7 @@ export default function HomeDashboard() {
   } = useAuthStore();
   const isDark = themePreference === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
+  const [stayHeroIndex, setStayHeroIndex] = useState(0);
 
   const allStayRequests = useStayStore((s) => s.stayRequests);
   const allStays = useStayStore((s) => s.stays);
@@ -139,6 +142,7 @@ export default function HomeDashboard() {
   const allInvitations = useInvitationStore((s) => s.invitations);
   const todayStr = today();
   const profileById = useProfileStore((s) => s.byId);
+  const guestProfiles = useGuestProfileStore((s) => s.profiles);
   const account = useAccountContext();
   const can = useCan();
   const { estates, estateIds, roleById } = useManagedEstates();
@@ -147,8 +151,8 @@ export default function HomeDashboard() {
   const allDocuments = useDocumentStore((s) => s.documents);
   const allContacts = useContactStore((s) => s.contacts);
 
-  const canInvite = estateIds.some((id) => can('guests.invite', id));
   const canApprove = estateIds.some((id) => can('stays.approve', id));
+  const canReadEvents = estateIds.some((id) => can('events.read', id));
   const canAddEstate = can('property.create');
   const isCoOwnerElsewhere = useMemo(
     () => Object.values(roleById).some((role) => role === 'owner'),
@@ -197,6 +201,15 @@ export default function HomeDashboard() {
     return ids.size;
   }, [allInvitations, estateIds]);
 
+  const tasksCount = useMemo(
+    () =>
+      allMaintenanceEvents.filter(
+        (ev) =>
+          estateIds.includes(ev.estateId) && isIssueTask(ev) && isIssueOpenStatus(ev.status)
+      ).length,
+    [allMaintenanceEvents, estateIds]
+  );
+
   // Hero: open issues sorted by urgency then due date, top 3
   const heroIssues = useMemo(() => {
     return allMaintenanceEvents
@@ -217,17 +230,21 @@ export default function HomeDashboard() {
   }, [allMaintenanceEvents, estateIds]);
 
   // Unified upcoming: merge stays + maintenance sorted by date
-  const upcomingItems = useMemo((): UpcomingItem[] => {
-    const horizon = addDays(todayStr, MAINTENANCE_HOME_HORIZON_DAYS);
-
-    const stayItems: UpcomingItem[] = allStays
+  const upcomingStayItems = useMemo((): Extract<UpcomingItem, { kind: 'stay' }>[] => {
+    return allStays
       .filter((s) => estateIds.includes(s.estateId) && s.to >= todayStr)
+      .sort((a, b) => {
+        const aActive = a.from <= todayStr && a.to >= todayStr;
+        const bActive = b.from <= todayStr && b.to >= todayStr;
+        if (aActive !== bActive) return aActive ? -1 : 1;
+        return a.from.localeCompare(b.from);
+      })
       .map((s) => {
         const estate = estateById[s.estateId];
-        const isOwnerStay = s.guestId === currentUser?.id;
+        const isOwnerStay = stayIsSelf(s, currentUser?.id);
         const guestLabel = isOwnerStay
           ? `${currentUser?.name?.split(' ')[0] ?? t('common.you')} ${t('ownerHome.youSuffix')}`
-          : resolveUserDisplayName(s.guestId, profileById);
+          : resolveStayOccupantName(s, { profilesById: profileById, guestProfiles });
         const dotColor = estateColorMap[s.estateId] ?? colors.tint;
         const relLabel = getStayRelativeLabel(s.from, s.to, todayStr);
         const isActive = s.from <= todayStr && s.to >= todayStr;
@@ -242,6 +259,23 @@ export default function HomeDashboard() {
           sortDate: s.from,
         };
       });
+  }, [
+    allStays,
+    estateIds,
+    estateById,
+    estateColorMap,
+    todayStr,
+    currentUser?.id,
+    currentUser?.name,
+    profileById,
+    guestProfiles,
+    colors.tint,
+    getStayRelativeLabel,
+    t,
+  ]);
+
+  const upcomingItems = useMemo((): UpcomingItem[] => {
+    const horizon = addDays(todayStr, MAINTENANCE_HOME_HORIZON_DAYS);
 
     const maintItems: UpcomingItem[] = [];
     for (const ev of allMaintenanceEvents.filter((e) => estateIds.includes(e.estateId) && !isIssueTask(e))) {
@@ -267,21 +301,17 @@ export default function HomeDashboard() {
       });
     }
 
-    return [...stayItems, ...maintItems]
+    return [...upcomingStayItems, ...maintItems]
       .sort((a, b) => a.sortDate.localeCompare(b.sortDate))
       .slice(0, UPCOMING_PREVIEW_LIMIT);
   }, [
-    allStays,
+    upcomingStayItems,
     allMaintenanceEvents,
     estateIds,
     estateById,
     estateColorMap,
     todayStr,
-    currentUser?.id,
-    currentUser?.name,
-    profileById,
     colors.tint,
-    getStayRelativeLabel,
     t,
   ]);
 
@@ -332,52 +362,71 @@ export default function HomeDashboard() {
     inventory,
   ]);
 
-  const dynamicSubtitle = useMemo(() => {
-    if (heroIssues.length > 0) {
-      const urgentCount = heroIssues.filter((ev) => ev.priority === 'urgent').length;
-      if (urgentCount > 0) return t('ownerHome.urgentIssues', { count: urgentCount });
-      return t('ownerHome.thingsNeedAttention', { count: heroIssues.length });
-    }
-    const arrivingToday = upcomingItems.find(
-      (i) => i.kind === 'stay' && i.stay.from === todayStr
-    );
-    if (arrivingToday) return t('ownerHome.guestArrivingToday');
-    return t('ownerHome.everythingLooksGood');
-  }, [heroIssues, upcomingItems, todayStr, t]);
+  const extraIssues = heroIssues;
 
-  const nextStayItem = useMemo(
-    () => upcomingItems.find((i): i is Extract<UpcomingItem, { kind: 'stay' }> => i.kind === 'stay'),
-    [upcomingItems]
-  );
-  const arrivingStay = useMemo(
-    () =>
-      upcomingItems.find(
-        (i): i is Extract<UpcomingItem, { kind: 'stay' }> =>
-          i.kind === 'stay' && (i.isActive || i.stay.from === todayStr)
-      ),
-    [upcomingItems, todayStr]
-  );
-  const featuredIssue = heroIssues[0];
-  const heroStay =
-    arrivingStay ??
-    (featuredIssue && (featuredIssue.priority === 'urgent' || featuredIssue.priority === 'high')
-      ? undefined
-      : nextStayItem);
-  const heroIssue = heroStay ? undefined : featuredIssue;
-  const heroEstate =
-    heroStay?.estate ?? (heroIssue ? estateById[heroIssue.estateId] : estates[0]);
-  const extraIssues = heroIssues.filter((ev) => ev.id !== heroIssue?.id);
+  const propertyHeroes = useMemo(() => {
+    const nextStayByEstate = new Map<string, Extract<UpcomingItem, { kind: 'stay' }>>();
+    for (const item of upcomingStayItems) {
+      if (!nextStayByEstate.has(item.stay.estateId)) {
+        nextStayByEstate.set(item.stay.estateId, item);
+      }
+    }
+    return [...estates]
+      .sort((a, b) => {
+        const sa = nextStayByEstate.get(a.id);
+        const sb = nextStayByEstate.get(b.id);
+        const aRank = sa?.isActive ? 0 : sa ? 1 : 2;
+        const bRank = sb?.isActive ? 0 : sb ? 1 : 2;
+        if (aRank !== bRank) return aRank - bRank;
+        if (sa && sb) return sa.sortDate.localeCompare(sb.sortDate);
+        return a.name.localeCompare(b.name);
+      })
+      .map((estate) => ({
+        estate,
+        nextStay: nextStayByEstate.get(estate.id),
+      }));
+  }, [estates, upcomingStayItems]);
+
+  const usePropertyPager = propertyHeroes.length > 0;
+  const visibleHero =
+    propertyHeroes[Math.min(stayHeroIndex, Math.max(propertyHeroes.length - 1, 0))];
+  const visibleStay = visibleHero?.nextStay;
+  const heroEstate = visibleHero?.estate ?? estates[0];
+  const pagedStayIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const h of propertyHeroes) {
+      if (h.nextStay) ids.add(h.nextStay.stay.id);
+    }
+    return ids;
+  }, [propertyHeroes]);
   const upcomingRest = upcomingItems.filter(
-    (item) => !(heroStay && item.kind === 'stay' && item.stay.id === heroStay.stay.id)
+    (item) => !(item.kind === 'stay' && pagedStayIds.has(item.stay.id))
   );
+
+  const stayHeroPages = useMemo((): StayHeroPage[] => {
+    return propertyHeroes.map((h) => {
+      const stay = h.nextStay;
+      return {
+        id: h.estate.id,
+        imageUrl: h.estate.coverImageUrl,
+        accessibilityLabel: h.estate.name,
+        eyebrow: stay ? t('ownerHome.nextStay') : h.estate.location,
+        title: stay ? stay.guestLabel : h.estate.name,
+        subtitle: stay
+          ? `${h.estate.name} · ${formatDateRange(stay.stay.from, stay.stay.to)}`
+          : t('ownerHome.noStayOnProperty'),
+        onPress: () => router.push(`/(app)/estates/${h.estate.id}` as never),
+      };
+    });
+  }, [propertyHeroes, router, t]);
 
   function onHeroPress() {
-    if (heroStay) {
-      router.push(`/(app)/stays/${heroStay.stay.id}` as never);
+    if (visibleStay) {
+      router.push(`/(app)/stays/${visibleStay.stay.id}` as never);
       return;
     }
-    if (heroIssue) {
-      router.push(`/(app)/estates/${heroIssue.estateId}/events/${heroIssue.id}` as never);
+    if (heroEstate) {
+      router.push(`/(app)/stays/block?estateId=${heroEstate.id}` as never);
       return;
     }
     router.push('/(app)/stays/block' as never);
@@ -450,47 +499,13 @@ export default function HomeDashboard() {
       >
         <OverAllocationChooser />
 
-        {heroEstate ? (
+        {usePropertyPager ? (
           <View style={styles.heroBlock}>
-            <PhotoHero
-              imageUrl={heroEstate.coverImageUrl}
-              height={280}
-              align="center"
-              onPress={onHeroPress}
-              accessibilityLabel={heroEstate.name}
-            >
-              <ThemedText type="overline" style={styles.heroEyebrow} numberOfLines={1}>
-                {heroStay
-                  ? t('ownerHome.nextStay')
-                  : heroIssue
-                    ? t('ownerHome.needsAttention')
-                    : heroEstate.location}
-              </ThemedText>
-              <ThemedText type="display" style={styles.heroTitle} numberOfLines={2}>
-                {heroStay ? heroStay.guestLabel : heroIssue ? heroIssue.title : heroEstate.name}
-              </ThemedText>
-              <ThemedText style={styles.heroSub} numberOfLines={2}>
-                {heroStay
-                  ? `${heroEstate.name} · ${formatDateRange(heroStay.stay.from, heroStay.stay.to)}`
-                  : heroIssue
-                    ? `${heroEstate.name}${
-                        heroIssue.date
-                          ? ` · ${t('ownerHome.dueDate', { date: formatDate(heroIssue.date) })}`
-                          : ''
-                      }`
-                    : dynamicSubtitle}
-              </ThemedText>
-            </PhotoHero>
+            <StayHeroPager pages={stayHeroPages} onIndexChange={setStayHeroIndex} />
             <FilledButton
               tone="accent"
               size="hero"
-              label={
-                heroStay
-                  ? t('ownerHome.viewStay')
-                  : heroIssue
-                    ? t('common.open')
-                    : t('ownerHome.blockDates')
-              }
+              label={visibleStay ? t('ownerHome.viewStay') : t('estateHub.addStay')}
               onPress={onHeroPress}
             />
           </View>
@@ -511,16 +526,16 @@ export default function HomeDashboard() {
           </HostProLockTouchable>
           <View style={[styles.statRule, { backgroundColor: colors.border }]} />
           <HostProLockTouchable
-            locked={!canInvite}
-            feature="guests.invite"
-            onPress={() => router.push('/(app)/guests' as never)}
+            locked={!canReadEvents}
+            feature="events.write"
+            onPress={() => router.push('/(app)/maintenance' as never)}
             style={styles.statCell}
           >
             <ThemedText type="statValue" style={styles.statValue}>
-              {guestsCount}
+              {tasksCount}
             </ThemedText>
             <ThemedText type="statLabel" style={[styles.statLabel, { color: colors.textSecondary }]}>
-              {t('ownerHome.guests')}
+              {t('ownerHome.tasks')}
             </ThemedText>
           </HostProLockTouchable>
           <View style={[styles.statRule, { backgroundColor: colors.border }]} />
@@ -615,12 +630,14 @@ export default function HomeDashboard() {
               }
             />
           ) : upcomingRest.length === 0 ? (
+            usePropertyPager ? null : (
             <EmptyState
               icon="calendar"
               title={t('ownerHome.noUpcomingTitle')}
               actionLabel={t('ownerHome.browseCalendar')}
               onAction={() => router.push('/(app)/calendar' as never)}
             />
+            )
           ) : (
             <GroupedList>
               {upcomingRest.map((item, i) => {
@@ -695,18 +712,6 @@ const styles = StyleSheet.create({
   scroll: { paddingTop: 12, paddingBottom: Layout.sectionGap + 24 },
 
   heroBlock: { gap: 16, marginTop: 4, marginBottom: 8 },
-  heroEyebrow: {
-    color: photoHeroOverlayText,
-    opacity: 0.85,
-    textAlign: 'center',
-  },
-  heroTitle: { color: photoHeroOverlayText, textAlign: 'center' },
-  heroSub: {
-    color: photoHeroOverlayText,
-    fontSize: 15,
-    opacity: 0.92,
-    textAlign: 'center',
-  },
 
   statBand: {
     flexDirection: 'row',

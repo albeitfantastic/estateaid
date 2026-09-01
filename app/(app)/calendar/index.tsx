@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -28,6 +28,7 @@ import { calendarBlockingRangesFromRules, isDateBlockedByRules } from '@/lib/ava
 import { finalizeCalendarAvailability } from '@/lib/calendar-availability-map';
 import { formatDate, formatDateRange, getDaysInRange, toISODate, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
+import { resolveStayOccupantColor, resolveStayOccupantName, stayIsSelf } from '@/lib/stay-occupant';
 import { isIssueTask } from '@/lib/issue-task';
 import { acceptedInvitedEstateIds } from '@/lib/accepted-invited-estates';
 import { useManagedEstates } from '@/lib/entitlements/capabilities';
@@ -35,7 +36,9 @@ import { useAuthStore } from '@/store/auth-store';
 import { useAvailabilityRuleStore } from '@/store/availability-rule-store';
 import { useEstateStore } from '@/store/estate-store';
 import { useEventStore } from '@/store/event-store';
+import { useGuestProfileStore } from '@/store/guest-profile-store';
 import { useInvitationStore } from '@/store/invitation-store';
+import { useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 
 type CalendarSegment = 'month' | 'stays' | 'requests';
@@ -63,7 +66,6 @@ function parseSegment(raw: string): CalendarSegment | null {
 export default function CalendarScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const navigation = useNavigation();
   const params = useLocalSearchParams<{
     segment?: string | string[];
     /** @deprecated Old Stays-tab query. Same three segments for every role; `view` is ignored. */
@@ -82,6 +84,8 @@ export default function CalendarScreen() {
   const allEvents = useEventStore((s) => s.events);
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
   const allInvitations = useInvitationStore((s) => s.invitations);
+  const guestProfiles = useGuestProfileStore((s) => s.profiles);
+  const profileById = useProfileStore((s) => s.byId);
 
   const { estates: managedEstates, isManaged } = useManagedEstates();
 
@@ -179,10 +183,15 @@ export default function CalendarScreen() {
 
   const dayInfoMap = useMemo(() => {
     const map: Record<string, DayInfo> = {};
-    estateStays.forEach(({ from, to }) => {
-      if (!from || !to) return;
-      getDaysInRange(from, to).forEach((dateStr) => {
-        map[dateStr] = { dateStr, availability: 'blocked' };
+    const hostView = isManaged(selectedEstateId);
+    estateStays.forEach((stay) => {
+      if (!stay.from || !stay.to) return;
+      const occupancyColor =
+        hostView && !stayIsSelf(stay, currentUser?.id)
+          ? resolveStayOccupantColor(stay, allInvitations, guestProfiles)
+          : undefined;
+      getDaysInRange(stay.from, stay.to).forEach((dateStr) => {
+        map[dateStr] = { dateStr, availability: 'blocked', occupancyColor };
       });
     });
     myStays.forEach(({ from, to }) => {
@@ -195,6 +204,7 @@ export default function CalendarScreen() {
       getDaysInRange(from, to).forEach((dateStr) => {
         const existing = map[dateStr];
         if (existing?.availability === 'my-stay') return;
+        if (existing?.availability === 'blocked' && existing.occupancyColor) return;
         map[dateStr] = { ...(existing ?? { dateStr }), dateStr, availability: 'blocked' };
       });
     });
@@ -230,19 +240,29 @@ export default function CalendarScreen() {
     viewMonth,
     colors.tint,
     cal.issue,
+    isManaged,
+    currentUser?.id,
+    allInvitations,
+    guestProfiles,
   ]);
 
   const selectedDayData = useMemo(() => {
     if (!selectedDay) return null;
-    const mine = myStays.find((s) => selectedDay >= s.from && selectedDay <= s.to);
+    const occupying = estateStays.filter(
+      (s) => s.from && s.to && selectedDay >= s.from && selectedDay <= s.to
+    );
+    const mine = occupying.find((s) => stayIsSelf(s, currentUser?.id));
+    if (isManaged(selectedEstateId) && occupying.length > 0) {
+      return { type: 'occupied' as const, stays: occupying };
+    }
     if (mine) return { type: 'my-stay' as const, stay: mine };
     const isBlocked =
-      estateStays.some((s) => s.from && s.to && selectedDay >= s.from && selectedDay <= s.to) ||
+      occupying.length > 0 ||
       isDateBlockedByRules(availabilityRules, selectedEstateId, selectedDay);
     if (isBlocked) return { type: 'blocked' as const };
     if (selectedDay < today()) return { type: 'unavailable' as const };
     return { type: 'available' as const };
-  }, [selectedDay, myStays, estateStays, availabilityRules, selectedEstateId]);
+  }, [selectedDay, estateStays, availabilityRules, selectedEstateId, currentUser?.id, isManaged]);
 
   const selectedDayEvents = useMemo(() => {
     if (!selectedDay) return [];
@@ -251,12 +271,39 @@ export default function CalendarScreen() {
     );
   }, [selectedDay, estateEvents]);
 
+  const legendGuests = useMemo(() => {
+    if (!isManaged(selectedEstateId)) return [];
+    const firstDay = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
+    const lastDay = toISODate(new Date(viewYear, viewMonth + 1, 0));
+    const byKey = new Map<string, { name: string; color: string }>();
+    for (const s of estateStays) {
+      if (stayIsSelf(s, currentUser?.id)) continue;
+      if (!s.from || !s.to || s.to < firstDay || s.from > lastDay) continue;
+      const key = s.guestProfileId ? `p:${s.guestProfileId}` : `u:${s.guestId ?? s.id}`;
+      if (byKey.has(key)) continue;
+      byKey.set(key, {
+        name: resolveStayOccupantName(s, { profilesById: profileById, guestProfiles }),
+        color: resolveStayOccupantColor(s, allInvitations, guestProfiles),
+      });
+    }
+    return [...byKey.entries()].map(([id, v]) => ({ id, name: v.name, color: v.color }));
+  }, [
+    estateStays,
+    viewYear,
+    viewMonth,
+    currentUser?.id,
+    profileById,
+    guestProfiles,
+    allInvitations,
+    selectedEstateId,
+    isManaged,
+  ]);
+
   const selectedEstate = myEstates.find((e) => e.id === selectedEstateId);
-  const canGoBack = navigation.canGoBack();
 
   if (myEstates.length === 0) {
     return (
-      <ScreenShell title={t('tabs.calendar')} showBack={canGoBack}>
+      <ScreenShell title={t('tabs.calendar')} showBack={false}>
         <BootstrapErrorBanner />
         <EmptyState
           icon="building.2.fill"
@@ -270,7 +317,7 @@ export default function CalendarScreen() {
   }
 
   return (
-    <ScreenShell title={t('tabs.calendar')} showBack={canGoBack}>
+    <ScreenShell title={t('tabs.calendar')} showBack={false}>
       <BootstrapErrorBanner />
       <SegmentedControl<CalendarSegment>
         segments={[
@@ -338,27 +385,50 @@ export default function CalendarScreen() {
             </TouchableOpacity>
           </View>
 
-          {selectedDay && selectedDayData && (
+          <View style={styles.calendarWrap}>
+            <MonthGrid
+              year={viewYear}
+              month={viewMonth}
+              dayInfoMap={dayInfoMap}
+              selectedDay={selectedDay ?? undefined}
+              onDayPress={(d) => setSelectedDay(d === selectedDay ? null : d)}
+            />
+          </View>
+
+          {selectedDay && selectedDayData && (() => {
+            const occupiedStays =
+              selectedDayData.type === 'occupied' ? selectedDayData.stays : [];
+            const occupiedAccent =
+              occupiedStays[0] == null
+                ? undefined
+                : stayIsSelf(occupiedStays[0], currentUser?.id)
+                  ? cal.myStay
+                  : resolveStayOccupantColor(occupiedStays[0], allInvitations, guestProfiles);
+            return (
             <View
               style={[
                 styles.infoCard,
                 {
                   backgroundColor:
-                    selectedDayData.type === 'my-stay'
-                      ? cal.availableFill
+                    selectedDayData.type === 'occupied' && occupiedAccent
+                      ? occupiedAccent + '18'
+                      : selectedDayData.type === 'my-stay'
+                      ? cal.myStay + '24'
                       : selectedDayData.type === 'blocked'
                         ? cal.bookedFill
                         : selectedDayData.type === 'unavailable'
-                          ? colors.textSecondary + '14'
-                          : cal.availableFill,
+                          ? colors.text + '08'
+                          : colors.background,
                   borderColor:
-                    selectedDayData.type === 'my-stay'
-                      ? cal.availableBorder
+                    selectedDayData.type === 'occupied' && occupiedAccent
+                      ? occupiedAccent + '55'
+                      : selectedDayData.type === 'my-stay'
+                      ? cal.myStay + '66'
                       : selectedDayData.type === 'blocked'
                         ? cal.bookedBorder
                         : selectedDayData.type === 'unavailable'
-                          ? colors.textSecondary + '40'
-                          : cal.availableBorder,
+                          ? colors.border
+                          : colors.border,
                 },
               ]}
             >
@@ -368,13 +438,15 @@ export default function CalendarScreen() {
                     styles.infoDot,
                     {
                       backgroundColor:
-                        selectedDayData.type === 'my-stay'
+                        selectedDayData.type === 'occupied' && occupiedAccent
+                          ? occupiedAccent
+                          : selectedDayData.type === 'my-stay'
                           ? cal.myStay
                           : selectedDayData.type === 'blocked'
                             ? cal.booked
                             : selectedDayData.type === 'unavailable'
-                              ? colors.textSecondary
-                              : cal.available,
+                              ? colors.textSoft
+                              : colors.text,
                     },
                   ]}
                 />
@@ -382,6 +454,30 @@ export default function CalendarScreen() {
                   <ThemedText type="defaultSemiBold" style={styles.infoDate}>
                     {formatDate(selectedDay)}
                   </ThemedText>
+                  {selectedDayData.type === 'occupied' &&
+                    occupiedStays.map((stay) => {
+                      const isSelf = stayIsSelf(stay, currentUser?.id);
+                      const color = isSelf
+                        ? cal.myStay
+                        : resolveStayOccupantColor(stay, allInvitations, guestProfiles);
+                      return (
+                        <View key={stay.id} style={styles.occupantRow}>
+                          <ThemedText style={[styles.infoMain, { color }]}>
+                            {isSelf
+                              ? t('guestCalendar.occupiedByYou')
+                              : t('guestCalendar.occupiedBy', {
+                                  name: resolveStayOccupantName(stay, {
+                                    profilesById: profileById,
+                                    guestProfiles,
+                                  }),
+                                })}
+                          </ThemedText>
+                          <ThemedText style={[styles.infoSub, { color: colors.icon }]}>
+                            {formatDateRange(stay.from, stay.to)}
+                          </ThemedText>
+                        </View>
+                      );
+                    })}
                   {selectedDayData.type === 'my-stay' && (
                     <>
                       <ThemedText style={[styles.infoMain, { color: cal.myStay }]}>
@@ -461,17 +557,8 @@ export default function CalendarScreen() {
                 <IconSymbol name="xmark" size={13} color={colors.icon} />
               </TouchableOpacity>
             </View>
-          )}
-
-          <View style={styles.calendarWrap}>
-            <MonthGrid
-              year={viewYear}
-              month={viewMonth}
-              dayInfoMap={dayInfoMap}
-              selectedDay={selectedDay ?? undefined}
-              onDayPress={(d) => setSelectedDay(d === selectedDay ? null : d)}
-            />
-          </View>
+            );
+          })()}
 
           <TouchableOpacity
             style={styles.legendToggle}
@@ -501,22 +588,30 @@ export default function CalendarScreen() {
                   {t('guestCalendar.legendYourStay')}
                 </ThemedText>
               </View>
+              {legendGuests.map((g) => (
+                <View key={g.id} style={styles.legendRow}>
+                  <View style={[styles.legendSwatch, { backgroundColor: g.color }]} />
+                  <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
+                    {g.name}
+                  </ThemedText>
+                </View>
+              ))}
               <View style={styles.legendRow}>
                 <View
                   style={[
                     styles.legendSwatch,
-                    { backgroundColor: cal.availableFill, borderWidth: 1, borderColor: cal.availableBorder },
+                    { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.text },
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendAvailableFuture')}
                 </ThemedText>
               </View>
-              <View style={styles.legendRow}>
+              <View style={[styles.legendRow, { opacity: 0.4 }]}>
                 <View
                   style={[
                     styles.legendSwatch,
-                    { backgroundColor: colors.textSecondary + '18', borderWidth: 1, borderColor: colors.textSecondary + '55' },
+                    { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.text },
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
@@ -531,12 +626,14 @@ export default function CalendarScreen() {
                   ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  {t('guestCalendar.legendUnavailableBooked')}
+                  {isManaged(selectedEstateId)
+                    ? t('guestCalendar.legendClosed')
+                    : t('guestCalendar.legendUnavailableBooked')}
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View
-                  style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 1.5 }]}
+                  style={[styles.legendSwatchRing, { borderColor: colors.text, borderWidth: 1.5 }]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendToday')}
@@ -544,22 +641,13 @@ export default function CalendarScreen() {
               </View>
               <View style={styles.legendRow}>
                 <View
-                  style={[styles.legendSwatchRing, { borderColor: colors.tint, borderWidth: 2.5 }]}
+                  style={[
+                    styles.legendSwatchRing,
+                    { borderColor: colors.text, borderWidth: 2, backgroundColor: colors.primarySoft },
+                  ]}
                 />
                 <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
                   {t('guestCalendar.legendSelectedDay')}
-                </ThemedText>
-              </View>
-              <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: colors.tint }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  {t('guestCalendar.legendPropertyEvent')}
-                </ThemedText>
-              </View>
-              <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: cal.issue }]} />
-                <ThemedText style={[styles.legendLabel, { color: colors.text }]}>
-                  {t('ticketsHub.legendIssueDue')}
                 </ThemedText>
               </View>
             </View>
@@ -568,46 +656,42 @@ export default function CalendarScreen() {
       )}
 
       {segment === 'stays' &&
-        (managedStays.length === 0 && myUpcomingStays.length === 0 ? (
+        (managesAny ? (
+          <ScreenScroll gap={16}>
+            <FilledButton
+              label={t('estateHub.addStay')}
+              icon="plus"
+              onPress={() => router.push(blockDatesHref as never)}
+            />
+            {managedStays.length === 0 ? (
+              <EmptyState
+                icon="calendar"
+                title={t('calendarTab.staysEmptyTitle')}
+                subtitle={t('calendarTab.staysEmptyHostSub')}
+              />
+            ) : (
+              <StaysList mode="managed" estateId={scopedEstateId} hideWhenEmpty />
+            )}
+          </ScreenScroll>
+        ) : myUpcomingStays.length === 0 ? (
           <EmptyState
             icon="calendar"
             title={t('calendarTab.staysEmptyTitle')}
-            subtitle={
-              managesAny ? t('calendarTab.staysEmptyHostSub') : t('calendarTab.staysEmptyGuestSub')
-            }
-            actionLabel={managesAny ? t('titles.blockDates') : t('titles.requestDates')}
-            onAction={() =>
-              router.push((managesAny ? blockDatesHref : requestDatesHref) as never)
+            subtitle={t('calendarTab.staysEmptyGuestSub')}
+            actionLabel={guestsAnywhere ? t('titles.requestDates') : undefined}
+            onAction={
+              guestsAnywhere ? () => router.push(requestDatesHref as never) : undefined
             }
           />
         ) : (
-          <ScreenScroll gap={0}>
-            {managesAny && (
-              <>
-                <SectionLabel>{t('calendarTab.staysManagedSection')}</SectionLabel>
-                <StaysList mode="managed" estateId={scopedEstateId} hideWhenEmpty />
-                <FilledButton
-                  label={t('titles.blockDates')}
-                  icon="plus"
-                  onPress={() => router.push(blockDatesHref as never)}
-                />
-              </>
-            )}
-
-            {(guestsAnywhere || myUpcomingStays.length > 0) && (
-              <>
-                <SectionLabel marginTop={managesAny ? 20 : 0}>
-                  {t('calendarTab.staysMineSection')}
-                </SectionLabel>
-                <StaysList mode="mine" estateId={scopedEstateId} hideWhenEmpty />
-                {guestsAnywhere && (
-                  <OutlineButton
-                    label={t('titles.requestDates')}
-                    icon="plus"
-                    onPress={() => router.push(requestDatesHref as never)}
-                  />
-                )}
-              </>
+          <ScreenScroll gap={16}>
+            <StaysList mode="mine" estateId={scopedEstateId} hideWhenEmpty />
+            {guestsAnywhere && (
+              <OutlineButton
+                label={t('titles.requestDates')}
+                icon="plus"
+                onPress={() => router.push(requestDatesHref as never)}
+              />
             )}
           </ScreenScroll>
         ))}
@@ -680,7 +764,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: 12,
-    marginBottom: 10,
+    marginTop: 4,
+    marginBottom: 12,
     gap: 8,
   },
   infoCardInner: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
@@ -689,13 +774,14 @@ const styles = StyleSheet.create({
   infoDate: { fontSize: 13 },
   infoMain: { fontSize: 13, fontWeight: '600' },
   infoSub: { fontSize: 12 },
+  occupantRow: { gap: 2 },
   infoDismiss: { padding: 4 },
   eventList: { gap: 4, marginTop: 4 },
   eventRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   eventDot: { width: 7, height: 7, borderRadius: 3.5 },
   eventTitle: { fontSize: 12, fontWeight: '500' },
 
-  calendarWrap: { paddingVertical: 8, marginBottom: 14 },
+  calendarWrap: { paddingVertical: 8, marginBottom: 4 },
 
   legendToggle: {
     flexDirection: 'row',
@@ -710,6 +796,5 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   legendSwatch: { width: 20, height: 20, borderRadius: 10 },
   legendSwatchRing: { width: 20, height: 20, borderRadius: 10 },
-  legendDot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 6 },
   legendLabel: { fontSize: 13 },
 });

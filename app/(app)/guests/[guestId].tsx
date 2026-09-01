@@ -15,7 +15,9 @@ import {
   SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
+import { CalendarColorHint, CalendarColorPicker } from '@/components/guests/calendar-color-picker';
 import { EstateColors } from '@/constants/theme';
+import { resolveGuestCalendarColor } from '@/lib/guest-calendar-color';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
@@ -27,7 +29,7 @@ export default function GuestDetail() {
   const router = useRouter();
   const { colors } = useScreenTheme();
   const can = useCan();
-  const { invitations, revokeInvitation, updateInvitationRole } = useInvitationStore();
+  const { invitations, revokeInvitation, updateInvitationRole, updateGuestCalendarColor } = useInvitationStore();
   const profileById = useProfileStore((s) => s.byId);
   const { estates, estateIds, roleById } = useManagedEstates();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -69,6 +71,12 @@ export default function GuestDetail() {
   const emailHint = guestInvitations.find((i) => i.guestEmail)?.guestEmail;
   const displayName = resolveUserDisplayName(guestId, profileById, emailHint);
   const initial = displayName.charAt(0).toUpperCase();
+  const guestColor = resolveGuestCalendarColor(guestId, invitations);
+  const sponsoredEstateIds = useMemo(
+    () => guestInvitations.filter((inv) => isSponsorOf(inv.estateId)).map((inv) => inv.estateId),
+    [guestInvitations, roleById]
+  );
+  const canSetCalendarColor = sponsoredEstateIds.length > 0;
 
   function confirmRevoke(invId: string, estateName: string) {
     Alert.alert(
@@ -137,8 +145,8 @@ export default function GuestDetail() {
       />
       <ScreenScroll gap={12}>
         <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={[styles.avatar, { backgroundColor: colors.tint + '20' }]}>
-            <ThemedText style={[styles.avatarText, { color: colors.tint }]}>{initial}</ThemedText>
+          <View style={[styles.avatar, { backgroundColor: guestColor + '20' }]}>
+            <ThemedText style={[styles.avatarText, { color: guestColor }]}>{initial}</ThemedText>
           </View>
           <View style={styles.profileInfo}>
             <ThemedText type="defaultSemiBold" style={styles.profileName}>{displayName}</ThemedText>
@@ -147,6 +155,20 @@ export default function GuestDetail() {
             )}
           </View>
         </View>
+
+        {canSetCalendarColor ? (
+          <View style={styles.colorBlock}>
+            <SectionLabel>{t('guestsList.calendarColor')}</SectionLabel>
+            <CalendarColorHint>{t('guestsList.calendarColorHint')}</CalendarColorHint>
+            <CalendarColorPicker
+              value={guestColor}
+              onChange={(color) => {
+                if (!guestId) return;
+                void updateGuestCalendarColor(guestId, color, sponsoredEstateIds);
+              }}
+            />
+          </View>
+        ) : null}
 
         <SectionLabel>Property Access</SectionLabel>
         {guestInvitations.length === 0 ? (
@@ -248,6 +270,7 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1, gap: 3 },
   profileName: { fontSize: 18 },
   profileEmail: { fontSize: 13 },
+  colorBlock: { gap: 10 },
   noAccess: { fontSize: 14, marginBottom: 8 },
   accessTrailing: { alignItems: 'flex-end', gap: 6 },
   roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },

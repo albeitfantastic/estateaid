@@ -60,9 +60,13 @@ export default function GuestEditStay() {
   const [from, setFrom] = useState<string | null>(req?.requestedFrom ?? null);
   const [to, setTo] = useState<string | null>(req?.requestedTo ?? null);
 
+  function goToCalendarStays() {
+    router.replace('/(app)/calendar?segment=stays' as never);
+  }
+
   if (!req) {
     return (
-      <ScreenShell title={t('titles.editStay')}>
+      <ScreenShell title={t('titles.editStay')} onBack={goToCalendarStays}>
         <View style={styles.center}>
           <ThemedText style={{ opacity: 0.5 }}>Request not found.</ThemedText>
         </View>
@@ -80,7 +84,7 @@ export default function GuestEditStay() {
     if (isPending) {
       updateRequest(stayRequest.id, from, to);
       Alert.alert('Request Updated', 'Your stay request has been updated and is pending approval.', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: goToCalendarStays },
       ]);
     } else {
       const { error } = await requestStay({
@@ -89,6 +93,7 @@ export default function GuestEditStay() {
         guestId: currentUser.id,
         requestedFrom: from,
         requestedTo: to,
+        guestCount: stayRequest.guestCount ?? 1,
         status: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -100,13 +105,13 @@ export default function GuestEditStay() {
       Alert.alert(
         'Request Sent',
         'A new request has been sent to the host. Your current confirmed stay remains active until the new request is approved.',
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{ text: 'OK', onPress: goToCalendarStays }]
       );
     }
   }
 
   return (
-    <ScreenShell title={t('titles.editStay')}>
+    <ScreenShell title={t('titles.editStay')} onBack={goToCalendarStays}>
       <ScreenScroll gap={24} contentContainerStyle={styles.scroll}>
         <View style={styles.section}>
           <SectionLabel>Property</SectionLabel>
@@ -166,7 +171,10 @@ export default function GuestEditStay() {
                 {
                   text: 'Cancel Request',
                   style: 'destructive',
-                  onPress: () => { cancelRequest(req.id); router.back(); },
+                  onPress: () => {
+                    cancelRequest(req.id);
+                    goToCalendarStays();
+                  },
                 },
               ])
             }

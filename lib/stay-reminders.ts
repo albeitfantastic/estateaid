@@ -29,7 +29,9 @@ export async function maybeSendStayTomorrowReminders(): Promise<void> {
       ? i18n.t('pushCopy.stayTomorrowBody', { name: estate.name })
       : i18n.t('pushCopy.stayTomorrowBodyGeneric');
     const data = { type: 'stay_reminder', estateId: stay.estateId };
-    void sendCategorizedPush('stay_reminders', stay.guestId, i18n.t('pushCopy.stayTomorrowTitle'), body, data);
+    if (stay.guestId) {
+      void sendCategorizedPush('stay_reminders', stay.guestId, i18n.t('pushCopy.stayTomorrowTitle'), body, data);
+    }
     void sendCategorizedPushToMany(
       'stay_reminders',
       hostUserIdsForEstate(stay.estateId).filter((id) => id !== stay.guestId),

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useScreenTheme } from '@/components/ui/screen-layout';
 import { useContactStore } from '@/store/contact-store';
-import { useDocumentStore } from '@/store/document-store';
+import { useEventStore } from '@/store/event-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useStayStore } from '@/store/stay-store';
 import { isBlockedStay, SETUP_STEPS, type SetupStepId } from '@/lib/setup-progress';
@@ -14,7 +14,7 @@ import { isBlockedStay, SETUP_STEPS, type SetupStepId } from '@/lib/setup-progre
 const LABEL_KEYS: Record<SetupStepId, string> = {
   block: 'setupChecklist.block',
   invite: 'setupChecklist.invite',
-  document: 'setupChecklist.document',
+  task: 'setupChecklist.task',
   contact: 'setupChecklist.contact',
 };
 
@@ -25,14 +25,14 @@ export function SetupChecklist({ estateId, quiet = false }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useScreenTheme();
-  const allDocuments = useDocumentStore((s) => s.documents);
+  const allEvents = useEventStore((s) => s.events);
   const allContacts = useContactStore((s) => s.contacts);
   const allInvitations = useInvitationStore((s) => s.invitations);
   const allStays = useStayStore((s) => s.stays);
 
-  const docs = useMemo(
-    () => allDocuments.filter((d) => d.estateId === estateId),
-    [allDocuments, estateId]
+  const tasks = useMemo(
+    () => allEvents.filter((e) => e.estateId === estateId),
+    [allEvents, estateId]
   );
   const contacts = useMemo(
     () => allContacts.filter((c) => c.estateId === estateId),
@@ -60,10 +60,10 @@ export function SetupChecklist({ estateId, quiet = false }: Props) {
     () => ({
       block: blocked.length > 0,
       invite: invites.length > 0,
-      document: docs.length > 0,
+      task: tasks.length > 0,
       contact: contacts.length > 0,
     }),
-    [blocked.length, invites.length, docs.length, contacts.length]
+    [blocked.length, invites.length, tasks.length, contacts.length]
   );
 
   const allDone = SETUP_STEPS.every((s) => done[s.id]);

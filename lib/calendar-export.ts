@@ -15,7 +15,9 @@ import {
   type DeviceCalendar,
   type NativeEventDraft,
 } from '@/lib/device-calendar';
-import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
+import { resolveStayOccupantName } from '@/lib/stay-occupant';
+import { useProfileStore } from '@/store/profile-store';
+import { useGuestProfileStore } from '@/store/guest-profile-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
 import type { EstateEvent, RecurrenceFrequency, Stay } from '@/types';
@@ -255,7 +257,10 @@ async function removeEntity(entityKey: string): Promise<void> {
 function stayDraft(stay: Stay): NativeEventDraft | null {
   if (!stay.from || !stay.to) return null;
   const estate = useEstateStore.getState().getEstateById(stay.estateId);
-  const guest = resolveUserDisplayName(stay.guestId, useProfileStore.getState().byId);
+  const guest = resolveStayOccupantName(stay, {
+    profilesById: useProfileStore.getState().byId,
+    guestProfiles: useGuestProfileStore.getState().profiles,
+  });
   const property = estate?.name ?? i18n.t('common.unknownEstate');
   return {
     title: i18n.t('calendarExport.stayTitle', { guest, property }),

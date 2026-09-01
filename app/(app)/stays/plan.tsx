@@ -12,6 +12,7 @@ import {
   SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
+import { GuestCountRow, MIN_GUEST_COUNT } from '@/components/stays/guest-count-row';
 import { EstateColors } from '@/constants/theme';
 import { acceptedInvitedEstateIds } from '@/lib/accepted-invited-estates';
 import { useAuthStore } from '@/store/auth-store';
@@ -63,6 +64,7 @@ export default function GuestPlanStay() {
   });
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
+  const [guestCount, setGuestCount] = useState(MIN_GUEST_COUNT);
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -113,6 +115,7 @@ export default function GuestPlanStay() {
       guestId: currentUser!.id,
       requestedFrom: from,
       requestedTo: to,
+      guestCount,
       status: 'pending',
       guestNote: note.trim() || undefined,
       createdAt: new Date().toISOString(),
@@ -196,6 +199,12 @@ export default function GuestPlanStay() {
                 <ThemedText style={[styles.warnText, { color: colors.warning }]}>{limitHint}</ThemedText>
               </View>
             )}
+          </View>
+        )}
+
+        {selectedEstateId && (
+          <View style={styles.section}>
+            <GuestCountRow value={guestCount} onChange={setGuestCount} />
           </View>
         )}
 

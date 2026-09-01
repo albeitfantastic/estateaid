@@ -10,6 +10,8 @@ export interface DayInfo {
   dateStr: string;
   dots?: DotData[];
   availability?: DayAvailability;
+  /** Host occupancy fill — guest calendar color when someone else is staying. */
+  occupancyColor?: string;
 }
 
 interface MonthGridProps {
@@ -49,7 +51,6 @@ export function MonthGrid({ year, month, dayInfoMap, onDayPress, selectedDay }: 
           const d = String(day).padStart(2, '0');
           const dateStr = `${year}-${m}-${d}`;
           const info = dayInfoMap[dateStr];
-          const isPast = dateStr < todayStr;
           const isToday = dateStr === todayStr;
 
           return (
@@ -57,9 +58,9 @@ export function MonthGrid({ year, month, dayInfoMap, onDayPress, selectedDay }: 
               key={dateStr}
               day={day}
               isToday={isToday}
-              isPast={isPast}
               dots={info?.dots}
               availability={info?.availability}
+              occupancyColor={info?.occupancyColor}
               selected={selectedDay === dateStr}
               onPress={onDayPress ? () => onDayPress(dateStr) : undefined}
             />

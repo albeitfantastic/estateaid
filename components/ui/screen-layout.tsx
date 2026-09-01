@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -12,6 +12,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -107,6 +108,7 @@ export function ScreenShell({
 }
 
 type ScreenScrollProps = ScrollViewProps & {
+  /** Extra space above the tab bar / home indicator. Default 32. */
   bottomInset?: number;
   gap?: number;
 };
@@ -121,13 +123,17 @@ export function ScreenScroll({
   ...rest
 }: ScreenScrollProps) {
   const insets = useSafeAreaInsets();
-  const padBottom = bottomInset ?? insets.bottom + 32;
+  const tabBarHeight = useContext(BottomTabBarHeightContext);
+  const extra = bottomInset ?? 32;
+  const chrome =
+    typeof tabBarHeight === 'number' && tabBarHeight > 0 ? tabBarHeight : insets.bottom;
+  const padBottom = chrome + extra;
 
   return (
     <ScrollView
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-      contentContainerStyle={[styles.scroll, { paddingBottom: padBottom, gap }, contentContainerStyle]}
+      contentContainerStyle={[styles.scroll, { gap }, contentContainerStyle, { paddingBottom: padBottom }]}
       {...rest}
     >
       {children}

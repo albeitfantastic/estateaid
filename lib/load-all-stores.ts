@@ -5,6 +5,7 @@ import { useEventStore } from '@/store/event-store';
 import { useExpenseStore } from '@/store/expense-store';
 import { useFaqStore } from '@/store/faq-store';
 import { useHandoverStore } from '@/store/handover-store';
+import { useGuestProfileStore } from '@/store/guest-profile-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
@@ -28,6 +29,7 @@ export async function loadAllStores(): Promise<void> {
       runNamed('estates', () => useEstateStore.getState().fetchFromSupabase()),
       runNamed('stays', () => useStayStore.getState().fetchFromSupabase()),
       runNamed('invitations', () => useInvitationStore.getState().fetchFromSupabase()),
+      runNamed('guestProfiles', () => useGuestProfileStore.getState().fetchFromSupabase()),
       runNamed('profiles', () => useProfileStore.getState().fetchFromSupabase()),
       runNamed('contacts', () => useContactStore.getState().fetchFromSupabase()),
       runNamed('documents', () => useDocumentStore.getState().fetchFromSupabase()),

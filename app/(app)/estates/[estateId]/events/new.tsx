@@ -14,7 +14,6 @@ import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
 import { EventType, IssuePriority } from '@/types';
 import { formatDate, today } from '@/lib/date-utils';
 import { generateId, generateUuidV4 } from '@/lib/id';
-import { MAINTENANCE_TEMPLATES } from '@/lib/onboarding-starters';
 import { usesDayOfMonth } from '@/lib/event-utils';
 import { RecurrenceFields, type RecurrenceFieldsValue } from '@/components/maintenance/recurrence-fields';
 import { useCan } from '@/lib/entitlements/capabilities';
@@ -185,20 +184,6 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
     reminderLeadDays: 7,
   });
 
-  function applyTemplate(id: string) {
-    const tpl = MAINTENANCE_TEMPLATES.find((x) => x.id === id);
-    if (!tpl) return;
-    setTitle(tpl.title);
-    setDescription(tpl.body);
-    setType('recurring');
-    setRecurrence((prev) => ({
-      ...prev,
-      frequency: tpl.recurrence,
-      dayOfMonth: new Date().getDate(),
-      reminderLeadDays: tpl.recurrence === 'yearly' || tpl.recurrence === 'semi_annual' ? 14 : 7,
-    }));
-  }
-
   async function save() {
     if (!title.trim()) {
       Alert.alert(t('maintenanceSchedule.missingTitle'), t('maintenanceSchedule.missingTitleBody'));
@@ -252,20 +237,6 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
   return (
     <ScreenShell title={t('titles.newEvent')}>
       <ScreenScroll contentContainerStyle={styles.form} gap={16}>
-        <SectionLabel>Templates</SectionLabel>
-        <View style={styles.issuePriRow}>
-          {MAINTENANCE_TEMPLATES.map((tpl) => (
-            <TouchableOpacity
-              key={tpl.id}
-              style={[styles.issuePriPill, { borderColor: colors.border }]}
-              onPress={() => applyTemplate(tpl.id)}
-              activeOpacity={0.75}
-            >
-              <ThemedText style={styles.issuePriText}>{tpl.title}</ThemedText>
-            </TouchableOpacity>
-          ))}
-        </View>
-
         <SectionLabel>Type</SectionLabel>
         <View style={styles.typePicker}>
           {(['recurring', 'task'] as EventType[]).map((kind) => (

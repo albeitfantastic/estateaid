@@ -15,9 +15,12 @@ import {
   SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
+import { GuestCountRow, MIN_GUEST_COUNT } from '@/components/stays/guest-count-row';
+import { AddOfflineGuest } from '@/components/guests/add-offline-guest';
 import { EstateColors } from '@/constants/theme';
 import { useManagedEstates } from '@/lib/entitlements/capabilities';
 import { useAuthStore } from '@/store/auth-store';
+import { useGuestProfileStore } from '@/store/guest-profile-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
@@ -38,14 +41,16 @@ function paramString(v: string | string[] | undefined): string {
 export default function BlockStay() {
   const { t } = useTranslation();
   const router = useRouter();
-  const params = useLocalSearchParams<{ estateId?: string | string[] }>();
+  const params = useLocalSearchParams<{ estateId?: string | string[]; guestProfileId?: string | string[] }>();
   const paramEstateId = paramString(params.estateId);
+  const paramGuestProfileId = paramString(params.guestProfileId);
   const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const profileById = useProfileStore((s) => s.byId);
   const { createDirectStay, getBlockedRanges, hasConflict } = useStayStore();
   const availabilityRules = useAvailabilityRuleStore((s) => s.rules);
   const { getInvitationsByEstate } = useInvitationStore();
+  const guestProfiles = useGuestProfileStore((s) => s.profiles);
 
   /** Invited hosts block dates too (spec §3), so resolve the set through the shared selector. */
   const { estates } = useManagedEstates();
@@ -54,9 +59,12 @@ export default function BlockStay() {
     if (paramEstateId && estates.some((e) => e.id === paramEstateId)) return paramEstateId;
     return estates.length === 1 ? estates[0].id : null;
   });
-  const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
+  const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>(() =>
+    paramGuestProfileId ? [`p:${paramGuestProfileId}`] : []
+  );
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
+  const [guestCount, setGuestCount] = useState(MIN_GUEST_COUNT);
 
   const blockedRanges = selectedEstateId ? getBlockedRanges(selectedEstateId) : [];
   const effMaxAdvance =
@@ -67,7 +75,11 @@ export default function BlockStay() {
 
   const guestOptions = useMemo(() => {
     const ownerEntry = currentUser
-      ? [{ id: currentUser.id, name: t('blockDates.youSuffix', { name: currentUser.name }), email: currentUser.email }]
+      ? [{
+          key: `u:${currentUser.id}`,
+          name: t('blockDates.youSuffix', { name: currentUser.name }),
+          subtitle: currentUser.email,
+        }]
       : [];
     if (!selectedEstateId) return ownerEntry;
     const accepted = getInvitationsByEstate(selectedEstateId).filter(
@@ -77,13 +89,20 @@ export default function BlockStay() {
     const guests = guestIds.map((id) => {
       const inv = accepted.find((i) => i.guestId === id);
       return {
-        id,
+        key: `u:${id}`,
         name: resolveUserDisplayName(id, profileById, inv?.guestEmail),
-        email: inv?.guestEmail ?? '',
+        subtitle: inv?.guestEmail ?? '',
       };
     });
-    return [...ownerEntry, ...guests];
-  }, [selectedEstateId, currentUser, getInvitationsByEstate, profileById, t]);
+    const offline = guestProfiles
+      .filter((p) => p.estateId === selectedEstateId)
+      .map((p) => ({
+        key: `p:${p.id}`,
+        name: p.name,
+        subtitle: t('blockDates.offlineBadge'),
+      }));
+    return [...ownerEntry, ...guests, ...offline];
+  }, [selectedEstateId, currentUser, getInvitationsByEstate, profileById, guestProfiles, t]);
 
   function pickEstate(id: string) {
     setSelectedEstateId(id);
@@ -93,9 +112,11 @@ export default function BlockStay() {
   }
 
   function toggleGuest(id: string) {
-    setSelectedGuestIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
+    setSelectedGuestIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id];
+      setGuestCount((n) => Math.max(n, next.length, MIN_GUEST_COUNT));
+      return next;
+    });
   }
 
   async function submit() {
@@ -116,14 +137,18 @@ export default function BlockStay() {
       return;
     }
 
-    for (const guestId of selectedGuestIds) {
+    for (const key of selectedGuestIds) {
+      const isProfile = key.startsWith('p:');
+      const id = key.slice(2);
       const { error } = await createDirectStay({
         id: generateUuidV4(),
         stayRequestId: '',
         estateId: selectedEstateId,
-        guestId,
+        guestId: isProfile ? undefined : id,
+        guestProfileId: isProfile ? id : undefined,
         from,
         to,
+        guestCount,
       });
       if (error) {
         Alert.alert(t('blockDates.saveFailed'), error);
@@ -148,7 +173,7 @@ export default function BlockStay() {
     !(selectedEstateId && from && to && hasConflict(selectedEstateId, from, to));
 
   return (
-    <ScreenShell title={t('titles.blockDates')}>
+    <ScreenShell title={t('estateHub.addStay')}>
       <ScreenScroll gap={24} contentContainerStyle={styles.scroll}>
         <View style={styles.section}>
           <SectionLabel>{t('blockDates.property')}</SectionLabel>
@@ -188,13 +213,13 @@ export default function BlockStay() {
             </SectionLabel>
             <GroupedList>
               {guestOptions.map((g, i) => {
-                const selected = selectedGuestIds.includes(g.id);
+                const selected = selectedGuestIds.includes(g.key);
                 return (
                   <GroupedRow
-                    key={g.id}
+                    key={g.key}
                     title={g.name}
-                    subtitle={g.email}
-                    onPress={() => toggleGuest(g.id)}
+                    subtitle={g.subtitle}
+                    onPress={() => toggleGuest(g.key)}
                     isLast={i === guestOptions.length - 1}
                     trailing={
                       <View style={[
@@ -211,6 +236,18 @@ export default function BlockStay() {
                 );
               })}
             </GroupedList>
+            <AddOfflineGuest
+              estateId={selectedEstateId}
+              onCreated={(profile) => {
+                setSelectedGuestIds((prev) => {
+                  const key = `p:${profile.id}`;
+                  if (prev.includes(key)) return prev;
+                  const next = [...prev, key];
+                  setGuestCount((n) => Math.max(n, next.length, MIN_GUEST_COUNT));
+                  return next;
+                });
+              }}
+            />
           </View>
         )}
 
@@ -231,6 +268,16 @@ export default function BlockStay() {
                 <ThemedText style={{ color: colors.icon }}>{t('common.nights', { count: nightCount(from, to) })}</ThemedText>
               </View>
             )}
+          </View>
+        )}
+
+        {selectedEstateId && (
+          <View style={styles.section}>
+            <GuestCountRow
+              value={guestCount}
+              onChange={setGuestCount}
+              hint={t('blockDates.guestCountHint')}
+            />
           </View>
         )}
 

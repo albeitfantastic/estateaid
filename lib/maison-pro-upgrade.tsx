@@ -48,7 +48,7 @@ const FEATURE_COPY: Record<UpgradeFeature, { title: string; body: string; source
   },
   'events.write': {
     title: 'Track maintenance',
-    body: 'Log issues and scheduled upkeep across your properties with Maison Pro.',
+    body: 'Log tasks and scheduled upkeep across your properties with Maison Pro.',
     source: 'events.write',
   },
   'availability.write': {

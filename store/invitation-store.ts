@@ -21,6 +21,7 @@ function fromDb(row: Record<string, unknown>): Invitation {
     role: normalizeInviteRole(row.role as string | undefined),
     status: row.status as InvitationStatus,
     message: row.message as string | undefined,
+    calendarColor: (row.calendar_color as string | undefined) || undefined,
     createdAt: (row.created_at ?? '') as string,
     respondedAt: row.responded_at as string | undefined,
   };
@@ -38,6 +39,7 @@ function toDb(inv: Invitation) {
     role: normalizeInviteRole(inv.role),
     status: inv.status,
     message: inv.message ?? null,
+    calendar_color: inv.calendarColor ?? null,
     created_at: inv.createdAt,
     responded_at: inv.respondedAt ?? null,
   };
@@ -52,6 +54,7 @@ interface InvitationState {
   revokeInvitation: (id: string) => void;
   deleteInvitation: (id: string) => Promise<{ error: string | null }>;
   updateInvitationRole: (id: string, role: EstateInviteRole) => Promise<{ error: string | null; code?: string | null }>;
+  updateGuestCalendarColor: (guestId: string, color: string, estateIds?: string[]) => Promise<{ error: string | null }>;
   redeemCode: (
     code: string,
     guestId: string
@@ -193,6 +196,35 @@ export const useInvitationStore = create<InvitationState>()(
           );
         }
         return { error: null, code: null };
+      },
+      updateGuestCalendarColor: async (guestId, color, estateIds) => {
+        const hex = color.trim();
+        if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+          return { error: 'Invalid color' };
+        }
+        const targets = get().invitations.filter(
+          (inv) =>
+            inv.guestId === guestId &&
+            inv.status === 'accepted' &&
+            (!estateIds || estateIds.length === 0 || estateIds.includes(inv.estateId))
+        );
+        if (targets.length === 0) return { error: null };
+        const ids = new Set(targets.map((inv) => inv.id));
+        const previous = get().invitations;
+        set((s) => ({
+          invitations: s.invitations.map((inv) =>
+            ids.has(inv.id) ? { ...inv, calendarColor: hex } : inv
+          ),
+        }));
+        const { error } = await supabase
+          .from('invitations')
+          .update({ calendar_color: hex })
+          .in('id', [...ids]);
+        if (error) {
+          set({ invitations: previous });
+          return { error: error.message };
+        }
+        return { error: null };
       },
       redeemCode: async (code, guestId) => {
         const norm = code.toUpperCase().trim();

@@ -3,6 +3,7 @@ import { Alert, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
+import { AddOfflineGuest } from '@/components/guests/add-offline-guest';
 import { ThemedText } from '@/components/themed-text';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -14,11 +15,13 @@ import {
   useScreenTheme,
 } from '@/components/ui/screen-layout';
 import { EstateColors } from '@/constants/theme';
+import { resolveGuestCalendarColor } from '@/lib/guest-calendar-color';
 import { useManagedEstates } from '@/lib/entitlements/capabilities';
 import { buildMessengerInviteShareMessage } from '@/lib/invite-messages';
 import { pendingInviteRecipient } from '@/lib/pending-invite-recipient';
 import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
+import { useGuestProfileStore } from '@/store/guest-profile-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { normalizeInviteRole, type Invitation } from '@/types';
 
@@ -41,6 +44,7 @@ export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestLi
   const allInvitations = useInvitationStore((s) => s.invitations);
   const revokeInvitation = useInvitationStore((s) => s.revokeInvitation);
   const deleteInvitation = useInvitationStore((s) => s.deleteInvitation);
+  const guestProfiles = useGuestProfileStore((s) => s.profiles);
   const allEstates = useEstateStore((s) => s.estates);
   const profileById = useProfileStore((s) => s.byId);
   const { estateIds, roleById } = useManagedEstates();
@@ -62,6 +66,12 @@ export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestLi
     () => scopedInvitations.filter((inv) => inv.status !== 'accepted' && inv.status !== 'pending'),
     [scopedInvitations]
   );
+  const offline = useMemo(() => {
+    const scope = new Set(estateId ? [estateId] : estateIds);
+    return guestProfiles
+      .filter((p) => scope.has(p.estateId))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [guestProfiles, estateId, estateIds]);
 
   /** Grouped by person for the cross-property view. */
   const acceptedByGuest = useMemo(() => {
@@ -163,15 +173,18 @@ export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestLi
     );
   }
 
-  if (accepted.length === 0 && pending.length === 0 && other.length === 0) {
+  if (accepted.length === 0 && pending.length === 0 && other.length === 0 && offline.length === 0) {
     return (
-      <EmptyState
-        icon="person.2.fill"
-        title={t('guestsList.emptyTitle')}
-        subtitle={estateId ? t('guestsList.emptySubProperty') : t('guestsList.emptySub')}
-        actionLabel={emptyActionLabel}
-        onAction={onEmptyAction}
-      />
+      <>
+        <EmptyState
+          icon="person.2.fill"
+          title={t('guestsList.emptyTitle')}
+          subtitle={estateId ? t('guestsList.emptySubProperty') : t('guestsList.emptySub')}
+          actionLabel={emptyActionLabel}
+          onAction={onEmptyAction}
+        />
+        {estateId != null ? <AddOfflineGuest estateId={estateId} /> : null}
+      </>
     );
   }
 
@@ -185,12 +198,13 @@ export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestLi
           <GroupedList>
             {acceptedByGuest.map(([guestId, invites], i) => {
               const emailHint = emailHintFor(guestId);
+              const guestColor = resolveGuestCalendarColor(guestId, allInvitations);
               return (
                 <GroupedRow
                   key={guestId}
                   icon="person.fill"
-                  iconColor={colors.tint}
-                  iconBackgroundColor={colors.tint + '20'}
+                  iconColor={guestColor}
+                  iconBackgroundColor={guestColor + '20'}
                   title={resolveUserDisplayName(guestId, profileById, emailHint)}
                   subtitle={
                     <>
@@ -220,12 +234,13 @@ export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestLi
           <GroupedList>
             {accepted.map((inv, i) => {
               const label = guestLabel(inv);
+              const guestColor = resolveGuestCalendarColor(inv.guestId, allInvitations, inv.estateId);
               return (
                 <GroupedRow
                   key={inv.id}
                   icon="person.fill"
-                  iconColor={colors.tint}
-                  iconBackgroundColor={colors.tint + '20'}
+                  iconColor={guestColor}
+                  iconBackgroundColor={guestColor + '20'}
                   title={label}
                   subtitle={
                     <View style={styles.accessPills}>
@@ -245,6 +260,11 @@ export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestLi
                       </TouchableOpacity>
                     ) : undefined
                   }
+                  onPress={
+                    inv.guestId
+                      ? () => router.push(`/(app)/guests/${inv.guestId}` as never)
+                      : undefined
+                  }
                   isLast={i === accepted.length - 1}
                 />
               );
@@ -253,9 +273,55 @@ export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestLi
         </>
       )}
 
+      {(offline.length > 0 || estateId != null) && (
+        <>
+          {offline.length > 0 ? (
+            <>
+              <SectionLabel
+                marginTop={
+                  (estateId == null && acceptedByGuest.length > 0) ||
+                  (estateId != null && accepted.length > 0)
+                    ? 16
+                    : 0
+                }
+              >
+                {t('guestsList.offlineCount', { count: offline.length })}
+              </SectionLabel>
+              <GroupedList>
+                {offline.map((p, i) => {
+                  const guestColor = p.calendarColor ?? resolveGuestCalendarColor(p.id, []);
+                  return (
+                    <GroupedRow
+                      key={p.id}
+                      icon="person.fill"
+                      iconColor={guestColor}
+                      iconBackgroundColor={guestColor + '20'}
+                      title={p.name}
+                      subtitle={
+                        estateId == null
+                          ? `${estateName(p.estateId)} · ${t('guestsList.offlineBadge')}`
+                          : t('guestsList.offlineBadge')
+                      }
+                      trailing={<IconSymbol name="chevron.right" size={16} color={colors.icon} />}
+                      onPress={() => router.push(`/(app)/guests/offline/${p.id}` as never)}
+                      isLast={i === offline.length - 1}
+                    />
+                  );
+                })}
+              </GroupedList>
+            </>
+          ) : null}
+          {estateId != null ? (
+            <View style={offline.length > 0 ? { marginTop: 8 } : undefined}>
+              <AddOfflineGuest estateId={estateId} />
+            </View>
+          ) : null}
+        </>
+      )}
+
       {pending.length > 0 && (
         <>
-          <SectionLabel marginTop={accepted.length > 0 ? 16 : 0}>
+          <SectionLabel marginTop={accepted.length > 0 || offline.length > 0 ? 16 : 0}>
             {t('guestsList.pendingCount', { count: pending.length })}
           </SectionLabel>
           <GroupedList>

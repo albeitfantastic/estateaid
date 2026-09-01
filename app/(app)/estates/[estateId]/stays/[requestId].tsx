@@ -149,6 +149,13 @@ export default function ReviewStayRequest() {
           )}
         </View>
 
+        <View style={[styles.section, { borderColor: colors.icon + '22' }]}>
+          <SectionLabel>{t('stayReview.guestCount')}</SectionLabel>
+          <ThemedText type="defaultSemiBold">
+            {t('stayReview.guestCountValue', { count: req.guestCount ?? 1 })}
+          </ThemedText>
+        </View>
+
         {req.guestNote && (
           <View style={[styles.section, { borderColor: colors.icon + '22' }]}>
             <SectionLabel>{t('stayReview.guestNote')}</SectionLabel>

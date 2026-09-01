@@ -10,9 +10,12 @@ import { GroupedList, GroupedRow, useScreenTheme } from '@/components/ui/screen-
 import { EstateColors } from '@/constants/theme';
 import { formatDateRange, today } from '@/lib/date-utils';
 import { useManagedEstates } from '@/lib/entitlements/capabilities';
+import { resolveStayOccupantColor, resolveStayOccupantName, stayIsSelf } from '@/lib/stay-occupant';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
-import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
+import { useInvitationStore } from '@/store/invitation-store';
+import { useGuestProfileStore } from '@/store/guest-profile-store';
+import { useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import type { Stay } from '@/types';
 
@@ -72,6 +75,8 @@ export function StaysList({
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);
   const profileById = useProfileStore((s) => s.byId);
+  const invitations = useInvitationStore((s) => s.invitations);
+  const guestProfiles = useGuestProfileStore((s) => s.profiles);
 
   const managed = useManagedStays(estateId);
   const mine = useMyStays(estateId);
@@ -123,17 +128,20 @@ export function StaysList({
           );
         }
 
-        const isSelf = stay.guestId === currentUser?.id;
+        const isSelf = stayIsSelf(stay, currentUser?.id);
+        const guestColor = isSelf
+          ? colors.tint
+          : resolveStayOccupantColor(stay, invitations, guestProfiles);
         const guestLabel = isSelf
           ? `${currentUser?.name?.split(' ')[0] ?? t('common.you')} ${t('ownerHome.youSuffix')}`
-          : resolveUserDisplayName(stay.guestId, profileById);
+          : resolveStayOccupantName(stay, { profilesById: profileById, guestProfiles });
 
         return (
           <GroupedRow
             key={stay.id}
             icon="person.fill"
-            iconColor={dotColor}
-            iconBackgroundColor={dotColor + '22'}
+            iconColor={guestColor}
+            iconBackgroundColor={guestColor + '22'}
             title={
               <View style={styles.rowTop}>
                 <ThemedText type="defaultSemiBold" style={styles.guestName}>

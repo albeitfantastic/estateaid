@@ -16,10 +16,12 @@ import {
 import { EstateColors } from '@/constants/theme';
 import { useAuthStore } from '@/store/auth-store';
 import { useEstateStore } from '@/store/estate-store';
-import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
+import { useGuestProfileStore } from '@/store/guest-profile-store';
+import { useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { useManagedEstates } from '@/lib/entitlements/capabilities';
+import { resolveStayOccupantName, stayIsSelf } from '@/lib/stay-occupant';
 
 export default function EditStay() {
   const { t } = useTranslation();
@@ -30,16 +32,17 @@ export default function EditStay() {
   const allEstates = useEstateStore((s) => s.estates);
   const { stays, updateStayDates, deleteStay } = useStayStore();
   const profileById = useProfileStore((s) => s.byId);
+  const guestProfiles = useGuestProfileStore((s) => s.profiles);
   const { estateIds: managedEstateIds } = useManagedEstates();
 
   const stay = stays.find((s) => s.id === stayId);
   const estate = allEstates.find((e) => e.id === stay?.estateId);
-  const isOwner = stay?.guestId === currentUser?.id;
-  const guestLabel = isOwner
-    ? `${currentUser?.name?.split(' ')[0] ?? 'You'} (you)`
-    : stay?.guestId
-      ? resolveUserDisplayName(stay.guestId, profileById)
-      : '';
+  const isOwner = stay ? stayIsSelf(stay, currentUser?.id) : false;
+  const guestLabel = stay
+    ? isOwner
+      ? `${currentUser?.name?.split(' ')[0] ?? 'You'} (you)`
+      : resolveStayOccupantName(stay, { profilesById: profileById, guestProfiles })
+    : '';
 
   const estateIndex = useMemo(
     () => managedEstateIds.indexOf(stay?.estateId ?? ''),
@@ -60,10 +63,14 @@ export default function EditStay() {
   const hasChanges = from !== stay?.from || to !== stay?.to;
   const canSave = !!from && !!to && hasChanges;
 
+  function goToCalendarStays() {
+    router.replace('/(app)/calendar?segment=stays' as never);
+  }
+
   function save() {
     if (!from || !to || !stayId) return;
     updateStayDates(stayId, from, to);
-    router.back();
+    goToCalendarStays();
   }
 
   function confirmDelete() {
@@ -75,7 +82,10 @@ export default function EditStay() {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => { deleteStay(stayId); router.back(); },
+          onPress: () => {
+            deleteStay(stayId);
+            goToCalendarStays();
+          },
         },
       ]
     );
@@ -83,7 +93,7 @@ export default function EditStay() {
 
   if (!stay) {
     return (
-      <ScreenShell title={t('titles.editStay')}>
+      <ScreenShell title={t('titles.editStay')} onBack={goToCalendarStays}>
         <ThemedText style={{ padding: 20, color: colors.icon }}>Stay not found.</ThemedText>
       </ScreenShell>
     );
@@ -92,6 +102,7 @@ export default function EditStay() {
   return (
     <ScreenShell
       title={t('titles.editStay')}
+      onBack={goToCalendarStays}
       headerRight={
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: colors.tint }, !canSave && styles.disabled]}
@@ -109,6 +120,9 @@ export default function EditStay() {
           <View style={styles.summaryInfo}>
             <ThemedText type="defaultSemiBold" style={styles.summaryEstate}>{estate?.name}</ThemedText>
             <ThemedText style={[styles.summaryGuest, { color: colors.icon }]}>{guestLabel}</ThemedText>
+            <ThemedText style={[styles.summaryGuest, { color: colors.icon }]}>
+              {t('stayReview.guestCountValue', { count: stay.guestCount ?? 1 })}
+            </ThemedText>
           </View>
           {stay.stayRequestId === '' ? (
             <View style={[styles.typeBadge, { backgroundColor: colors.tint + '15' }]}>

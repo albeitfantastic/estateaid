@@ -14,64 +14,64 @@ export type DayAvailability = 'available' | 'blocked' | 'my-stay' | 'unavailable
 interface DayCellProps {
   day: number;
   isToday: boolean;
-  isPast: boolean;
   dots?: DotData[];
   availability?: DayAvailability;
+  occupancyColor?: string;
   selected?: boolean;
   onPress?: () => void;
 }
 
-export function DayCell({ day, isToday, isPast, dots, availability, selected, onPress }: DayCellProps) {
+export function DayCell({
+  day,
+  isToday,
+  dots,
+  availability,
+  occupancyColor,
+  selected,
+  onPress,
+}: DayCellProps) {
   const t = useAppTheme();
   const colors = t.colors;
   const cal = CalendarColors[t.scheme === 'dark' ? 'dark' : 'light'];
 
   const blocked = availability === 'blocked';
+  const occupiedTint = blocked && !!occupancyColor;
   const myStay = availability === 'my-stay';
-  const open = availability === 'available';
   const unavailable = availability === 'unavailable';
-  const ownerMode = availability === undefined;
+  const filled = myStay || occupiedTint || (blocked && !occupiedTint);
+  const faded = unavailable && !selected;
 
   const todayRing =
-    ownerMode && isToday && !selected && !myStay && !blocked && !unavailable
-      ? {
-          borderWidth: 2,
-          borderColor: colors.primary,
-          backgroundColor: colors.primarySoft,
-        }
+    isToday && !selected && !filled
+      ? { borderWidth: 1.5, borderColor: colors.text }
       : null;
 
-  /** Guest + owner: show tap selection except on blocked / owner-stay cells */
-  const selectedRing =
-    selected && !myStay && !blocked
-      ? {
-          borderWidth: 2,
-          borderColor: colors.primary,
-          backgroundColor: colors.primarySoft,
-        }
-      : null;
+  const selectedRing = selected
+    ? {
+        borderWidth: 2,
+        borderColor: colors.text,
+        ...(!filled ? { backgroundColor: colors.primarySoft } : null),
+      }
+    : null;
 
   return (
-    <TouchableOpacity style={styles.cell} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
+    <TouchableOpacity
+      style={[styles.cell, faded && styles.faded]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
       <View
         style={[
           styles.circle,
-          open && {
-            backgroundColor: cal.availableFill,
-            borderWidth: 1,
-            borderColor: cal.availableBorder,
-          },
-          unavailable && {
-            backgroundColor: colors.textSecondary + '18',
-            borderWidth: 1,
-            borderColor: colors.textSecondary + '55',
-          },
           myStay && { backgroundColor: cal.myStay },
-          blocked && {
-            backgroundColor: cal.bookedFill,
-            borderWidth: 1,
-            borderColor: cal.bookedBorder,
-          },
+          occupiedTint && { backgroundColor: occupancyColor, borderWidth: 0 },
+          blocked &&
+            !occupiedTint && {
+              backgroundColor: cal.bookedFill,
+              borderWidth: 1,
+              borderColor: cal.bookedBorder,
+            },
           todayRing,
           selectedRing,
         ]}
@@ -79,14 +79,11 @@ export function DayCell({ day, isToday, isPast, dots, availability, selected, on
         <ThemedText
           style={[
             styles.dayText,
-            ownerMode && isPast && !selected && styles.past,
-            ownerMode && isToday && !selected && { color: colors.primary, fontWeight: '700' as const },
-            ownerMode && selected && { color: colors.primary, fontWeight: '700' as const },
-            !ownerMode && selected && !myStay && !blocked && { color: colors.primary, fontWeight: '700' as const },
-            open && !isToday && { color: cal.available, fontWeight: '600' as const },
-            unavailable && { color: colors.textSecondary, fontWeight: '600' as const },
-            myStay && { color: colors.textOnBrand, fontWeight: '700' as const },
-            blocked && { color: cal.booked, fontWeight: '600' as const },
+            { color: colors.text },
+            filled && { color: colors.textOnBrand, fontWeight: '700' as const },
+            blocked && !occupiedTint && { color: cal.booked, fontWeight: '600' as const },
+            isToday && !filled && { fontWeight: '700' as const },
+            selected && !filled && { fontWeight: '700' as const },
           ]}
         >
           {day}
@@ -111,6 +108,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     justifyContent: 'flex-start',
   },
+  faded: { opacity: 0.28 },
   circle: {
     width: 38,
     height: 38,
@@ -123,7 +121,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Manrope_600SemiBold',
   },
-  past: { opacity: 0.4 },
   dotsRow: {
     flexDirection: 'row',
     gap: 3,

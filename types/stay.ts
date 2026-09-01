@@ -12,6 +12,8 @@ export interface StayRequest {
   guestId: string;
   requestedFrom: string; // "YYYY-MM-DD"
   requestedTo: string;   // "YYYY-MM-DD"
+  /** Total people visiting, including the requester. */
+  guestCount: number;
   status: StayStatus;
   guestNote?: string;
   ownerNote?: string;
@@ -25,7 +27,12 @@ export interface Stay {
   id: string;
   stayRequestId: string;
   estateId: string;
-  guestId: string;
+  /** Auth user when the guest has an account. */
+  guestId?: string;
+  /** Named guest without the app. Mutually exclusive with guestId. */
+  guestProfileId?: string;
   from: string; // "YYYY-MM-DD"
   to: string;   // "YYYY-MM-DD"
+  /** Total people visiting, including the named guest. */
+  guestCount: number;
 }

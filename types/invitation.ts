@@ -20,6 +20,8 @@ export interface Invitation {
   role?: EstateInviteRole;
   status: InvitationStatus;
   message?: string;
+  /** Hex color (#RRGGBB) for this guest on calendars. Sponsor-assigned. */
+  calendarColor?: string;
   createdAt: string;
   respondedAt?: string;
 }

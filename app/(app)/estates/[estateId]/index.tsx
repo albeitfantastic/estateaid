@@ -13,12 +13,11 @@ import {
   GroupedRow,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { Layout, Radius } from '@/constants/theme';
 import { useCan, type Capability } from '@/lib/entitlements/capabilities';
 import type { UpgradeFeature } from '@/lib/maison-pro-upgrade';
 import { addDays, today } from '@/lib/date-utils';
 import { getEstateActorRole } from '@/lib/estate-role';
-import { nextSetupStep, SETUP_STEPS } from '@/lib/setup-progress';
 import { useAuthStore } from '@/store/auth-store';
 import { useContactStore } from '@/store/contact-store';
 import { useDocumentStore } from '@/store/document-store';
@@ -127,7 +126,6 @@ export default function EstateHub() {
 
   const isHost = actorRole === 'sponsor' || actorRole === 'owner';
   const showGuestLanding = !isHost && landing === '1';
-  const nextStep = estateId ? nextSetupStep(estateId) : null;
 
   const inviterName = useMemo(() => {
     if (!currentUser) return '';
@@ -216,7 +214,7 @@ export default function EstateHub() {
           property: estate.name,
         })}
       >
-        <ScreenScroll contentContainerStyle={styles.grid} bottomInset={Spacing.xl} gap={12}>
+        <ScreenScroll contentContainerStyle={styles.grid} gap={12}>
           <FilledButton
             label={t('guestLanding.requestDates')}
             onPress={() => router.push(`/(app)/stays/plan?estateId=${estateId}` as never)}
@@ -232,17 +230,6 @@ export default function EstateHub() {
 
   if (isHost) {
     const canEdit = can('property.edit', estateCtx);
-    const nextDef = nextStep ? SETUP_STEPS.find((s) => s.id === nextStep) : null;
-    const primaryHref = nextDef
-      ? nextDef.route(estateId as string)
-      : `/(app)/stays/block?estateId=${estateId}`;
-    const primaryLabel = nextStep
-      ? t(`setupChecklist.${nextStep}`)
-      : t('ownerHome.blockDates');
-    const secondaryHref = nextStep
-      ? `/(app)/calendar?estateId=${estateId}`
-      : `/(app)/estates/${estateId}/guests/invite`;
-    const secondaryLabel = nextStep ? t('tabs.calendar') : t('ownerHome.inviteUser');
     return (
       <ScreenShell
         headerRight={
@@ -259,7 +246,7 @@ export default function EstateHub() {
           </HostProLockTouchable>
         }
       >
-        <ScreenScroll contentContainerStyle={styles.grid} bottomInset={Spacing.xl}>
+        <ScreenScroll contentContainerStyle={styles.grid}>
           <HubCover name={estate.name} location={estate.location} imageUrl={estate.coverImageUrl} />
           <SponsorCoverageBanner estateId={estateId as string} />
           {estate.description ? (
@@ -269,12 +256,16 @@ export default function EstateHub() {
           ) : null}
           <FilledButton
             tone="accent"
-            label={primaryLabel}
-            onPress={() => router.push(primaryHref as never)}
+            label={t('setupChecklist.task')}
+            onPress={() =>
+              router.push(`/(app)/estates/${estateId}/events/new?kind=issue` as never)
+            }
           />
           <OutlineButton
-            label={secondaryLabel}
-            onPress={() => router.push(secondaryHref as never)}
+            label={t('estateHub.addStay')}
+            onPress={() =>
+              router.push(`/(app)/stays/block?estateId=${estateId}` as never)
+            }
           />
           <GroupedList style={styles.destList}>
             {OWNER_ITEMS.map((item, i) => {
@@ -317,7 +308,7 @@ export default function EstateHub() {
 
   return (
     <ScreenShell>
-      <ScreenScroll contentContainerStyle={styles.grid} bottomInset={Spacing.xl}>
+      <ScreenScroll contentContainerStyle={styles.grid}>
         <HubCover
           name={estate.name}
           location={estate.location}

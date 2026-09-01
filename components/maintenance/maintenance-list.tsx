@@ -8,8 +8,10 @@ import { StatusBadge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
+  FilledButton,
   GroupedList,
   GroupedRow,
+  OutlineButton,
   SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
@@ -31,6 +33,22 @@ export function useMaintenanceEvents(estateId?: string): EstateEvent[] {
     const scope = new Set(estateId ? [estateId] : estateIds);
     return events.filter((e) => scope.has(e.estateId));
   }, [events, estateId, estateIds]);
+}
+
+export function MaintenanceAddButtons({
+  onAddTask,
+  onAddRoutine,
+}: {
+  onAddTask: () => void;
+  onAddRoutine: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.actions}>
+      <FilledButton tone="accent" label={t('setupChecklist.task')} onPress={onAddTask} />
+      <OutlineButton label={t('estateHub.addRoutine')} onPress={onAddRoutine} />
+    </View>
+  );
 }
 
 type MaintenanceListProps = {
@@ -169,7 +187,7 @@ export function MaintenanceList({
 
       {calendarTasks.length > 0 && (
         <>
-          <SectionLabel marginTop={recurring.length > 0 ? 16 : 0}>
+          <SectionLabel marginTop={recurring.length > 0 ? 24 : 0}>
             {t('maintenanceSchedule.calendarTasksSection', { count: calendarTasks.length })}
           </SectionLabel>
           <GroupedList>
@@ -214,9 +232,7 @@ export function MaintenanceList({
 
       {issueTasks.length > 0 && (
         <>
-          <SectionLabel
-            marginTop={recurring.length > 0 || calendarTasks.length > 0 ? 16 : 0}
-          >
+          <SectionLabel marginTop={calendarTasks.length > 0 || recurring.length > 0 ? 24 : 0}>
             {t('maintenanceSchedule.issueTasksSection', { count: issueTasks.length })}
           </SectionLabel>
           <GroupedList>
@@ -270,6 +286,7 @@ export function MaintenanceList({
 }
 
 const styles = StyleSheet.create({
+  actions: { gap: 12, marginBottom: 28 },
   rowSub: { fontSize: 12 },
   rowDesc: { fontSize: 11, marginTop: 2 },
   issueRight: { alignItems: 'flex-end', gap: 6 },

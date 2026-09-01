@@ -2,6 +2,7 @@ export * from './user';
 export * from './estate';
 export * from './invitation';
 export * from './stay';
+export * from './guest-profile';
 export * from './faq';
 export * from './document';
 export * from './contact';

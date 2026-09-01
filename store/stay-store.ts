@@ -16,6 +16,15 @@ import { reportWriteFailure } from '@/lib/write-failure';
 import { exportStay, removeExportedStay } from '@/lib/calendar-export';
 import i18n from 'i18next';
 
+const MIN_GUEST_COUNT = 1;
+const MAX_GUEST_COUNT = 20;
+
+function parseGuestCount(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return MIN_GUEST_COUNT;
+  return Math.min(MAX_GUEST_COUNT, Math.max(MIN_GUEST_COUNT, Math.floor(n)));
+}
+
 function requestFromDb(row: Record<string, unknown>): StayRequest {
   return {
     id: row.id as string,
@@ -23,6 +32,7 @@ function requestFromDb(row: Record<string, unknown>): StayRequest {
     guestId: row.guest_id as string,
     requestedFrom: row.requested_from as string,
     requestedTo: row.requested_to as string,
+    guestCount: parseGuestCount(row.guest_count),
     status: row.status as StayRequest['status'],
     guestNote: row.guest_note as string | undefined,
     ownerNote: row.owner_note as string | undefined,
@@ -40,6 +50,7 @@ function requestToDb(r: StayRequest) {
     guest_id: r.guestId,
     requested_from: r.requestedFrom,
     requested_to: r.requestedTo,
+    guest_count: parseGuestCount(r.guestCount),
     status: r.status,
     guest_note: r.guestNote ?? null,
     owner_note: r.ownerNote ?? null,
@@ -67,9 +78,11 @@ function stayFromDb(row: Record<string, unknown>): Stay {
     id: row.id as string,
     stayRequestId: (row.stay_request_id ?? '') as string,
     estateId: row.estate_id as string,
-    guestId: row.guest_id as string,
+    guestId: (row.guest_id as string | undefined) || undefined,
+    guestProfileId: (row.guest_profile_id as string | undefined) || undefined,
     from,
     to,
+    guestCount: parseGuestCount(row.guest_count),
   };
 }
 
@@ -78,9 +91,11 @@ function stayToDb(s: Stay) {
     id: s.id,
     stay_request_id: s.stayRequestId || null,
     estate_id: s.estateId,
-    guest_id: s.guestId,
+    guest_id: s.guestId || null,
+    guest_profile_id: s.guestProfileId || null,
     from: s.from,
     to: s.to,
+    guest_count: parseGuestCount(s.guestCount),
   };
 }
 
@@ -215,6 +230,7 @@ export const useStayStore = create<StayState>()(
           guestId: req.guestId,
           from: req.requestedFrom,
           to: req.requestedTo,
+          guestCount: parseGuestCount(req.guestCount),
         };
         const updatedAt = new Date().toISOString();
         const previousStays = get().stays;
@@ -359,6 +375,7 @@ export const useStayStore = create<StayState>()(
           guestId: req.guestId,
           from: req.alternativeFrom,
           to: req.alternativeTo,
+          guestCount: parseGuestCount(req.guestCount),
         };
         const updatedAt = new Date().toISOString();
         const previousStays = get().stays;
