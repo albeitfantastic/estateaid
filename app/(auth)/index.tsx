@@ -35,11 +35,12 @@ import {
   signInWithOAuth,
   type ProfileRow,
 } from '@/lib/auth-linking';
+import { Layout } from '@/constants/theme';
 import { loadAllStores } from '@/lib/load-all-stores';
 import { LEGAL_ROUTES } from '@/lib/legal-routes';
 import { estateHrefAfterInviteAccept } from '@/lib/guest-landing';
 import { supabase } from '@/lib/supabase';
-import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
+import { isOnboardingCompleteForCurrentUser, accountHasCompletedOnboarding, useAuthStore } from '@/store/auth-store';
 import { useInvitationStore } from '@/store/invitation-store';
 import { User } from '@/types';
 
@@ -130,9 +131,17 @@ export default function AuthScreen() {
       createdAt: profile.created_at,
       trialEndsAt: profile.trial_ends_at ?? null,
       trialStartedAt: profile.trial_started_at ?? null,
+      hasUsedTrial: Boolean(
+        (profile as ProfileRow & { has_used_trial?: boolean | null }).has_used_trial
+      ),
     };
     setUser(user);
     await loadAllStores();
+    const profileRow = profile as ProfileRow & {
+      has_used_trial?: boolean | null;
+      onboarding_quiz?: unknown;
+      onboarding_use_case?: string | null;
+    };
     const skipInvite = useAuthStore.getState().skipOnboardingForInvite;
     const code = pendingInviteCode ?? useAuthStore.getState().pendingInviteCode;
     if (code) {
@@ -162,9 +171,17 @@ export default function AuthScreen() {
       router.replace('/(app)/home' as never);
       return;
     }
-    if (!isOnboardingCompleteForCurrentUser(useAuthStore.getState())) {
+    const extras = {
+      hasQuiz: profileRow.onboarding_quiz != null,
+      hasUseCase: !!profileRow.onboarding_use_case,
+    };
+    const returning = accountHasCompletedOnboarding(useAuthStore.getState(), extras);
+    if (!returning) {
       router.replace('/(onboarding)/q1' as never);
       return;
+    }
+    if (!isOnboardingCompleteForCurrentUser(useAuthStore.getState())) {
+      completeOnboarding();
     }
     router.replace('/(app)/home' as never);
   }
@@ -274,29 +291,25 @@ export default function AuthScreen() {
           contentContainerStyle={[s.scroll, { minHeight: SCREEN_H * 0.75 }]}
           gap={16}
         >
-          <ScreenFootnote style={s.subtitle}>
-            {mode === 'signin' ? t('auth.welcomeBack') : t('auth.createAccount')}
-          </ScreenFootnote>
+          <View style={s.subtitleSlot}>
+            <ScreenFootnote style={s.subtitle}>
+              {mode === 'signin' ? t('auth.welcomeBack') : t('auth.createAccount')}
+            </ScreenFootnote>
+          </View>
 
           <View style={[s.tabs, { backgroundColor: colors.surfaceMuted }]}>
             {(['signin', 'signup'] as Mode[]).map((m) => (
               <TouchableOpacity
                 key={m}
-                style={[
-                  s.tab,
-                  mode === m && {
-                    backgroundColor: colors.tint,
-                    shadowColor: colors.tint,
-                    shadowOpacity: 0.22,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowRadius: 6,
-                    elevation: 4,
-                  },
-                ]}
+                style={[s.tab, mode === m && { backgroundColor: colors.tint }]}
                 onPress={() => { setMode(m); setShowEmailForm(false); }}
                 activeOpacity={0.85}
               >
-                <Text style={[s.tabText, { color: mode === m ? colors.textOnBrand : colors.textSecondary }]}>
+                <Text
+                  style={[s.tabText, { color: mode === m ? colors.textOnBrand : colors.textSecondary }]}
+                  numberOfLines={1}
+                  allowFontScaling={false}
+                >
                   {m === 'signin' ? t('auth.signIn') : t('auth.signUp')}
                 </Text>
               </TouchableOpacity>
@@ -426,36 +439,37 @@ export default function AuthScreen() {
             </TouchableOpacity>
           )}
 
-          {mode === 'signin' && (
-            <ScreenFootnote>
-              <Text style={{ color: colors.brownMid, fontWeight: '600', textAlign: 'center' }}>
-                {t('auth.forgotPassword')}
-              </Text>
-            </ScreenFootnote>
-          )}
-          {mode === 'signup' && (
-            <ScreenFootnote>
-              <Text style={{ textAlign: 'center', color: colors.textSecondary }}>
-                {t('auth.termsPrefix')}{' '}
-                <Text
-                  style={{ color: colors.brownMid }}
-                  onPress={() => router.push(LEGAL_ROUTES.terms as never)}
-                  accessibilityRole="link"
-                >
-                  {t('auth.terms')}
+          <View style={s.footerSlot}>
+            {mode === 'signin' ? (
+              <ScreenFootnote style={s.footerNote}>
+                <Text style={[s.footerNoteText, { color: colors.brownMid }]}>
+                  {t('auth.forgotPassword')}
                 </Text>
-                {' '}
-                {t('auth.and')}{' '}
-                <Text
-                  style={{ color: colors.brownMid }}
-                  onPress={() => router.push(LEGAL_ROUTES.privacy as never)}
-                  accessibilityRole="link"
-                >
-                  {t('auth.privacyLink')}
+              </ScreenFootnote>
+            ) : (
+              <ScreenFootnote style={s.footerNote}>
+                <Text style={[s.footerNoteText, { color: colors.textSecondary }]}>
+                  {t('auth.termsPrefix')}{' '}
+                  <Text
+                    style={[s.footerNoteLink, { color: colors.brownMid }]}
+                    onPress={() => router.push(LEGAL_ROUTES.terms as never)}
+                    accessibilityRole="link"
+                  >
+                    {t('auth.terms')}
+                  </Text>
+                  {' '}
+                  {t('auth.and')}{' '}
+                  <Text
+                    style={[s.footerNoteLink, { color: colors.brownMid }]}
+                    onPress={() => router.push(LEGAL_ROUTES.privacy as never)}
+                    accessibilityRole="link"
+                  >
+                    {t('auth.privacyLink')}
+                  </Text>
                 </Text>
-              </Text>
-            </ScreenFootnote>
-          )}
+              </ScreenFootnote>
+            )}
+          </View>
         </ScreenScroll>
       </KeyboardAvoidingView>
     </ScreenShell>
@@ -472,10 +486,36 @@ const s = StyleSheet.create({
   logoMark: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   logoMarkImage: { width: 32, height: (32 * 3840) / 4960 },
   title: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
-  subtitle: { marginLeft: 0, marginBottom: 4 },
-  tabs: { flexDirection: 'row', borderRadius: 10, padding: 4 },
-  tab: { flex: 1, paddingVertical: 11, borderRadius: 8, alignItems: 'center' },
-  tabText: { fontSize: 14, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
+  subtitleSlot: { minHeight: 30, justifyContent: 'center' },
+  subtitle: { marginLeft: 0, marginBottom: 0 },
+  tabs: {
+    flexDirection: 'row',
+    height: Layout.touchMin + 8,
+    padding: 4,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  tab: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    height: Layout.touchMin,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  tabText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '600',
+    fontFamily: 'Manrope_600SemiBold',
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  footerSlot: { minHeight: 66, justifyContent: 'center' },
+  footerNote: { textAlign: 'center', marginBottom: 0 },
+  footerNoteText: { fontWeight: '600', textAlign: 'center', fontSize: 14, lineHeight: 22 },
+  footerNoteLink: { fontWeight: '600' },
   oauthBtn: {
     minHeight: 44,
     flexDirection: 'row',

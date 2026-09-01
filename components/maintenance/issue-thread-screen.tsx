@@ -31,7 +31,9 @@ import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { useEventStore } from '@/store/event-store';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { generateId } from '@/lib/id';
-import { formatDate } from '@/lib/date-utils';
+import { formatDate, today } from '@/lib/date-utils';
+import { userHasStayOnEstateOnDate } from '@/lib/stay-occupant';
+import { useStayStore } from '@/store/stay-store';
 import type { EstateContact, EstateEvent, IssuePriority, IssueStatus } from '@/types';
 
 const STATUS_OPTIONS: IssueStatus[] = ['open', 'in_progress', 'resolved'];
@@ -70,6 +72,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   const updateIssueStatus = useEventStore((s) => s.updateIssueStatus);
   const updateIssueFields = useEventStore((s) => s.updateIssueFields);
   const deleteEvent = useEventStore((s) => s.deleteEvent);
+  const stays = useStayStore((s) => s.stays);
   const profileById = useProfileStore((s) => s.byId);
   const eventId = initialEvent.id;
   const ticket = events.find((tk) => tk.id === eventId) ?? initialEvent;
@@ -108,6 +111,9 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   }, [estateContacts]);
 
   const activeTicket = ticket;
+  const issueOpen = (activeTicket.status ?? 'open') !== 'resolved';
+  const guestOnStay = userHasStayOnEstateOnDate(stays, currentUser?.id, estateId, today());
+  const canReply = issueOpen && (isEstateOwner || guestOnStay);
 
   function openContactPicker(ctx: 'reply' | 'edit') {
     setContactPickerContext(ctx);
@@ -124,7 +130,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
   }
 
   function sendReply() {
-    if (!reply.trim()) return;
+    if (!canReply || !reply.trim()) return;
     void addIssueMessage(eventId, {
       id: generateId(),
       eventId,
@@ -185,7 +191,6 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
     ]);
   }
 
-  const canReply = (activeTicket.status ?? 'open') !== 'resolved';
   const taggedReplyContact = replyTaggedContactId ? contactByIdMap[replyTaggedContactId] : undefined;
   /** Tab bar is `position: 'absolute'` in (app) — without this, the composer sits under the bar. */
   const bottomComposerPad = tabBarHeight + insets.bottom + 10;
@@ -396,6 +401,21 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                 <IconSymbol name="paperplane.fill" size={18} color={colors.textOnBrand} />
               </TouchableOpacity>
             </View>
+          </View>
+        ) : !isEstateOwner && issueOpen ? (
+          <View
+            style={[
+              styles.inputBar,
+              {
+                borderTopColor: colors.icon + '22',
+                paddingBottom: bottomComposerPad,
+                backgroundColor: colors.background,
+              },
+            ]}
+          >
+            <ThemedText style={[styles.stayOnlyHint, { color: colors.textSecondary }]}>
+              {t('estateHub.availableDuringStay')}
+            </ThemedText>
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -623,6 +643,7 @@ const styles = StyleSheet.create({
   msgText: { fontSize: 14, lineHeight: 20 },
   msgTime: { fontSize: 10 },
   inputBar: { paddingHorizontal: 16, paddingTop: 10, gap: 8, borderTopWidth: 1 },
+  stayOnlyHint: { fontSize: 14, lineHeight: 20, paddingBottom: 4 },
   replyTagRow: {
     flexDirection: 'row',
     alignItems: 'center',

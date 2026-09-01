@@ -2,7 +2,7 @@ import { Redirect } from 'expo-router';
 import { useState } from 'react';
 
 import { SplashScreenOverlay } from '@/components/ui/splash-screen';
-import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
+import { accountHasCompletedOnboarding, useAuthStore } from '@/store/auth-store';
 
 /**
  * Root index screen — acts as the auth gate.
@@ -30,7 +30,9 @@ export default function Index() {
   const skipOnboarding =
     skipOnboardingForInvite || Boolean(pendingInviteCode?.trim());
 
-  if (!isOnboardingCompleteForCurrentUser(auth) && !skipOnboarding) {
+  const complete = accountHasCompletedOnboarding(auth);
+
+  if (!complete && !skipOnboarding) {
     return <Redirect href={'/(onboarding)/q1' as never} />;
   }
 

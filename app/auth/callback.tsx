@@ -1,13 +1,13 @@
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
 import { useScreenTheme } from '@/components/ui/screen-layout';
 import { createSessionFromUrl } from '@/lib/auth-linking';
 import { loadAllStores } from '@/lib/load-all-stores';
-import { isOnboardingCompleteForCurrentUser, useAuthStore } from '@/store/auth-store';
+import { accountHasCompletedOnboarding, useAuthStore } from '@/store/auth-store';
 
 /**
  * Matches Supabase emailRedirectTo path …/auth/callback so Expo Router does not show
@@ -29,9 +29,12 @@ export default function AuthCallbackScreen() {
       const user = state.currentUser;
       if (user) {
         await loadAllStores();
-        if (!isOnboardingCompleteForCurrentUser(state)) {
+        const latest = useAuthStore.getState();
+        const done = accountHasCompletedOnboarding(latest);
+        if (!done) {
           router.replace('/(onboarding)/q1' as never);
         } else {
+          if (!latest.hasCompletedOnboarding) latest.completeOnboarding();
           router.replace('/(app)/home' as never);
         }
       } else {

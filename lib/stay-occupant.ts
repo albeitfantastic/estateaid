@@ -6,6 +6,19 @@ export function stayIsSelf(stay: Stay, userId?: string | null): boolean {
   return !!userId && !!stay.guestId && stay.guestId === userId;
 }
 
+/** True when the user occupies a stay on that property on `date` (inclusive from–to). */
+export function userHasStayOnEstateOnDate(
+  stays: Stay[],
+  userId: string | undefined | null,
+  estateId: string,
+  date: string
+): boolean {
+  if (!userId || !estateId || !date) return false;
+  return stays.some(
+    (s) => s.estateId === estateId && s.guestId === userId && s.from <= date && date <= s.to
+  );
+}
+
 export function resolveStayOccupantName(
   stay: Stay,
   opts: {

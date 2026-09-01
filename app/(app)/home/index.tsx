@@ -10,7 +10,6 @@ import { GuestHomeBody } from '@/components/home/guest-home';
 import { StayHeroPager, type StayHeroPage } from '@/components/home/stay-hero-pager';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
-import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { OverAllocationChooser } from '@/components/ui/over-allocation-chooser';
 import {
@@ -45,6 +44,13 @@ import {
 } from '@/lib/conversion-moments';
 import { addDays, formatDate, formatDateRange, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
+import {
+  busiestPropertyNights,
+  emptyEstateNamesThisWeekend,
+  heaviestGuestNights,
+  weekOccupancy,
+  yearSpendTotal,
+} from '@/lib/home-host-briefing';
 import { navigateToSettingsSection } from '@/lib/settings-navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useContactStore } from '@/store/contact-store';
@@ -55,6 +61,7 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { useGuestProfileStore } from '@/store/guest-profile-store';
 import { useProfileStore } from '@/store/profile-store';
 import { useEventStore } from '@/store/event-store';
+import { useExpenseStore } from '@/store/expense-store';
 import { useStayStore } from '@/store/stay-store';
 import { isIssueOpenStatus, isIssueTask } from '@/lib/issue-task';
 import { resolveStayOccupantName, stayIsSelf } from '@/lib/stay-occupant';
@@ -150,9 +157,8 @@ export default function HomeDashboard() {
   const coverageById = useEstateCoverageStore((s) => s.byId);
   const allDocuments = useDocumentStore((s) => s.documents);
   const allContacts = useContactStore((s) => s.contacts);
+  const allExpenses = useExpenseStore((s) => s.expenses);
 
-  const canApprove = estateIds.some((id) => can('stays.approve', id));
-  const canReadEvents = estateIds.some((id) => can('events.read', id));
   const canAddEstate = can('property.create');
   const isCoOwnerElsewhere = useMemo(
     () => Object.values(roleById).some((role) => role === 'owner'),
@@ -201,33 +207,68 @@ export default function HomeDashboard() {
     return ids.size;
   }, [allInvitations, estateIds]);
 
-  const tasksCount = useMemo(
-    () =>
-      allMaintenanceEvents.filter(
-        (ev) =>
-          estateIds.includes(ev.estateId) && isIssueTask(ev) && isIssueOpenStatus(ev.status)
-      ).length,
-    [allMaintenanceEvents, estateIds]
+  const weekStats = useMemo(
+    () => weekOccupancy(allStays, estateIds, todayStr),
+    [allStays, estateIds, todayStr]
   );
 
-  // Hero: open issues sorted by urgency then due date, top 3
-  const heroIssues = useMemo(() => {
+  const emptyWeekendNames = useMemo(() => {
+    const namesById: Record<string, string> = {};
+    for (const e of estates) namesById[e.id] = e.name;
+    return emptyEstateNamesThisWeekend(estateIds, namesById, allStays, todayStr);
+  }, [estates, estateIds, allStays, todayStr]);
+
+  const attentionIssues = useMemo(() => {
     return allMaintenanceEvents
-      .filter(
-        (ev) => estateIds.includes(ev.estateId) && isIssueTask(ev) && isIssueOpenStatus(ev.status)
-      )
+      .filter((ev) => {
+        if (!estateIds.includes(ev.estateId) || !isIssueTask(ev) || !isIssueOpenStatus(ev.status)) {
+          return false;
+        }
+        const pri = ev.priority ?? 'normal';
+        const hot = pri === 'urgent' || pri === 'high';
+        const due = ev.date != null && ev.date <= todayStr;
+        return hot || due;
+      })
       .sort((a, b) => {
-        const pa = a.priority ?? 'normal';
-        const pb = b.priority ?? 'normal';
-        const pd = PRIORITY_ORDER[pa] - PRIORITY_ORDER[pb];
+        const pd = PRIORITY_ORDER[a.priority ?? 'normal'] - PRIORITY_ORDER[b.priority ?? 'normal'];
         if (pd !== 0) return pd;
-        if (a.date && b.date) return a.date < b.date ? -1 : 1;
+        if (a.date && b.date) return a.date.localeCompare(b.date);
         if (a.date) return -1;
         if (b.date) return 1;
         return (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt);
       })
-      .slice(0, 3);
-  }, [allMaintenanceEvents, estateIds]);
+      .slice(0, 5);
+  }, [allMaintenanceEvents, estateIds, todayStr]);
+
+  const year = Number(todayStr.slice(0, 4));
+  const yearBusiest = useMemo(
+    () => busiestPropertyNights(allStays, estateIds, year),
+    [allStays, estateIds, year]
+  );
+  const yearGuest = useMemo(
+    () => heaviestGuestNights(allStays, estateIds, year, currentUser?.id),
+    [allStays, estateIds, year, currentUser?.id]
+  );
+  const yearSpend = useMemo(
+    () => yearSpendTotal(allExpenses, estateIds, year),
+    [allExpenses, estateIds, year]
+  );
+  const yearGuestName = useMemo(() => {
+    if (!yearGuest) return null;
+    return resolveStayOccupantName(
+      {
+        id: '',
+        stayRequestId: '',
+        estateId: '',
+        from: todayStr,
+        to: todayStr,
+        guestCount: 1,
+        guestId: yearGuest.guestId,
+        guestProfileId: yearGuest.guestProfileId,
+      },
+      { profilesById: profileById, guestProfiles }
+    );
+  }, [yearGuest, profileById, guestProfiles, todayStr]);
 
   // Unified upcoming: merge stays + maintenance sorted by date
   const upcomingStayItems = useMemo((): Extract<UpcomingItem, { kind: 'stay' }>[] => {
@@ -361,8 +402,6 @@ export default function HomeDashboard() {
     trialDays,
     inventory,
   ]);
-
-  const extraIssues = heroIssues;
 
   const propertyHeroes = useMemo(() => {
     const nextStayByEstate = new Map<string, Extract<UpcomingItem, { kind: 'stay' }>>();
@@ -512,54 +551,81 @@ export default function HomeDashboard() {
         ) : null}
 
         <View style={[styles.statBand, { borderColor: colors.border }]}>
-          <HostProLockTouchable
-            locked={false}
-            onPress={() => router.push('/(app)/estates' as never)}
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/calendar?segment=stays' as never)}
             style={styles.statCell}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${weekStats.inHouse} ${t('ownerHome.inHouse')}`}
           >
             <ThemedText type="statValue" style={styles.statValue}>
-              {estates.length}
+              {weekStats.inHouse}
             </ThemedText>
             <ThemedText type="statLabel" style={[styles.statLabel, { color: colors.textSecondary }]}>
-              {t('ownerHome.properties')}
+              {t('ownerHome.inHouse')}
             </ThemedText>
-          </HostProLockTouchable>
+          </TouchableOpacity>
           <View style={[styles.statRule, { backgroundColor: colors.border }]} />
-          <HostProLockTouchable
-            locked={!canReadEvents}
-            feature="events.write"
-            onPress={() => router.push('/(app)/maintenance' as never)}
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/calendar?segment=stays' as never)}
             style={styles.statCell}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${weekStats.arriving} ${t('ownerHome.arrivingShort')}`}
           >
             <ThemedText type="statValue" style={styles.statValue}>
-              {tasksCount}
+              {weekStats.arriving}
             </ThemedText>
             <ThemedText type="statLabel" style={[styles.statLabel, { color: colors.textSecondary }]}>
-              {t('ownerHome.tasks')}
+              {t('ownerHome.arrivingShort')}
             </ThemedText>
-          </HostProLockTouchable>
+          </TouchableOpacity>
           <View style={[styles.statRule, { backgroundColor: colors.border }]} />
-          <HostProLockTouchable
-            locked={false}
-            showLock={!canApprove}
-            feature="stays.approve"
-            onPress={() => router.push('/(app)/calendar?segment=requests' as never)}
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/calendar?segment=stays' as never)}
             style={styles.statCell}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${weekStats.departing} ${t('ownerHome.departingShort')}`}
           >
             <ThemedText type="statValue" style={styles.statValue}>
-              {pendingCount}
+              {weekStats.departing}
             </ThemedText>
             <ThemedText type="statLabel" style={[styles.statLabel, { color: colors.textSecondary }]}>
-              {t('ownerHome.requests')}
+              {t('ownerHome.departingShort')}
             </ThemedText>
-          </HostProLockTouchable>
+          </TouchableOpacity>
         </View>
 
-        {extraIssues.length > 0 ? (
+        {emptyWeekendNames.length > 0 ? (
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/estates' as never)}
+            style={styles.emptyWeekend}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+          >
+            <ThemedText style={[styles.emptyWeekendText, { color: colors.textSecondary }]}>
+              {emptyWeekendNames.length === 1
+                ? t('ownerHome.emptyWeekendOne', { name: emptyWeekendNames[0] })
+                : t('ownerHome.emptyWeekendMany', { count: emptyWeekendNames.length })}
+            </ThemedText>
+          </TouchableOpacity>
+        ) : null}
+
+        {(pendingCount > 0 || attentionIssues.length > 0) ? (
           <View style={styles.section}>
             <SectionHeader title={t('ownerHome.needsAttention')} />
             <GroupedList>
-              {extraIssues.map((issue, i) => (
+              {pendingCount > 0 ? (
+                <GroupedRow
+                  icon="tray.fill"
+                  title={t('ownerHome.pending', { count: pendingCount })}
+                  subtitle={t('ownerHome.requestsInbox')}
+                  onPress={() => router.push('/(app)/calendar?segment=requests' as never)}
+                  isLast={attentionIssues.length === 0}
+                />
+              ) : null}
+              {attentionIssues.map((issue, i) => (
                 <GroupedRow
                   key={issue.id}
                   icon="exclamationmark.triangle.fill"
@@ -568,7 +634,7 @@ export default function HomeDashboard() {
                   onPress={() =>
                     router.push(`/(app)/estates/${issue.estateId}/events/${issue.id}` as never)
                   }
-                  isLast={i === extraIssues.length - 1}
+                  isLast={i === attentionIssues.length - 1}
                 />
               ))}
             </GroupedList>
@@ -690,6 +756,49 @@ export default function HomeDashboard() {
             </GroupedList>
           )}
         </View>
+
+        {(yearBusiest || yearGuest || yearSpend > 0) ? (
+          <View style={styles.section}>
+            <SectionHeader title={t('ownerHome.thisYear')} />
+            <GroupedList>
+              {yearBusiest ? (
+                <GroupedRow
+                  icon="building.2.fill"
+                  title={t('ownerHome.busiestProperty')}
+                  subtitle={`${estateById[yearBusiest.estateId]?.name ?? ''} · ${t('ownerHome.nightsCount', { count: yearBusiest.nights })}`}
+                  onPress={() =>
+                    router.push(`/(app)/estates/${yearBusiest.estateId}` as never)
+                  }
+                  isLast={!yearGuest && yearSpend <= 0}
+                />
+              ) : null}
+              {yearGuest && yearGuestName ? (
+                <GroupedRow
+                  icon="person.fill"
+                  title={t('ownerHome.heaviestGuest')}
+                  subtitle={`${yearGuestName} · ${t('ownerHome.nightsCount', { count: yearGuest.nights })}`}
+                  onPress={() => router.push('/(app)/guests' as never)}
+                  isLast={yearSpend <= 0}
+                />
+              ) : null}
+              {yearSpend > 0 ? (
+                <GroupedRow
+                  icon="tag.fill"
+                  title={t('ownerHome.yearSpend')}
+                  subtitle={yearSpend.toFixed(2)}
+                  onPress={() => {
+                    if (estates.length === 1) {
+                      router.push(`/(app)/estates/${estates[0].id}/expenses` as never);
+                      return;
+                    }
+                    router.push('/(app)/estates' as never);
+                  }}
+                  isLast
+                />
+              ) : null}
+            </GroupedList>
+          </View>
+        ) : null}
       </ScreenScroll>
       )}
     </ScreenShell>
@@ -738,6 +847,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   statLabel: { textAlign: 'center' },
+
+  emptyWeekend: {
+    paddingVertical: 8,
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+  },
+  emptyWeekendText: { fontSize: 14, lineHeight: 20 },
 
   section: { marginTop: 28 },
 

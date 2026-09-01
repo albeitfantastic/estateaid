@@ -17,6 +17,23 @@ export function isOnboardingCompleteForCurrentUser(s: {
   return s.hasCompletedOnboarding && s.onboardingCompletedForUserId === id;
 }
 
+/** Returning accounts (trial/quiz on the profile) skip the quiz even if the device flag was lost. */
+export function accountHasCompletedOnboarding(
+  s: {
+    currentUser: User | null;
+    hasCompletedOnboarding: boolean;
+    onboardingCompletedForUserId: string | null;
+  },
+  extras?: { hasQuiz?: boolean; hasUseCase?: boolean }
+): boolean {
+  if (isOnboardingCompleteForCurrentUser(s)) return true;
+  const u = s.currentUser;
+  if (!u) return false;
+  if (u.trialStartedAt || u.hasUsedTrial) return true;
+  if (extras?.hasQuiz || extras?.hasUseCase) return true;
+  return false;
+}
+
 function profileToUser(
   profile: Record<string, unknown>,
   email: string

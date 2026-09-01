@@ -233,6 +233,16 @@ export const useEventStore = create<EventState>()(
               { type: 'maintenance', estateId: ev.estateId, eventId }
             );
           } else if (ev.guestId) {
+            const { today } = await import('@/lib/date-utils');
+            const { userHasStayOnEstateOnDate } = await import('@/lib/stay-occupant');
+            const { useStayStore } = await import('@/store/stay-store');
+            const onStay = userHasStayOnEstateOnDate(
+              useStayStore.getState().stays,
+              ev.guestId,
+              ev.estateId,
+              today()
+            );
+            if (!onStay) return;
             void getPushToken(ev.guestId).then((token) =>
               sendPush(token, `New message: ${ev.title}`, message.body.slice(0, 120), {
                 estateId: ev.estateId,
