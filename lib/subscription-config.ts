@@ -105,6 +105,9 @@ export const EXIT_OFFERING_ID =
 export const STORE_TRIAL_DAYS = 14;
 export const APP_TRIAL_DAYS = 14;
 
+/** Slots granted during an active app trial. Family pack (3) so testers can add three properties. */
+export const TRIAL_SLOT_COUNT = SLOT_PACKS.family.slots;
+
 export function getRevenueCatApiKey(): string | null {
   const universal = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY?.trim();
   if (universal) return universal;

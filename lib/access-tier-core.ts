@@ -1,4 +1,4 @@
-import { slotsForEntitlementId } from '@/lib/subscription-config';
+import { slotsForEntitlementId, TRIAL_SLOT_COUNT } from '@/lib/subscription-config';
 import type { SubscriptionEntitlementRow } from '@/types/subscription';
 import { rowGrantsAccess } from '@/lib/subscription-access';
 
@@ -19,7 +19,7 @@ export function deriveSlotCount(input: {
     fromRows = Math.max(fromRows, slotsForEntitlementId(row.entitlement_id));
   }
   const end = input.trialEndsAt?.trim();
-  const trialSlots = end && new Date(end).getTime() > Date.now() ? 1 : 0;
+  const trialSlots = end && new Date(end).getTime() > Date.now() ? TRIAL_SLOT_COUNT : 0;
   const gf = Math.max(0, input.grandfatheredSlots ?? 0);
   const sdk = Math.max(0, input.sdkSlotCount ?? 0);
   return Math.max(fromRows, trialSlots, gf, sdk);

@@ -10,12 +10,14 @@ import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
   OutlineButton,
+  ScreenFootnote,
   ScreenScroll,
   ScreenShell,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
-import { useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
+import { Layout } from '@/constants/theme';
+import { useAccountContext, useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
 import { useEstateCoverageStore } from '@/store/estate-coverage-store';
 import { useEstateStore } from '@/store/estate-store';
@@ -30,6 +32,16 @@ export default function EstatesList() {
   const can = useCan();
   const canCreate = can('property.create');
   const addLocked = !canCreate;
+  const { slotCount, propertiesSponsored } = useAccountContext();
+  const slotsRemaining = Math.max(0, slotCount - propertiesSponsored);
+  const slotsLine =
+    slotCount > 0
+      ? t('estatesList.slotsUsage', {
+          used: propertiesSponsored,
+          total: slotCount,
+          remaining: slotsRemaining,
+        })
+      : null;
 
   const isCoOwnerElsewhere = useMemo(
     () => Object.values(roleById).some((role) => role === 'owner'),
@@ -75,19 +87,25 @@ export default function EstatesList() {
     >
       <BootstrapErrorBanner />
       {estates.length === 0 ? (
-        <EmptyState
-          icon="building.2.fill"
-          title={t('estatesList.emptyTitle')}
-          subtitle={
-            managedEstates.length === 0 && !canCreate
-              ? t('estatesList.emptyGuestSub')
-              : t('estatesList.emptySub')
-          }
-          actionLabel={canCreate ? t('estatesList.addEstate') : t('estatesList.enterCode')}
-          onAction={canCreate ? onAdd : () => router.push('/(app)/estates/join' as never)}
-        />
+        <>
+          {slotsLine ? (
+            <ScreenFootnote style={styles.slotsLine}>{slotsLine}</ScreenFootnote>
+          ) : null}
+          <EmptyState
+            icon="building.2.fill"
+            title={t('estatesList.emptyTitle')}
+            subtitle={
+              managedEstates.length === 0 && !canCreate
+                ? t('estatesList.emptyGuestSub')
+                : t('estatesList.emptySub')
+            }
+            actionLabel={canCreate ? t('estatesList.addEstate') : t('estatesList.enterCode')}
+            onAction={canCreate ? onAdd : () => router.push('/(app)/estates/join' as never)}
+          />
+        </>
       ) : (
         <ScreenScroll contentContainerStyle={styles.list} gap={0}>
+          {slotsLine ? <ScreenFootnote>{slotsLine}</ScreenFootnote> : null}
           {estates.map((estate) => {
             const role = roleById[estate.id] ?? 'none';
             const coverage = coverageById[estate.id];
@@ -125,6 +143,11 @@ export default function EstatesList() {
             icon="ticket.fill"
             onPress={() => router.push('/(app)/estates/join' as never)}
           />
+          <OutlineButton
+            label={t('estatesList.addEstate')}
+            icon="plus"
+            onPress={onAdd}
+          />
         </ScreenScroll>
       )}
     </ScreenShell>
@@ -140,6 +163,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   list: { gap: 20, paddingTop: 8 },
+  slotsLine: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 8 },
   cardWrap: { position: 'relative' },
   downgradeBadge: {
     position: 'absolute',
