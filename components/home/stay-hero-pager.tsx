@@ -13,7 +13,6 @@ import { ThemedText } from '@/components/themed-text';
 import { PhotoHero, photoHeroOverlayText } from '@/components/ui/photo-hero';
 import { useScreenTheme } from '@/components/ui/screen-layout';
 import { Layout } from '@/constants/theme';
-import { debugLog1393f3 } from '@/lib/debug-session-1393f3';
 
 export type StayHeroPage = {
   id: string;
@@ -78,24 +77,6 @@ export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Pr
 
   if (pages.length === 0) return null;
 
-  const singleBranch = pages.length === 1 || width <= 0;
-
-  // #region agent log
-  debugLog1393f3({
-    hypothesisId: 'B,C,E',
-    location: 'components/home/stay-hero-pager.tsx:render',
-    message: 'pager render',
-    data: {
-      pageCount: pages.length,
-      uniqueIds: new Set(pages.map((p) => p.id)).size,
-      width,
-      singleBranch,
-      showDots: pages.length > 1,
-    },
-    runId: 'post-fix',
-  });
-  // #endregion
-
   const renderPage = ({ item }: { item: StayHeroPage }) => {
     return (
       <View style={{ width: width || undefined }}>
@@ -124,15 +105,6 @@ export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Pr
     <View
       onLayout={(e) => {
         const w = Math.round(e.nativeEvent.layout.width);
-        const h = Math.round(e.nativeEvent.layout.height);
-        // #region agent log
-        debugLog1393f3({
-          hypothesisId: 'B,C',
-          location: 'components/home/stay-hero-pager.tsx:onLayout',
-          message: 'pager onLayout',
-          data: { w, h, prevWidth: width, pageCount: pages.length },
-        });
-        // #endregion
         if (w > 0 && w !== width) setWidth(w);
       }}
       accessibilityHint={pages.length > 1 ? 'Swipe left or right for other properties' : undefined}

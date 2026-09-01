@@ -1,15 +1,26 @@
+import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { FocusInput } from '@/components/ui/focus-input';
-import { SectionLabel, useScreenTheme } from '@/components/ui/screen-layout';
+import { DueDatePickerModal } from '@/components/ui/due-date-picker-modal';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SelectField } from '@/components/ui/select-field';
+import { useScreenTheme } from '@/components/ui/screen-layout';
+import { Radius } from '@/constants/theme';
+import { formatDate } from '@/lib/date-utils';
 import { RECURRENCE_FREQUENCIES, usesDayOfMonth } from '@/lib/event-utils';
+import { typography } from '@/theme';
 import type { RecurrenceFrequency } from '@/types';
 
 const LEAD_OPTIONS = [0, 1, 3, 7, 14, 30];
+const DAY_OF_MONTH_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
 
-const FREQ_I18N: Record<RecurrenceFrequency, string> = {
+export type RecurrenceUiFrequency = RecurrenceFrequency | 'once';
+
+const FREQ_I18N: Record<RecurrenceUiFrequency, string> = {
+  once: 'recurrence.once',
   daily: 'recurrence.daily',
   weekly: 'recurrence.weekly',
   biweekly: 'recurrence.biweekly',
@@ -21,11 +32,12 @@ const FREQ_I18N: Record<RecurrenceFrequency, string> = {
 };
 
 export type RecurrenceFieldsValue = {
-  frequency: RecurrenceFrequency;
+  frequency: RecurrenceUiFrequency;
   dayOfWeek: number;
   dayOfMonth: number;
   intervalMonths: number;
   reminderLeadDays: number;
+  onceDate: string;
 };
 
 type Props = {
@@ -37,45 +49,82 @@ type Props = {
 export function RecurrenceFields({ value, onChange, showFrequency = true }: Props) {
   const { t } = useTranslation();
   const { colors } = useScreenTheme();
-  const { frequency, dayOfWeek, dayOfMonth, intervalMonths, reminderLeadDays } = value;
+  const { frequency, dayOfWeek, dayOfMonth, intervalMonths, reminderLeadDays, onceDate } = value;
   const dayNames = t('recurrence.weekdays', { returnObjects: true }) as string[];
+  const isOnce = frequency === 'once';
+  const [dateOpen, setDateOpen] = useState(false);
 
   function patch(partial: Partial<RecurrenceFieldsValue>) {
     onChange({ ...value, ...partial });
+  }
+
+  const freqOptions: { value: RecurrenceUiFrequency; label: string }[] = [
+    { value: 'once', label: t(FREQ_I18N.once) },
+    ...RECURRENCE_FREQUENCIES.map((opt) => ({
+      value: opt,
+      label: t(FREQ_I18N[opt]),
+    })),
+  ];
+  const dayOfMonthOptions = DAY_OF_MONTH_OPTIONS.map((d) => ({ value: d, label: String(d) }));
+  const reminderOptions = LEAD_OPTIONS.map((d) => ({
+    value: d,
+    label: d === 0 ? t('recurrence.reminderOnDay') : t('recurrence.reminderLead', { count: d }),
+  }));
+  if (!LEAD_OPTIONS.includes(reminderLeadDays)) {
+    reminderOptions.push({
+      value: reminderLeadDays,
+      label: t('recurrence.reminderLead', { count: reminderLeadDays }),
+    });
+    reminderOptions.sort((a, b) => a.value - b.value);
   }
 
   return (
     <>
       {showFrequency ? (
         <>
-          <SectionLabel>{t('recurrence.frequency')}</SectionLabel>
-          <View style={styles.freqRow}>
-            {RECURRENCE_FREQUENCIES.map((opt) => {
-              const on = frequency === opt;
-              return (
-                <TouchableOpacity
-                  key={opt}
-                  style={[
-                    styles.freqBtn,
-                    { borderColor: colors.tint + '44' },
-                    on && { backgroundColor: colors.tint, borderColor: colors.tint },
-                  ]}
-                  onPress={() => patch({ frequency: opt })}
-                  activeOpacity={0.8}
-                >
-                  <ThemedText
-                    style={[styles.freqBtnText, { color: on ? colors.textOnBrand : colors.text }]}
-                  >
-                    {t(FREQ_I18N[opt])}
-                  </ThemedText>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <SelectField
+            label={t('recurrence.frequency')}
+            value={frequency}
+            options={freqOptions}
+            onChange={(next) => patch({ frequency: next })}
+          />
 
-          {(frequency === 'weekly' || frequency === 'biweekly') && (
-            <>
-              <SectionLabel>{t('recurrence.dayOfWeek')}</SectionLabel>
+          {isOnce ? (
+            <View style={styles.field}>
+              <ThemedText style={[styles.label, { color: colors.icon }]}>
+                {t('recurrence.onceDate')}
+              </ThemedText>
+              <TouchableOpacity
+                style={[styles.dateTrigger, { borderColor: colors.border, backgroundColor: colors.card }]}
+                onPress={() => setDateOpen(true)}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={`${t('recurrence.onceDate')}, ${onceDate ? formatDate(onceDate) : t('ticketsHub.newTicketPickDue')}`}
+              >
+                <ThemedText style={[styles.dateTriggerText, { color: colors.text }]} numberOfLines={1}>
+                  {onceDate ? formatDate(onceDate) : t('ticketsHub.newTicketPickDue')}
+                </ThemedText>
+                <IconSymbol name="chevron.down" size={18} color={colors.iconMuted} />
+              </TouchableOpacity>
+              <DueDatePickerModal
+                visible={dateOpen}
+                onClose={() => setDateOpen(false)}
+                onSelectDate={(d) => {
+                  patch({ onceDate: d });
+                  setDateOpen(false);
+                }}
+                title={t('recurrence.onceDate')}
+                includePastDays={365}
+                selectedDate={onceDate || undefined}
+              />
+            </View>
+          ) : null}
+
+          {!isOnce && (frequency === 'weekly' || frequency === 'biweekly') ? (
+            <View style={styles.field}>
+              <ThemedText style={[styles.label, { color: colors.icon }]}>
+                {t('recurrence.dayOfWeek')}
+              </ThemedText>
               <View style={styles.dayRow}>
                 {dayNames.map((name, i) => {
                   const on = dayOfWeek === i;
@@ -99,39 +148,19 @@ export function RecurrenceFields({ value, onChange, showFrequency = true }: Prop
                   );
                 })}
               </View>
-            </>
-          )}
+            </View>
+          ) : null}
 
-          {usesDayOfMonth(frequency) && frequency !== 'custom' && (
-            <>
-              <SectionLabel>{t('recurrence.dayOfMonth')}</SectionLabel>
-              <View style={styles.dayOfMonthRow}>
-                {[1, 5, 10, 15, 20, 25].map((d) => {
-                  const on = dayOfMonth === d;
-                  return (
-                    <TouchableOpacity
-                      key={d}
-                      style={[
-                        styles.dayBtn,
-                        { borderColor: colors.tint + '44' },
-                        on && { backgroundColor: colors.tint, borderColor: colors.tint },
-                      ]}
-                      onPress={() => patch({ dayOfMonth: d })}
-                      activeOpacity={0.8}
-                    >
-                      <ThemedText
-                        style={[styles.dayBtnText, { color: on ? colors.textOnBrand : colors.text }]}
-                      >
-                        {d}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </>
-          )}
+          {!isOnce && usesDayOfMonth(frequency) && frequency !== 'custom' ? (
+            <SelectField
+              label={t('recurrence.dayOfMonth')}
+              value={dayOfMonth}
+              options={dayOfMonthOptions}
+              onChange={(next) => patch({ dayOfMonth: next })}
+            />
+          ) : null}
 
-          {frequency === 'custom' ? (
+          {!isOnce && frequency === 'custom' ? (
             <FocusInput
               label={t('recurrence.intervalMonths')}
               value={String(intervalMonths)}
@@ -145,45 +174,26 @@ export function RecurrenceFields({ value, onChange, showFrequency = true }: Prop
         </>
       ) : null}
 
-      <SectionLabel>{t('recurrence.reminder')}</SectionLabel>
-      <View style={styles.freqRow}>
-        {LEAD_OPTIONS.map((d) => {
-          const on = reminderLeadDays === d;
-          return (
-            <TouchableOpacity
-              key={d}
-              style={[
-                styles.freqBtn,
-                { borderColor: colors.tint + '44' },
-                on && { backgroundColor: colors.tint, borderColor: colors.tint },
-              ]}
-              onPress={() => patch({ reminderLeadDays: d })}
-              activeOpacity={0.8}
-            >
-              <ThemedText
-                style={[styles.freqBtnText, { color: on ? colors.textOnBrand : colors.text }]}
-              >
-                {d === 0 ? t('recurrence.reminderOnDay') : t('recurrence.reminderLead', { count: d })}
-              </ThemedText>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <SelectField
+        label={t('recurrence.reminder')}
+        value={reminderLeadDays}
+        options={reminderOptions}
+        onChange={(next) => patch({ reminderLeadDays: next })}
+      />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  freqRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  freqBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
+  field: { gap: 6 },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    fontFamily: typography.fontFamily.bold,
   },
-  freqBtnText: { fontSize: 13, fontWeight: '600' },
   dayRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  dayOfMonthRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   dayBtn: {
     minWidth: 40,
     alignItems: 'center',
@@ -193,4 +203,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dayBtnText: { fontSize: 13, fontWeight: '600' },
+  dateTrigger: {
+    height: 50,
+    borderWidth: 1.5,
+    borderRadius: Radius.md,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  dateTriggerText: { flex: 1, fontSize: 15 },
 });

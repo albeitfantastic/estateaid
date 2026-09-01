@@ -11,7 +11,6 @@ import {
   View,
 } from 'react-native';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import { useRouter } from 'expo-router';
 import { useContext, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +32,7 @@ import { useEventStore } from '@/store/event-store';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { hostsForEstateFrom, type EstateHostKind } from '@/lib/estate-host-ids';
 import { generateId } from '@/lib/id';
+import { leaveEstateEvent } from '@/lib/open-estate-hub';
 import { formatDate, today } from '@/lib/date-utils';
 import { userHasStayOnEstateOnDate } from '@/lib/stay-occupant';
 import { useStayStore } from '@/store/stay-store';
@@ -52,11 +52,10 @@ function contactLabel(c: EstateContact) {
   return role ? `${c.name} · ${role}` : c.name;
 }
 
-type Props = { event: EstateEvent; estateId: string };
+type Props = { event: EstateEvent; estateId: string; fromHome?: boolean };
 
-export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
+export function IssueThreadScreen({ event: initialEvent, estateId, fromHome = false }: Props) {
   const { t } = useTranslation();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeightFromContext = useContext(BottomTabBarHeightContext);
   const tabBarHeight =
@@ -239,7 +238,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
         onPress: () => {
           setShowEditModal(false);
           void deleteEvent(eventId);
-          router.back();
+          leaveEstateEvent(fromHome);
         },
       },
     ]);
@@ -252,12 +251,15 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
 
   return (
     <ScreenShell
+      onBack={() => leaveEstateEvent(fromHome)}
       title={
-        <View>
+        <View style={styles.headerTitleRow}>
           <ThemedText type="defaultSemiBold" style={styles.ticketTitle} numberOfLines={1}>
             {activeTicket.title}
           </ThemedText>
-          <ThemedText style={[styles.guestName, { color: colors.textSecondary }]}>{guestName}</ThemedText>
+          <ThemedText style={[styles.guestName, { color: colors.textSecondary }]} numberOfLines={1}>
+            {guestName}
+          </ThemedText>
         </View>
       }
       headerRight={
@@ -389,7 +391,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                         <IconSymbol name="person.2.fill" size={12} color={isOwnMessage ? colors.textOnBrand : colors.tint} />
                         <ThemedText
                           style={[styles.contactTagText, { color: isOwnMessage ? colors.textOnBrand : colors.tint }]}
-                          numberOfLines={2}
+                          numberOfLines={1}
                         >
                           {t('ticketsHub.threadTaggedHostPrefix')}: {taggedHostLabel(msg.taggedHostId)}
                         </ThemedText>
@@ -405,7 +407,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                         <IconSymbol name="person.fill" size={12} color={isOwnMessage ? colors.textOnBrand : colors.tint} />
                         <ThemedText
                           style={[styles.contactTagText, { color: isOwnMessage ? colors.textOnBrand : colors.tint }]}
-                          numberOfLines={2}
+                          numberOfLines={1}
                         >
                           {t('ticketsHub.threadTaggedPrefix')}:{' '}
                           {tagged ? contactLabel(tagged) : t('ticketsHub.threadContactRemoved')}
@@ -681,10 +683,7 @@ export function IssueThreadScreen({ event: initialEvent, estateId }: Props) {
                     onPress={() => applyPickedHost(h.userId)}
                   >
                     <ThemedText type="defaultSemiBold" numberOfLines={1}>
-                      {hostDisplayName(h.userId)}
-                    </ThemedText>
-                    <ThemedText style={{ color: colors.icon, fontSize: 13 }} numberOfLines={1}>
-                      {hostRoleLabel(h.kind)}
+                      {hostDisplayName(h.userId)} · {hostRoleLabel(h.kind)}
                     </ThemedText>
                   </TouchableOpacity>
                 ))
@@ -749,8 +748,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerIconBtn: { padding: 6 },
-  ticketTitle: { fontSize: 16 },
-  guestName: { fontSize: 12 },
+  ticketTitle: { fontSize: 16, flexShrink: 1 },
+  guestName: { fontSize: 12, flexShrink: 1 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, flexWrap: 'nowrap' },
   dueRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -777,8 +777,8 @@ const styles = StyleSheet.create({
   msgEditIconRight: { right: 4 },
   bubble: { padding: 12, borderRadius: 16, gap: 4 },
   bubbleRight: { borderBottomRightRadius: 4 },
-  contactTag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8 },
-  contactTagText: { flex: 1, fontSize: 12, fontWeight: '600' },
+  contactTag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, flexWrap: 'nowrap' },
+  contactTagText: { flexShrink: 1, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   authorName: { fontSize: 11, fontWeight: '700', opacity: 0.6 },
   msgText: { fontSize: 14, lineHeight: 20 },
   msgTime: { fontSize: 10 },

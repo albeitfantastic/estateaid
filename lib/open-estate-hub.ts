@@ -37,3 +37,31 @@ export function leaveEstateHub() {
   }
   router.navigate('/(app)/estates' as never);
 }
+
+/** Open a property event/task. Home passes `fromHome` so back returns to Home, not the hub. */
+export function openEstateEvent(
+  estateId: string,
+  eventId: string,
+  opts?: { fromHome?: boolean }
+) {
+  router.push({
+    pathname: '/(app)/estates/[estateId]/events/[eventId]',
+    params: {
+      estateId,
+      eventId,
+      ...(opts?.fromHome ? { fromHome: '1' } : {}),
+    },
+  } as never);
+}
+
+export function leaveEstateEvent(fromHome: boolean) {
+  if (fromHome) {
+    router.navigate('/(app)/home' as never);
+    return;
+  }
+  if (router.canGoBack()) {
+    router.back();
+    return;
+  }
+  router.navigate('/(app)/estates' as never);
+}

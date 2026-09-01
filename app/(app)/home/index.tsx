@@ -28,7 +28,7 @@ import { EstateColors, Layout, Radius } from '@/constants/theme';
 import { trialDaysRemaining } from '@/lib/access-tier-core';
 import { useAccountContext, useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { openEstateCreatePaywall, openUpgradePaywall } from '@/lib/maison-pro-upgrade';
-import { openEstateHub } from '@/lib/open-estate-hub';
+import { openEstateEvent, openEstateHub } from '@/lib/open-estate-hub';
 import { homeEmphasisFor, type OnboardingUseCase } from '@/lib/onboarding-starters';
 import { fetchProfileUseCase } from '@/lib/use-case-profile';
 import { setPushMasterEnabled } from '@/lib/notifications';
@@ -44,7 +44,6 @@ import {
   type ConversionKind,
 } from '@/lib/conversion-moments';
 import { addDays, formatDate, formatDateRange, today } from '@/lib/date-utils';
-import { debugLog1393f3 } from '@/lib/debug-session-1393f3';
 import { getEventOccurrences } from '@/lib/event-utils';
 import {
   busiestPropertyNights,
@@ -471,38 +470,6 @@ export default function HomeDashboard() {
     });
   }, [propertyHeroes, router, t]);
 
-  // #region agent log
-  useEffect(() => {
-    const roles: Record<string, string> = {};
-    for (const [id, role] of Object.entries(roleById)) roles[id.slice(0, 8)] = role;
-    const pageIds = stayHeroPages.map((p) => p.id);
-    debugLog1393f3({
-      hypothesisId: 'A,D,E',
-      location: 'app/(app)/home/index.tsx:stayHero',
-      message: 'home hero inputs',
-      runId: 'post-fix',
-      data: {
-        isGuestOnly,
-        allEstates: allEstates.length,
-        managed: estates.length,
-        guest: guestEstates.length,
-        accessible: accessibleEstates.length,
-        pageCount: stayHeroPages.length,
-        uniquePageIds: new Set(pageIds).size,
-        roles,
-      },
-    });
-  }, [
-    isGuestOnly,
-    allEstates.length,
-    estates.length,
-    guestEstates.length,
-    accessibleEstates.length,
-    stayHeroPages,
-    roleById,
-  ]);
-  // #endregion
-
   const visibleHeroIsGuest = heroEstate ? roleById[heroEstate.id] === 'guest' : false;
 
   function onHeroPress() {
@@ -687,9 +654,7 @@ export default function HomeDashboard() {
                   icon="exclamationmark.triangle.fill"
                   title={issue.title}
                   subtitle={estateById[issue.estateId]?.name}
-                  onPress={() =>
-                    router.push(`/(app)/estates/${issue.estateId}/events/${issue.id}` as never)
-                  }
+                  onPress={() => openEstateEvent(issue.estateId, issue.id, { fromHome: true })}
                   isLast={i === attentionIssues.length - 1}
                 />
               ))}
@@ -794,9 +759,7 @@ export default function HomeDashboard() {
                     title={item.event.title}
                     subtitle={`${item.estate?.name ?? '—'} · ${formatDate(item.nextDate)} · ${item.typeLabel}`}
                     onPress={() =>
-                      router.push(
-                        `/(app)/estates/${item.event.estateId}/events/${item.event.id}` as never
-                      )
+                      openEstateEvent(item.event.estateId, item.event.id, { fromHome: true })
                     }
                     isLast={isLast}
                     trailing={

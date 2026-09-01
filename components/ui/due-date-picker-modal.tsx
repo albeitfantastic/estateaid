@@ -12,23 +12,41 @@ type Props = {
   onSelectDate: (dateStr: string) => void;
   onClear?: () => void;
   title: string;
-  clearLabel: string;
+  clearLabel?: string;
+  /** Extra days before today to include (one-time maintenance dates may be in the past). */
+  includePastDays?: number;
+  selectedDate?: string;
 };
 
-export function DueDatePickerModal({ visible, onClose, onSelectDate, onClear, title, clearLabel }: Props) {
+export function DueDatePickerModal({
+  visible,
+  onClose,
+  onSelectDate,
+  onClear,
+  title,
+  clearLabel,
+  includePastDays = 0,
+  selectedDate,
+}: Props) {
   const t = useAppTheme();
   const colors = t.colors;
 
   const dayOptions = useMemo(() => {
     const out: string[] = [];
     const start = new Date();
-    for (let i = 0; i < 366; i++) {
+    if (includePastDays > 0) start.setDate(start.getDate() - includePastDays);
+    const total = includePastDays + 366;
+    for (let i = 0; i < total; i++) {
       const x = new Date(start);
       x.setDate(start.getDate() + i);
       out.push(toISODate(x));
     }
+    if (selectedDate && !out.includes(selectedDate)) {
+      out.unshift(selectedDate);
+      out.sort();
+    }
     return out;
-  }, []);
+  }, [includePastDays, selectedDate]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -38,7 +56,7 @@ export function DueDatePickerModal({ visible, onClose, onSelectDate, onClear, ti
           <ThemedText type="defaultSemiBold" style={styles.sheetTitle}>
             {title}
           </ThemedText>
-          {onClear ? (
+          {onClear && clearLabel ? (
             <TouchableOpacity onPress={() => { onClear(); onClose(); }} style={styles.clearBtn}>
               <ThemedText style={{ color: colors.primary, fontWeight: '600' }}>{clearLabel}</ThemedText>
             </TouchableOpacity>
@@ -53,7 +71,9 @@ export function DueDatePickerModal({ visible, onClose, onSelectDate, onClear, ti
                   onClose();
                 }}
               >
-                <ThemedText>{formatDate(d)}</ThemedText>
+                <ThemedText style={selectedDate === d ? { fontWeight: '700' } : undefined}>
+                  {formatDate(d)}
+                </ThemedText>
                 <ThemedText style={[styles.iso, { color: colors.textMuted }]}>{d}</ThemedText>
               </TouchableOpacity>
             ))}

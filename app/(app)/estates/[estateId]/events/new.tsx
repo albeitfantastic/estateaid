@@ -182,6 +182,7 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
     dayOfMonth: 1,
     intervalMonths: 6,
     reminderLeadDays: 7,
+    onceDate: today(),
   });
 
   async function save() {
@@ -196,7 +197,7 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
 
     const id = generateUuidV4();
     const createdAt = new Date().toISOString();
-    const { frequency, dayOfWeek, dayOfMonth, intervalMonths, reminderLeadDays } = recurrence;
+    const { frequency, dayOfWeek, dayOfMonth, intervalMonths, reminderLeadDays, onceDate } = recurrence;
     const base = {
       id,
       estateId,
@@ -207,25 +208,25 @@ function NewMaintenanceCalendarScreen({ estateId }: { estateId: string }) {
       reminderLeadDays,
     } as const;
 
-    const result =
-      type === 'task'
-        ? await addEvent({
-            ...base,
-            type: 'task' as const,
-            taskKind: 'calendar',
-            date: taskDate,
-          })
-        : await addEvent({
-            ...base,
-            type: 'recurring' as const,
-            recurrence: {
-              frequency,
-              dayOfWeek: frequency === 'weekly' || frequency === 'biweekly' ? dayOfWeek : undefined,
-              dayOfMonth: usesDayOfMonth(frequency) ? dayOfMonth : undefined,
-              intervalMonths: frequency === 'custom' ? intervalMonths : undefined,
-              startDate: today(),
-            },
-          });
+    const once = type === 'task' || frequency === 'once';
+    const result = once
+      ? await addEvent({
+          ...base,
+          type: 'task' as const,
+          taskKind: 'calendar',
+          date: frequency === 'once' ? onceDate.trim() || today() : taskDate,
+        })
+      : await addEvent({
+          ...base,
+          type: 'recurring' as const,
+          recurrence: {
+            frequency,
+            dayOfWeek: frequency === 'weekly' || frequency === 'biweekly' ? dayOfWeek : undefined,
+            dayOfMonth: usesDayOfMonth(frequency) ? dayOfMonth : undefined,
+            intervalMonths: frequency === 'custom' ? intervalMonths : undefined,
+            startDate: today(),
+          },
+        });
 
     if (result.error) {
       Alert.alert(t('maintenanceSchedule.saveFailedTitle'), result.error);

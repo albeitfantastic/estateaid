@@ -162,8 +162,8 @@ export const useEventStore = create<EventState>()(
         if (patch.description !== undefined) dbPatch.description = patch.description;
         if (patch.type !== undefined) dbPatch.type = patch.type;
         if (patch.taskKind !== undefined) dbPatch.task_kind = patch.taskKind;
-        if (patch.date !== undefined) dbPatch.date = patch.date;
-        if (patch.recurrence !== undefined) dbPatch.recurrence = patch.recurrence;
+        if (patch.date !== undefined) dbPatch.date = patch.date ?? null;
+        if (patch.recurrence !== undefined) dbPatch.recurrence = patch.recurrence ?? null;
         if (patch.reminderLeadDays !== undefined) dbPatch.reminder_lead_days = patch.reminderLeadDays;
         if (patch.color !== undefined) dbPatch.color = patch.color;
         if (patch.guestId !== undefined) dbPatch.guest_id = patch.guestId;

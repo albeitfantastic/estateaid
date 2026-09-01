@@ -320,6 +320,8 @@ export const catalogPartC: Record<string, unknown> = {
     semiAnnual: 'Every 6 months',
     yearly: 'Yearly',
     custom: 'Custom',
+    once: 'Once',
+    onceDate: 'Date',
     frequency: 'Frequency',
     dayOfWeek: 'Day of week',
     dayOfMonth: 'Day of month',

@@ -25,7 +25,8 @@ const FREQ_LABELS: Record<RecurrenceFrequency, string> = {
   custom: 'Custom',
 };
 
-export function usesDayOfMonth(freq: RecurrenceFrequency): boolean {
+export function usesDayOfMonth(freq: RecurrenceFrequency | 'once'): boolean {
+  if (freq === 'once') return false;
   return (
     freq === 'monthly' ||
     freq === 'quarterly' ||
