@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useContactStore } from '@/store/contact-store';
 import { isRequired } from '@/lib/validators';
 import { ContactCategory } from '@/types';
+import { useMarkInboxSeenOnFocus } from '@/store/inbox-seen-store';
 
 const CATEGORIES: ContactCategory[] = ['emergency', 'staff', 'service', 'utility', 'neighbor', 'other'];
 
@@ -18,6 +19,7 @@ export default function EditContact() {
   const { t } = useTranslation();
   const { contactId } = useLocalSearchParams<{ contactId: string }>();
   const router = useRouter();
+  useMarkInboxSeenOnFocus('contact', contactId);
   const { contacts, updateContact } = useContactStore();
   const contact = contacts.find((c) => c.id === contactId);
 

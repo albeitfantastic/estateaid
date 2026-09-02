@@ -51,6 +51,8 @@ type ScreenShellProps = {
   onBack?: () => void;
   showBack?: boolean;
   headerRight?: ReactNode;
+  /** Replaces the back/title/right row (safe-area padding still applied). */
+  customHeader?: ReactNode;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
 };
@@ -61,6 +63,7 @@ export function ScreenShell({
   onBack,
   showBack = true,
   headerRight,
+  customHeader,
   children,
   style,
 }: ScreenShellProps) {
@@ -76,32 +79,36 @@ export function ScreenShell({
 
   return (
     <ThemedView style={[styles.container, style]}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        {showBack ? (
-          <TouchableOpacity
-            onPress={handleBack}
-            style={styles.back}
-            accessibilityRole="button"
-            accessibilityLabel={t('a11y.back')}
-          >
-            <IconSymbol name="arrow.left" size={22} color={colors.tint} />
-          </TouchableOpacity>
-        ) : null}
-        {typeof title === 'string' ? (
-          <ThemedText
-            type={largeTitle ? 'display' : 'title'}
-            style={largeTitle ? styles.largeTitle : styles.title}
-            numberOfLines={largeTitle ? 2 : 1}
-          >
-            {title}
-          </ThemedText>
-        ) : title ? (
-          <View style={styles.titleNode}>{title}</View>
-        ) : (
-          <View style={styles.titleNode} />
-        )}
-        {headerRight ?? <View style={styles.headerRightPlaceholder} />}
-      </View>
+      {customHeader ? (
+        <View style={{ paddingTop: insets.top + 12 }}>{customHeader}</View>
+      ) : (
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          {showBack ? (
+            <TouchableOpacity
+              onPress={handleBack}
+              style={styles.back}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.back')}
+            >
+              <IconSymbol name="arrow.left" size={22} color={colors.tint} />
+            </TouchableOpacity>
+          ) : null}
+          {typeof title === 'string' ? (
+            <ThemedText
+              type={largeTitle ? 'display' : 'title'}
+              style={largeTitle ? styles.largeTitle : styles.title}
+              numberOfLines={largeTitle ? 2 : 1}
+            >
+              {title}
+            </ThemedText>
+          ) : title ? (
+            <View style={styles.titleNode}>{title}</View>
+          ) : (
+            <View style={styles.titleNode} />
+          )}
+          {headerRight ?? <View style={styles.headerRightPlaceholder} />}
+        </View>
+      )}
       {children}
     </ThemedView>
   );

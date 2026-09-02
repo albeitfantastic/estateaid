@@ -14,6 +14,8 @@ import type {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { useActivityLogStore } from '@/store/activity-log-store';
+import { useAuthStore } from '@/store/auth-store';
 
 function statusFromDb(raw: unknown): IssueStatus | undefined {
   const s = typeof raw === 'string' ? raw : 'open';
@@ -145,6 +147,14 @@ export const useEventStore = create<EventState>()(
               eventId: normalized.id,
             }
           );
+        }
+        const actorId =
+          normalized.guestId || useAuthStore.getState().currentUser?.id;
+        if (actorId && normalized.type === 'task') {
+          useActivityLogStore.getState().logActivity(normalized.estateId, actorId, 'task_created', {
+            eventId: normalized.id,
+            title: normalized.title,
+          });
         }
         return { error: null };
       },

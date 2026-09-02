@@ -214,6 +214,14 @@ export const useStayStore = create<StayState>()(
             }
           );
         }
+        const actorId = request.guestId || useAuthStore.getState().currentUser?.id;
+        if (actorId) {
+          useActivityLogStore
+            .getState()
+            .logActivity(request.estateId, actorId, 'stay_request_created', {
+              requestId: request.id,
+            });
+        }
         return { error: null };
       },
 
@@ -255,7 +263,9 @@ export const useStayStore = create<StayState>()(
         });
         const approveActorId = useAuthStore.getState().currentUser?.id;
         if (approveActorId) {
-          useActivityLogStore.getState().logActivity(req.estateId, approveActorId, 'stay_request_approved');
+          useActivityLogStore.getState().logActivity(req.estateId, approveActorId, 'stay_request_approved', {
+            requestId: req.id,
+          });
         }
         return { success: true };
       },
@@ -276,7 +286,9 @@ export const useStayStore = create<StayState>()(
           .then(({ error }) => rollbackRequests(set, previousRequests, error));
         const actorId = useAuthStore.getState().currentUser?.id;
         if (req && actorId) {
-          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_declined');
+          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_declined', {
+            requestId: req.id,
+          });
         }
       },
 
@@ -300,7 +312,9 @@ export const useStayStore = create<StayState>()(
         }).eq('id', requestId).then(({ error }) => rollbackRequests(set, previousRequests, error));
         const actorId = useAuthStore.getState().currentUser?.id;
         if (req && actorId) {
-          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_alternative_proposed');
+          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_alternative_proposed', {
+            requestId: req.id,
+          });
         }
       },
 
@@ -335,7 +349,9 @@ export const useStayStore = create<StayState>()(
           .then(({ error }) => rollbackRequests(set, previousRequests, error));
         const actorId = useAuthStore.getState().currentUser?.id;
         if (req && actorId) {
-          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_cancelled');
+          useActivityLogStore.getState().logActivity(req.estateId, actorId, 'stay_request_cancelled', {
+            requestId: req.id,
+          });
         }
       },
 

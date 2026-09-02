@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EstateContact } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { dedupeById } from '@/lib/dedup-by-id';
+import { useActivityLogStore } from '@/store/activity-log-store';
+import { useAuthStore } from '@/store/auth-store';
 
 function fromDb(row: Record<string, unknown>): EstateContact {
   return {
@@ -63,6 +65,13 @@ export const useContactStore = create<ContactState>()(
           console.warn('addContact: Supabase insert failed', error.message);
           set((s) => ({ contacts: s.contacts.filter((c) => c.id !== contact.id) }));
           return { error: error.message };
+        }
+        const actorId = useAuthStore.getState().currentUser?.id;
+        if (actorId) {
+          useActivityLogStore.getState().logActivity(contact.estateId, actorId, 'contact_added', {
+            contactId: contact.id,
+            name: contact.name,
+          });
         }
         return { error: null };
       },

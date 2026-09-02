@@ -25,6 +25,7 @@ import { getEstateActorRole } from '@/lib/estate-role';
 import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
 import { generateUuidV4 } from '@/lib/id';
 import { isRequired } from '@/lib/validators';
+import { uploadEstateCover } from '@/lib/estate-cover-storage';
 import { ONBOARDING_USE_CASES, type OnboardingUseCase } from '@/lib/onboarding-starters';
 import {
   markPropertyTypeReasked,
@@ -38,6 +39,7 @@ export default function NewEstate() {
   const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const addEstate = useEstateStore((s) => s.addEstate);
+  const updateEstate = useEstateStore((s) => s.updateEstate);
   const allEstates = useEstateStore((s) => s.estates);
   const allInvitations = useInvitationStore((s) => s.invitations);
   const can = useCan();
@@ -54,6 +56,7 @@ export default function NewEstate() {
   const [description, setDescription] = useState('');
   const [timeZone, setTimeZone] = useState('Europe/London');
   const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [coverMime, setCoverMime] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [reask, setReask] = useState(false);
   const [propertyType, setPropertyType] = useState<OnboardingUseCase | null>(null);
@@ -95,6 +98,7 @@ export default function NewEstate() {
     });
     if (!result.canceled) {
       setCoverImageUrl(result.assets[0].uri);
+      setCoverMime(result.assets[0].mimeType ?? null);
     }
   }
 
@@ -113,15 +117,15 @@ export default function NewEstate() {
 
     setSaving(true);
     try {
+      const estateId = generateUuidV4();
       const { error, code } = await addEstate(
         {
-          id: generateUuidV4(),
+          id: estateId,
           ownerId: currentUser.id,
           sponsorUserId: currentUser.id,
           name: name.trim(),
           location: location.trim(),
           description: description.trim() || undefined,
-          coverImageUrl: coverImageUrl || undefined,
           timeZone: timeZone.trim(),
           createdAt: new Date().toISOString(),
         },
@@ -138,6 +142,19 @@ export default function NewEstate() {
       if (error) {
         Alert.alert('Could not save property', error);
         return;
+      }
+      if (coverImageUrl) {
+        const uploaded = await uploadEstateCover(estateId, coverImageUrl, coverMime);
+        if (uploaded.url) {
+          await updateEstate(estateId, { coverImageUrl: uploaded.url });
+        } else {
+          Alert.alert(
+            'Property saved',
+            uploaded.error
+              ? `The cover photo could not be uploaded (${uploaded.error}). You can add it from Edit property.`
+              : 'The cover photo could not be uploaded. You can add it from Edit property.'
+          );
+        }
       }
       if (reask && propertyType) {
         await markPropertyTypeReasked(currentUser.id, propertyType);

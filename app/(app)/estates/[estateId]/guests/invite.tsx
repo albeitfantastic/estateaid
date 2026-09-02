@@ -1,16 +1,16 @@
-import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { InviteShareChannelsModal } from '@/components/invite-share-channels-modal';
+import { FocusInput, inputBaseStyle } from '@/components/ui/focus-input';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
   OutlineButton,
   FilledButton,
   ScreenScroll,
   ScreenShell,
-  SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
@@ -149,18 +149,7 @@ export default function InviteGuest() {
       : null;
 
   return (
-    <ScreenShell
-      title={t('titles.invite')}
-      headerRight={
-        createdCode ? (
-          <TouchableOpacity onPress={() => router.back()}>
-            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>
-              {t('ownerInvite.done')}
-            </ThemedText>
-          </TouchableOpacity>
-        ) : undefined
-      }
-    >
+    <ScreenShell title={t('titles.invite')}>
       <InviteShareChannelsModal
         visible={shareModalVisible}
         onClose={() => setShareModalVisible(false)}
@@ -172,7 +161,7 @@ export default function InviteGuest() {
         previewItems={createdCode && estate ? [{ estateName: estate.name, inviteCode: createdCode }] : []}
       />
 
-      <ScreenScroll contentContainerStyle={styles.form} gap={20} keyboardShouldPersistTaps="handled">
+      <ScreenScroll contentContainerStyle={styles.form} gap={16} keyboardShouldPersistTaps="handled">
         {!createdCode ? (
           <>
             <View style={[styles.infoBox, { backgroundColor: colors.tint + '10', borderColor: colors.tint + '30' }]}>
@@ -181,16 +170,20 @@ export default function InviteGuest() {
             </View>
 
             <View style={styles.field}>
-              <SectionLabel>Role</SectionLabel>
+              <ThemedText style={[inputBaseStyle.label, { color: colors.icon }]}>
+                {t('ownerInvite.roleLabel')}
+              </ThemedText>
               <View style={styles.roleRow}>
-                {([
-                  { value: 'guest' as const, label: t('ownerInvite.estateRoleGuestLabel'), disabled: false },
-                  {
-                    value: 'owner' as const,
-                    label: t('ownerInvite.estateRoleCoOwnerLabel'),
-                    disabled: !canInviteOwner,
-                  },
-                ]).map((opt) => {
+                {(
+                  [
+                    { value: 'guest' as const, label: t('ownerInvite.estateRoleGuestLabel'), disabled: false },
+                    {
+                      value: 'owner' as const,
+                      label: t('ownerInvite.estateRoleCoOwnerLabel'),
+                      disabled: !canInviteOwner,
+                    },
+                  ]
+                ).map((opt) => {
                   const selected = role === opt.value;
                   return (
                     <TouchableOpacity
@@ -226,37 +219,26 @@ export default function InviteGuest() {
               ) : null}
             </View>
 
-            <View style={styles.field}>
-              <SectionLabel>{t('ownerInvite.inviteeLabel')}</SectionLabel>
-              <TextInput
-                style={[styles.input, { color: colors.text, borderColor: colors.icon + '44' }]}
-                placeholder={t('ownerInvite.inviteePlaceholder')}
-                placeholderTextColor={colors.icon}
-                value={sendTo}
-                onChangeText={setSendTo}
-                autoCapitalize="words"
-                autoCorrect={false}
-              />
-            </View>
+            <FocusInput
+              label={t('ownerInvite.inviteeLabel')}
+              placeholder={t('ownerInvite.inviteePlaceholder')}
+              value={sendTo}
+              onChangeText={setSendTo}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
 
-            <View style={styles.field}>
-              <SectionLabel>{t('ownerInvite.noteLabel')}</SectionLabel>
-              <TextInput
-                style={[styles.input, styles.multiline, { color: colors.text, borderColor: colors.icon + '44' }]}
-                placeholder={t('ownerInvite.notePlaceholder')}
-                placeholderTextColor={colors.icon}
-                value={note}
-                onChangeText={setNote}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
+            <FocusInput
+              label={t('ownerInvite.noteLabel')}
+              placeholder={t('ownerInvite.notePlaceholder')}
+              value={note}
+              onChangeText={setNote}
+            />
 
             <FilledButton
               label={t('ownerInvite.sendInvitation')}
-              icon="paperplane.fill"
               onPress={() => void createInvite()}
+              style={{ marginTop: 20 }}
             />
           </>
         ) : (
@@ -316,12 +298,10 @@ export default function InviteGuest() {
 }
 
 const styles = StyleSheet.create({
-  form: { paddingTop: 8, gap: 20 },
+  form: { paddingTop: 8 },
   infoBox: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, alignItems: 'flex-start' },
   infoText: { flex: 1, fontSize: 13, lineHeight: 18 },
   field: { gap: 6 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  multiline: { height: 100, paddingTop: 12 },
   roleRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   rolePill: {
     paddingHorizontal: 14,

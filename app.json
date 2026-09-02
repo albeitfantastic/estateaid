@@ -10,11 +10,17 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.maison.app",
-      "associatedDomains": ["applinks:maison.app"],
+      "bundleIdentifier": "com.estateaid.app",
+      "associatedDomains": [
+        "applinks:maison.app"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "LSApplicationQueriesSchemes": ["whatsapp", "tg", "sms"],
+        "LSApplicationQueriesSchemes": [
+          "whatsapp",
+          "tg",
+          "sms"
+        ],
         "NSCalendarsUsageDescription": "Maison adds stays and property events to your calendar.",
         "NSCalendarsFullAccessUsageDescription": "Maison adds stays and property events to your calendar.",
         "NSCalendarsWriteOnlyAccessUsageDescription": "Maison adds stays and property events to your calendar."
@@ -34,9 +40,15 @@
         "android.permission.WRITE_CALENDAR"
       ],
       "queries": [
-        { "scheme": "whatsapp" },
-        { "scheme": "tg" },
-        { "scheme": "sms" }
+        {
+          "scheme": "whatsapp"
+        },
+        {
+          "scheme": "tg"
+        },
+        {
+          "scheme": "sms"
+        }
       ],
       "intentFilters": [
         {
@@ -49,7 +61,10 @@
               "pathPrefix": "/i"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -87,7 +102,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2a9e163c-b8ad-49af-8134-473a6b223323"
+        "projectId": "9e5f5df9-ffa9-4705-99c4-50bd25278aa7"
       }
     },
     "owner": "albeit"

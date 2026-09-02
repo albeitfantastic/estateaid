@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useDocumentStore } from '@/store/document-store';
 import { getEstateDocumentSignedUrl } from '@/lib/estate-document-storage';
+import { useMarkInboxSeenOnFocus } from '@/store/inbox-seen-store';
 
 export default function DocumentDetailScreen() {
   const { t } = useTranslation();
@@ -15,6 +16,7 @@ export default function DocumentDetailScreen() {
   const { colors } = useScreenTheme();
   const doc = useDocumentStore((s) => s.documents.find((d) => d.id === docId));
   const [opening, setOpening] = useState(false);
+  useMarkInboxSeenOnFocus('doc', docId);
 
   async function openFile() {
     if (!doc?.fileUri) {

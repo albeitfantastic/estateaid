@@ -348,5 +348,18 @@ export function useManagedEstates(): ManagedEstates {
   }, [estates, invitations, currentUser, coverageById]);
 }
 
+/** Managed properties plus those the actor can access as a guest. */
+export function useAccessibleEstates(): Estate[] {
+  const { estates, roleById } = useManagedEstates();
+  const allEstates = useEstateStore((s) => s.estates);
+  return useMemo(() => {
+    const seen = new Set(estates.map((e) => e.id));
+    return [
+      ...estates,
+      ...allEstates.filter((e) => roleById[e.id] === 'guest' && !seen.has(e.id)),
+    ];
+  }, [estates, allEstates, roleById]);
+}
+
 export { OWNER_CAP, CO_OWNER_CAP } from '@/lib/entitlements/constants';
 export { deriveSlotCount };

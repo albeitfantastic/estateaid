@@ -5,18 +5,20 @@ import { Estate } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { throwIfQueryError } from '@/lib/supabase-write-error';
 import { dedupeById } from '@/lib/dedup-by-id';
+import { isRemoteImageUrl } from '@/lib/estate-cover-storage';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import type { OnboardingUseCase } from '@/lib/onboarding-starters';
 
 function fromDb(row: Record<string, unknown>): Estate {
   const ownerId = row.owner_id as string;
+  const coverImageUrl = row.cover_image_url as string | undefined;
   return {
     id: row.id as string,
     ownerId,
     sponsorUserId: (row.sponsor_user_id as string | undefined) ?? ownerId,
     name: row.name as string,
     location: (row.location ?? '') as string,
-    coverImageUrl: row.cover_image_url as string | undefined,
+    coverImageUrl: isRemoteImageUrl(coverImageUrl) ? coverImageUrl : undefined,
     description: row.description as string | undefined,
     timeZone: (row.time_zone ?? 'UTC') as string,
     createdAt: row.created_at as string,
@@ -143,7 +145,7 @@ export const useEstateStore = create<EstateState>()(
         const dbPatch: Record<string, unknown> = {};
         if (patch.name !== undefined) dbPatch.name = patch.name;
         if (patch.location !== undefined) dbPatch.location = patch.location;
-        if (patch.coverImageUrl !== undefined) dbPatch.cover_image_url = patch.coverImageUrl;
+        if (patch.coverImageUrl !== undefined) dbPatch.cover_image_url = remoteImageUrlOnly(patch.coverImageUrl);
         if (patch.description !== undefined) dbPatch.description = patch.description;
         if (patch.timeZone !== undefined) dbPatch.time_zone = patch.timeZone;
         await supabase.from('estates').update(dbPatch).eq('id', id);

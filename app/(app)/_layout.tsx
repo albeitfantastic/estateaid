@@ -89,6 +89,9 @@ export default function AppTabLayout() {
       <Tabs.Screen name="stays" options={{ href: null }} />
       <Tabs.Screen name="guests" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="search" options={{ href: null }} />
+      <Tabs.Screen name="messages" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
   );
 }

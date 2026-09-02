@@ -14,6 +14,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useEstateStore } from '@/store/estate-store';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { isRequired } from '@/lib/validators';
+import { isRemoteImageUrl, uploadEstateCover } from '@/lib/estate-cover-storage';
 
 export default function EditEstate() {
   const { t } = useTranslation();
@@ -29,7 +30,9 @@ export default function EditEstate() {
   const [description, setDescription] = useState(estate?.description ?? '');
   const [timeZone, setTimeZone] = useState(estate?.timeZone ?? '');
   const [coverImageUrl, setCoverImageUrl] = useState(estate?.coverImageUrl ?? '');
+  const [coverMime, setCoverMime] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const runDelete = useCallback(async () => {
     setDeleting(true);
@@ -67,20 +70,35 @@ export default function EditEstate() {
     });
     if (!result.canceled) {
       setCoverImageUrl(result.assets[0].uri);
+      setCoverMime(result.assets[0].mimeType ?? null);
     }
   }
 
-  function submit() {
+  async function submit() {
     if (!isRequired(name)) { Alert.alert('Required', 'Please enter an estate name.'); return; }
     if (!isRequired(location)) { Alert.alert('Required', 'Please enter a location.'); return; }
-    updateEstate(estateId, {
-      name: name.trim(),
-      location: location.trim(),
-      description: description.trim() || undefined,
-      timeZone: timeZone.trim(),
-      coverImageUrl: coverImageUrl || undefined,
-    });
-    router.back();
+    setSaving(true);
+    try {
+      let remoteCover = coverImageUrl || undefined;
+      if (remoteCover && !isRemoteImageUrl(remoteCover)) {
+        const uploaded = await uploadEstateCover(estateId, remoteCover, coverMime);
+        if (!uploaded.url) {
+          Alert.alert('Could not save photo', uploaded.error ?? 'Upload failed');
+          return;
+        }
+        remoteCover = uploaded.url;
+      }
+      await updateEstate(estateId, {
+        name: name.trim(),
+        location: location.trim(),
+        description: description.trim() || undefined,
+        timeZone: timeZone.trim(),
+        coverImageUrl: remoteCover,
+      });
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   }
 
   function confirmDelete() {
@@ -94,8 +112,12 @@ export default function EditEstate() {
     <ScreenShell
       title={t('titles.editEstate')}
       headerRight={
-        <TouchableOpacity onPress={submit}>
-          <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+        <TouchableOpacity onPress={() => void submit()} disabled={saving || deleting}>
+          {saving ? (
+            <ActivityIndicator color={colors.tint} size="small" />
+          ) : (
+            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+          )}
         </TouchableOpacity>
       }
     >

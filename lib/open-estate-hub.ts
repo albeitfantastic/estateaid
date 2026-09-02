@@ -44,6 +44,9 @@ export function openEstateEvent(
   eventId: string,
   opts?: { fromHome?: boolean }
 ) {
+  void import('@/store/inbox-seen-store').then(({ markInboxSeen }) => {
+    markInboxSeen('task', eventId);
+  });
   router.push({
     pathname: '/(app)/estates/[estateId]/events/[eventId]',
     params: {

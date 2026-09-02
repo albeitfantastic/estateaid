@@ -5,10 +5,14 @@ export type EstateActivityAction =
   | 'invitation_accepted'
   | 'invitation_declined'
   | 'invitation_revoked'
+  | 'stay_request_created'
   | 'stay_request_approved'
   | 'stay_request_declined'
   | 'stay_request_alternative_proposed'
-  | 'stay_request_cancelled';
+  | 'stay_request_cancelled'
+  | 'task_created'
+  | 'document_added'
+  | 'contact_added';
 
 export interface EstateActivityEntry {
   id: string;

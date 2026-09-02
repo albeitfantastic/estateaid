@@ -24,11 +24,13 @@ import { sendCategorizedPush } from '@/lib/notifications';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { useCan } from '@/lib/entitlements/capabilities';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
+import { useMarkInboxSeenOnFocus } from '@/store/inbox-seen-store';
 
 export default function ReviewStayRequest() {
   const { t } = useTranslation();
   const { estateId, requestId } = useLocalSearchParams<{ estateId: string; requestId: string }>();
   const router = useRouter();
+  useMarkInboxSeenOnFocus('request', requestId);
   const { colors } = useScreenTheme();
   const { stayRequests, approveStay, declineStay, proposeAlternative, askQuestion, hasConflict } = useStayStore();
   const profileById = useProfileStore((s) => s.byId);

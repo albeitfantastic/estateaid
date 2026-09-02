@@ -1,12 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { SettingsSheet, type SettingsDestination } from '@/components/settings/settings-sheet';
 import { ConversionCard } from '@/components/home/conversion-card';
 import { GuestHomeBody } from '@/components/home/guest-home';
+import { MaisonTopBar } from '@/components/home/maison-top-bar';
 import { StayHeroPager, type StayHeroPage } from '@/components/home/stay-hero-pager';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -22,7 +21,6 @@ import {
   useScreenTheme,
 } from '@/components/ui/screen-layout';
 import { SetupChecklist } from '@/components/ui/setup-checklist';
-import { TrialStatusLine } from '@/components/ui/trial-status-line';
 import { BootstrapErrorBanner } from '@/components/ui/bootstrap-error-banner';
 import { EstateColors, Layout, Radius } from '@/constants/theme';
 import { trialDaysRemaining } from '@/lib/access-tier-core';
@@ -31,7 +29,6 @@ import { openEstateCreatePaywall, openUpgradePaywall } from '@/lib/maison-pro-up
 import { openEstateEvent, openEstateHub } from '@/lib/open-estate-hub';
 import { homeEmphasisFor, type OnboardingUseCase } from '@/lib/onboarding-starters';
 import { fetchProfileUseCase } from '@/lib/use-case-profile';
-import { setPushMasterEnabled } from '@/lib/notifications';
 import {
   daysBlockedFromStays,
   fetchInviteConversionSeen,
@@ -52,7 +49,6 @@ import {
   weekOccupancy,
   yearSpendTotal,
 } from '@/lib/home-host-briefing';
-import { navigateToSettingsSection } from '@/lib/settings-navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useContactStore } from '@/store/contact-store';
 import { useDocumentStore } from '@/store/document-store';
@@ -117,7 +113,6 @@ type UpcomingItem =
 export default function HomeDashboard() {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { colors } = useScreenTheme();
 
   const getStayRelativeLabel = useCallback(
@@ -134,14 +129,6 @@ export default function HomeDashboard() {
   );
 
   const currentUser = useAuthStore((s) => s.currentUser);
-  const {
-    themePreference,
-    setThemePreference,
-    signOut,
-    notificationsEnabled,
-  } = useAuthStore();
-  const isDark = themePreference === 'dark';
-  const [menuOpen, setMenuOpen] = useState(false);
   const [stayHeroIndex, setStayHeroIndex] = useState(0);
 
   const allStayRequests = useStayStore((s) => s.stayRequests);
@@ -489,57 +476,7 @@ export default function HomeDashboard() {
   }
 
   return (
-    <ScreenShell
-      showBack={false}
-      title={
-        !isGuestOnly ? (
-          <View style={styles.headerStatus}>
-            <TrialStatusLine />
-          </View>
-        ) : undefined
-      }
-      headerRight={
-        <TouchableOpacity
-          onPress={() => setMenuOpen(true)}
-          style={[
-            styles.menuBtn,
-            {
-              backgroundColor: colors.tintMuted,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: colors.border,
-            },
-          ]}
-          activeOpacity={0.7}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel={t('ownerHome.settingsMenu')}
-        >
-          <IconSymbol name="gearshape.fill" size={22} color={colors.tint} />
-        </TouchableOpacity>
-      }
-    >
-      <SettingsSheet
-        visible={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        colors={colors}
-        insets={insets}
-        currentUser={
-          currentUser ? { name: currentUser.name, email: currentUser.email } : null
-        }
-        slotCount={account.slotCount}
-        propertiesSponsored={account.propertiesSponsored}
-        isDark={isDark}
-        notificationsOn={notificationsEnabled}
-        onToggleDark={(v: boolean) => setThemePreference(v ? 'dark' : 'light')}
-        onToggleNotifications={(v: boolean) => {
-          if (currentUser) void setPushMasterEnabled(currentUser.id, v);
-        }}
-        onNavigate={(dest: SettingsDestination) => navigateToSettingsSection(router, dest)}
-        onSignOut={() => {
-          void signOut().then(() => router.replace('/(auth)' as never));
-        }}
-      />
-
+    <ScreenShell showBack={false} customHeader={<MaisonTopBar />}>
       <BootstrapErrorBanner />
 
       {isGuestOnly ? (
@@ -823,18 +760,6 @@ export default function HomeDashboard() {
 }
 
 const styles = StyleSheet.create({
-  menuBtn: {
-    width: Layout.touchMin,
-    height: Layout.touchMin,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerStatus: {
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: Layout.touchMin,
-  },
   scroll: { paddingTop: 12, paddingBottom: Layout.sectionGap + 24 },
 
   heroBlock: { gap: 16, marginTop: 4, marginBottom: 8 },

@@ -5,6 +5,7 @@ import { DocumentCategory, EstateDocument } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { useActivityLogStore } from '@/store/activity-log-store';
 
 function fromDb(row: Record<string, unknown>): EstateDocument {
   return {
@@ -63,6 +64,13 @@ export const useDocumentStore = create<DocumentState>()(
         if (error) {
           set((s) => ({ documents: s.documents.filter((d) => d.id !== document.id) }));
           reportWriteFailure(error.message);
+          return;
+        }
+        if (document.uploadedBy) {
+          useActivityLogStore.getState().logActivity(document.estateId, document.uploadedBy, 'document_added', {
+            documentId: document.id,
+            title: document.title,
+          });
         }
       },
       updateDocument: async (id, patch) => {

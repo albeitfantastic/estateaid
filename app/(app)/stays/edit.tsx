@@ -19,11 +19,13 @@ import { useEstateStore } from '@/store/estate-store';
 import { useStayStore } from '@/store/stay-store';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
+import { useMarkInboxSeenOnFocus } from '@/store/inbox-seen-store';
 
 export default function GuestEditStay() {
   const { t } = useTranslation();
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
   const router = useRouter();
+  useMarkInboxSeenOnFocus('request', requestId);
   const { colors } = useScreenTheme();
   const currentUser = useAuthStore((s) => s.currentUser);
   const allEstates = useEstateStore((s) => s.estates);

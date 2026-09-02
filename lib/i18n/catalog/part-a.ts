@@ -20,6 +20,18 @@ export const catalogPartA: Record<string, unknown> = {
     stays: 'Stays',
     invites: 'Invites',
   },
+  homeTopBar: {
+    settings: 'Settings',
+    search: 'Search',
+    messages: 'Messages',
+    notifications: 'Notifications',
+  },
+  searchPlaceholder: {
+    title: 'Search',
+    emptyTitle: 'Under construction',
+    emptySub: 'Search is coming soon.',
+    backHome: 'Back to home',
+  },
   common: {
     ok: 'OK',
     cancel: 'Cancel',

@@ -8,10 +8,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "eas:dev:ios": "eas build --profile development --platform ios",
+    "eas:dev:ios": "set EXPO_NO_CAPABILITY_SYNC=1&& eas build --profile development --platform ios",
     "eas:dev:android": "eas build --profile development --platform android",
-    "eas:dev:all": "eas build --profile development --platform all",
-    "eas:dev:ios-sim": "eas build --profile development-simulator --platform ios",
+    "eas:dev:all": "set EXPO_NO_CAPABILITY_SYNC=1&& eas build --profile development --platform all",
+    "eas:dev:ios-sim": "set EXPO_NO_CAPABILITY_SYNC=1&& eas build --profile development-simulator --platform ios",
     "start:dev": "expo start --dev-client --tunnel"
   },
   "dependencies": {

@@ -28,8 +28,6 @@ import { normalizeInviteRole, type Invitation } from '@/types';
 type GuestListProps = {
   /** Scope to a single property; omit for every property the actor manages. */
   estateId?: string;
-  emptyActionLabel?: string;
-  onEmptyAction?: () => void;
 };
 
 /**
@@ -37,7 +35,7 @@ type GuestListProps = {
  * actor manages. Roles resolve through `useManagedEstates()` so invited hosts see
  * the properties they co-manage, and §3.1 host-invite actions stay sponsor-only.
  */
-export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestListProps) {
+export function GuestList({ estateId }: GuestListProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useScreenTheme();
@@ -180,8 +178,6 @@ export function GuestList({ estateId, emptyActionLabel, onEmptyAction }: GuestLi
           icon="person.2.fill"
           title={t('guestsList.emptyTitle')}
           subtitle={estateId ? t('guestsList.emptySubProperty') : t('guestsList.emptySub')}
-          actionLabel={emptyActionLabel}
-          onAction={onEmptyAction}
         />
         {estateId != null ? <AddOfflineGuest estateId={estateId} /> : null}
       </>

@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { isIssueTask } from '@/lib/issue-task';
 import { useEventStore } from '@/store/event-store';
+import { useMarkInboxSeenOnFocus } from '@/store/inbox-seen-store';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet } from 'react-native';
 
@@ -27,6 +28,7 @@ export default function EstateEventDetailScreen() {
   const events = useEventStore((s) => s.events);
   const event = events.find((e) => e.id === eventId);
   const fromHome = paramId(params.fromHome) === '1';
+  useMarkInboxSeenOnFocus('task', eventId);
 
   if (!event) {
     return (

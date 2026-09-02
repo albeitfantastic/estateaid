@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Radius } from '@/constants/theme';
+import { isRemoteImageUrl } from '@/lib/estate-cover-storage';
 
 const INK = '#141311';
 const CREAM = '#F5F1E8';
@@ -38,6 +39,7 @@ export function PhotoHero({
 }: PhotoHeroProps) {
   const radius = edgeToEdge ? 0 : Radius.lg;
   const centered = align === 'center';
+  const remoteUrl = isRemoteImageUrl(imageUrl) ? imageUrl : null;
 
   const body = (
     <View
@@ -47,8 +49,12 @@ export function PhotoHero({
         style,
       ]}
     >
-      {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.fill} contentFit="cover" />
+      {remoteUrl ? (
+        <Image
+          source={{ uri: remoteUrl }}
+          style={styles.fill}
+          contentFit="cover"
+        />
       ) : (
         <View style={[styles.fill, styles.placeholder, { backgroundColor: INK }]}>
           <IconSymbol name="building.2.fill" size={64} color={CREAM} />

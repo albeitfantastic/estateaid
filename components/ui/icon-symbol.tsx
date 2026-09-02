@@ -20,6 +20,7 @@ const MAPPING = {
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
   // Maison icons
+  'building.2': 'villa',
   'building.2.fill': 'villa',
   'person.fill': 'account-circle',
   'person.badge.plus': 'person-add',
@@ -43,6 +44,7 @@ const MAPPING = {
   'lock.doc.fill': 'lock',
   'bubble.left.fill': 'chat-bubble',
   'bubble.left.and.right.fill': 'forum',
+  message: 'chat-bubble-outline',
   'message.fill': 'message',
   'arrow.triangle.2.circlepath': 'sync',
   'star.fill': 'star',
@@ -58,6 +60,7 @@ const MAPPING = {
   'xmark': 'close',
   'ellipsis': 'more-horiz',
   'magnifyingglass': 'search',
+  bell: 'notifications-none',
   'bell.fill': 'notifications',
   'gearshape.fill': 'settings',
   'photo': 'photo',

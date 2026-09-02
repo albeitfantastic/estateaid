@@ -4,19 +4,14 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { GuestList } from '@/components/guests/guest-list';
-import { ThemedText } from '@/components/themed-text';
 import { EstatePickerSheet } from '@/components/ui/estate-picker-sheet';
-import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
-import { Colors } from '@/constants/theme';
+import { FilledButton, ScreenScroll, ScreenShell } from '@/components/ui/screen-layout';
 import { useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { openHostCapabilityDenied } from '@/lib/entitlements/host-gate';
 
 export default function GuestsIndex() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { colors } = useScreenTheme();
   const can = useCan();
   const { estates } = useManagedEstates();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -45,24 +40,7 @@ export default function GuestsIndex() {
   }
 
   return (
-    <ScreenShell
-      title={t('titles.guests')}
-      headerRight={
-        <HostProLockTouchable
-          locked={invitableEstates.length === 0 && estates.length > 0}
-          feature="guests.invite"
-          returnTo="/(app)/guests"
-          shrinkToContent
-          onPress={startInvite}
-          style={[styles.inviteBtn, { backgroundColor: colors.tint }]}
-          activeOpacity={0.8}
-          accessibilityLabel={t('titles.invite')}
-        >
-          <IconSymbol name="plus" size={18} color={colors.textOnBrand} />
-          <ThemedText style={styles.inviteBtnText}>{t('titles.invite')}</ThemedText>
-        </HostProLockTouchable>
-      }
-    >
+    <ScreenShell title={t('titles.guests')}>
       <EstatePickerSheet
         visible={pickerOpen}
         title={t('guestsList.pickPropertyToInvite')}
@@ -74,22 +52,18 @@ export default function GuestsIndex() {
         onClose={() => setPickerOpen(false)}
       />
 
-      <ScreenScroll contentContainerStyle={styles.grow}>
-        <GuestList emptyActionLabel={t('titles.invite')} onEmptyAction={startInvite} />
+      <ScreenScroll contentContainerStyle={styles.scroll} gap={16}>
+        <GuestList />
+        <FilledButton
+          label={t('guestsList.inviteCta')}
+          onPress={startInvite}
+          style={{ marginTop: 20 }}
+        />
       </ScreenScroll>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  inviteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  inviteBtnText: { color: Colors.light.textOnBrand, fontWeight: '700', fontSize: 14 },
-  grow: { flexGrow: 1 },
+  scroll: { paddingTop: 8 },
 });

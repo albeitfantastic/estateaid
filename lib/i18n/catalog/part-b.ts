@@ -123,6 +123,8 @@ export const catalogPartB: Record<string, unknown> = {
     inviteeLabel: 'Recipient',
     inviteePlaceholder: 'Who are you inviting? e.g. Anna',
     inviteeUnset: 'No recipient added',
+    roleLabel: 'Role',
+    noteLabel: 'Note',
     notePlaceholder: 'Optional — e.g. Looking forward to having you!',
     noteRequired: 'Please add a personal note to include with your invite.',
     sharePreviewNote: 'Personal note',
