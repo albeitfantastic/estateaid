@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FocusInput } from '@/components/ui/focus-input';
 import { LocationSearchField } from '@/components/ui/location-search-field';
-import { ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
+import { FilledButton, ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useEstateStore } from '@/store/estate-store';
@@ -109,19 +109,8 @@ export default function EditEstate() {
   }
 
   return (
-    <ScreenShell
-      title={t('titles.editEstate')}
-      headerRight={
-        <TouchableOpacity onPress={() => void submit()} disabled={saving || deleting}>
-          {saving ? (
-            <ActivityIndicator color={colors.tint} size="small" />
-          ) : (
-            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>{t('common.save')}</ThemedText>
-          )}
-        </TouchableOpacity>
-      }
-    >
-      <ScreenScroll contentContainerStyle={styles.form} gap={20} keyboardShouldPersistTaps="handled">
+    <ScreenShell title={t('titles.editEstate')}>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16} keyboardShouldPersistTaps="handled">
         <TouchableOpacity
           style={[styles.photoWrap, { borderColor: colors.border, backgroundColor: colors.tint + '10' }]}
           onPress={pickPhoto}
@@ -142,34 +131,56 @@ export default function EditEstate() {
           )}
         </TouchableOpacity>
 
-        <FocusInput label={t('estateForm.nameLabel')} placeholder={t('estateForm.namePlaceholder')} value={name} onChangeText={setName} />
+        <FocusInput
+          label={t('estateForm.nameLabel')}
+          placeholder={t('estateForm.namePlaceholder')}
+          value={name}
+          onChangeText={setName}
+        />
         <LocationSearchField
           label={t('estateForm.locationLabel')}
           placeholder={t('estateForm.locationPlaceholder')}
           value={location}
           onChangeText={setLocation}
         />
-        <FocusInput label={t('estateForm.timeZoneLabel')} placeholder={t('estateForm.timeZonePlaceholder')} value={timeZone} onChangeText={setTimeZone} />
-        <FocusInput label={t('estateForm.descriptionLabel')} placeholder={t('estateForm.descriptionPlaceholder')} value={description} onChangeText={setDescription} multiline numberOfLines={4} textAlignVertical="top" style={styles.multiline} />
+        <FocusInput
+          label={t('estateForm.timeZoneLabel')}
+          placeholder={t('estateForm.timeZonePlaceholder')}
+          value={timeZone}
+          onChangeText={setTimeZone}
+        />
+        <FocusInput
+          label={t('estateForm.descriptionLabel')}
+          placeholder={t('estateForm.descriptionPlaceholder')}
+          value={description}
+          onChangeText={setDescription}
+        />
 
-        <View style={[styles.dangerZone, { borderColor: colors.error + '55' }]}>
-          <ThemedText style={[styles.dangerTitle, { color: colors.error }]}>{t('editEstateScreen.deleteProperty')}</ThemedText>
-          <ThemedText style={[styles.dangerSub, { color: colors.icon }]}>{t('editEstateScreen.deleteSummary')}</ThemedText>
-          <TouchableOpacity
-            style={[styles.deleteBtn, { borderColor: colors.error, opacity: deleting ? 0.6 : 1 }]}
-            onPress={confirmDelete}
-            disabled={deleting}
-            activeOpacity={0.85}
-          >
-            {deleting ? (
-              <ActivityIndicator color={colors.error} />
-            ) : (
-              <ThemedText style={[styles.deleteBtnText, { color: colors.error }]}>
-                {t('editEstateScreen.deleteConfirmCta')}
+        <FilledButton
+          label={t('editEstateScreen.saveChanges')}
+          onPress={() => void submit()}
+          disabled={!name.trim() || deleting}
+          loading={saving}
+          style={{ marginTop: 20 }}
+        />
+
+        <TouchableOpacity
+          style={[styles.deleteBtn, { borderColor: colors.error, opacity: deleting ? 0.6 : 1 }]}
+          onPress={confirmDelete}
+          disabled={deleting || saving}
+          activeOpacity={0.7}
+        >
+          {deleting ? (
+            <ActivityIndicator color={colors.error} />
+          ) : (
+            <>
+              <IconSymbol name="trash" size={16} color={colors.error} />
+              <ThemedText style={{ color: colors.error, fontWeight: '600' }}>
+                {t('editEstateScreen.deleteProperty')}
               </ThemedText>
-            )}
-          </TouchableOpacity>
-        </View>
+            </>
+          )}
+        </TouchableOpacity>
       </ScreenScroll>
     </ScreenShell>
   );
@@ -177,7 +188,7 @@ export default function EditEstate() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  form: { paddingTop: 8, gap: 20 },
+  form: { paddingTop: 8 },
   photoWrap: {
     borderRadius: 20,
     borderWidth: 1.5,
@@ -187,25 +198,13 @@ const styles = StyleSheet.create({
   },
   photo: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  multiline: { height: 110, paddingTop: 14 },
-  dangerZone: {
-    marginTop: 8,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 12,
-  },
-  dangerTitle: { fontSize: 16, fontWeight: '700' },
-  dangerSub: { fontSize: 13, lineHeight: 18 },
   deleteBtn: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    minWidth: 120,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  deleteBtnText: { fontSize: 15, fontWeight: '700' },
 });

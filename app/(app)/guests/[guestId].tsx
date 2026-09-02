@@ -1,38 +1,64 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, BackHandler, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import { CalendarColorHint, CalendarColorPicker } from '@/components/guests/calendar-color-picker';
+import { CalendarColorPicker } from '@/components/guests/calendar-color-picker';
 import { ThemedText } from '@/components/themed-text';
 import { EstatePickerSheet } from '@/components/ui/estate-picker-sheet';
+import { inputBaseStyle } from '@/components/ui/focus-input';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
     GroupedList,
-    GroupedRow,
     OutlineButton,
     ScreenScroll,
     ScreenShell,
-    SectionLabel,
     useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { EstateColors } from '@/constants/theme';
+import { EstateColors, Radius } from '@/constants/theme';
 import { useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { resolveGuestCalendarColor } from '@/lib/guest-calendar-color';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
 import { normalizeInviteRole } from '@/types';
 
+function guestsAndHostsHref(estateId?: string) {
+  return estateId ? `/(app)/estates/${estateId}/guests` : '/(app)/guests';
+}
+
 export default function GuestDetail() {
   const { t } = useTranslation();
-  const { guestId } = useLocalSearchParams<{ guestId: string }>();
+  const { guestId, estateId: routeEstateId } = useLocalSearchParams<{
+    guestId: string;
+    estateId?: string;
+  }>();
   const router = useRouter();
+  const listEstateId = Array.isArray(routeEstateId) ? routeEstateId[0] : routeEstateId;
+  const guestsHref = guestsAndHostsHref(listEstateId);
   const { colors } = useScreenTheme();
   const can = useCan();
   const { invitations, revokeInvitation, updateInvitationRole, updateGuestCalendarColor } = useInvitationStore();
   const profileById = useProfileStore((s) => s.byId);
   const { estates, estateIds, roleById } = useManagedEstates();
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  function goBackToGuests() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(guestsHref as never);
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        goBackToGuests();
+        return true;
+      });
+      return () => sub.remove();
+    }, [guestsHref, router])
+  );
 
   /** §3.1 reserves promoting, demoting and removing hosts to the sponsor. */
   const isSponsorOf = (estateId: string) => roleById[estateId] === 'sponsor';
@@ -89,7 +115,7 @@ export default function GuestDetail() {
           style: 'destructive',
           onPress: () => {
             revokeInvitation(invId);
-            if (guestInvitations.length <= 1) router.back();
+            if (guestInvitations.length <= 1) goBackToGuests();
           },
         },
       ]
@@ -115,7 +141,7 @@ export default function GuestDetail() {
 
   function confirmRemoveAll() {
     Alert.alert(
-      'Remove Guest',
+      t('guestsList.removeGuest'),
       `Revoke all property access for ${displayName}? This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -124,7 +150,7 @@ export default function GuestDetail() {
           style: 'destructive',
           onPress: () => {
             guestInvitations.forEach((inv) => revokeInvitation(inv.id));
-            router.back();
+            goBackToGuests();
           },
         },
       ]
@@ -132,7 +158,7 @@ export default function GuestDetail() {
   }
 
   return (
-    <ScreenShell title={t('titles.guest')}>
+    <ScreenShell title={t('titles.guest')} onBack={goBackToGuests}>
       <EstatePickerSheet
         visible={pickerOpen}
         title={t('guestsList.pickPropertyToInvite')}
@@ -143,7 +169,7 @@ export default function GuestDetail() {
         }}
         onClose={() => setPickerOpen(false)}
       />
-      <ScreenScroll gap={12}>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
         <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.avatar, { backgroundColor: guestColor + '20' }]}>
             <ThemedText style={[styles.avatarText, { color: guestColor }]}>{initial}</ThemedText>
@@ -157,9 +183,10 @@ export default function GuestDetail() {
         </View>
 
         {canSetCalendarColor ? (
-          <View style={styles.colorBlock}>
-            <SectionLabel>{t('guestsList.calendarColor')}</SectionLabel>
-            <CalendarColorHint>{t('guestsList.calendarColorHint')}</CalendarColorHint>
+          <View style={styles.field}>
+            <ThemedText style={[inputBaseStyle.label, { color: colors.icon }]}>
+              {t('guestsList.calendarColor')}
+            </ThemedText>
             <CalendarColorPicker
               value={guestColor}
               onChange={(color) => {
@@ -170,59 +197,82 @@ export default function GuestDetail() {
           </View>
         ) : null}
 
-        <SectionLabel>Property Access</SectionLabel>
-        {guestInvitations.length === 0 ? (
-          <ThemedText style={[styles.noAccess, { color: colors.textSecondary }]}>No active access.</ThemedText>
-        ) : (
-          <GroupedList>
-            {guestInvitations.map((inv, i) => {
-              const estate = estates.find((e) => e.id === inv.estateId);
-              const dotColor = estateColorMap[inv.estateId] ?? colors.tint;
-              const role = inv.role ?? 'guest';
-              return (
-                <GroupedRow
-                  key={inv.id}
-                  title={estate?.name ?? inv.estateId}
-                  trailing={
-                    <View style={styles.accessTrailing}>
-                      {canChangeRole(inv.estateId) ? (
-                        <TouchableOpacity
-                          style={[styles.roleBadge, { backgroundColor: dotColor + '18' }]}
-                          onPress={() => promptChangeRole(inv.id, role)}
-                          activeOpacity={0.7}
-                        >
-                          <ThemedText style={[styles.roleBadgeText, { color: dotColor }]}>
-                            {role === 'owner' ? 'Host' : 'Guest'}
-                          </ThemedText>
-                          <IconSymbol name="chevron.up.chevron.down" size={9} color={dotColor} />
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={[styles.roleBadge, { backgroundColor: dotColor + '18' }]}>
-                          <ThemedText style={[styles.roleBadgeText, { color: dotColor }]}>
-                            {role === 'owner' ? 'Host' : 'Guest'}
-                          </ThemedText>
-                        </View>
-                      )}
-                      {canRevoke(inv.estateId, role) && (
-                        <TouchableOpacity
-                          style={[styles.revokeBtn, { backgroundColor: colors.error + '12', borderColor: colors.error + '30' }]}
-                          onPress={() => confirmRevoke(inv.id, estate?.name ?? inv.estateId)}
-                          activeOpacity={0.75}
-                        >
-                          <ThemedText style={[styles.revokeBtnText, { color: colors.error }]}>Revoke</ThemedText>
-                        </TouchableOpacity>
-                      )}
+        <View style={styles.field}>
+          <ThemedText style={[inputBaseStyle.label, { color: colors.icon }]}>
+            {t('guestsList.propertyAccess')}
+          </ThemedText>
+          {guestInvitations.length === 0 ? (
+            <ThemedText style={[styles.noAccess, { color: colors.textSecondary }]}>
+              {t('guestsList.emptyTitle')}
+            </ThemedText>
+          ) : (
+            <GroupedList>
+              {guestInvitations.map((inv, i) => {
+                const estate = estates.find((e) => e.id === inv.estateId);
+                const dotColor = estateColorMap[inv.estateId] ?? colors.tint;
+                const role = inv.role ?? 'guest';
+                const roleLabel =
+                  normalizeInviteRole(role) === 'owner'
+                    ? t('ownerInvite.estateRoleCoOwnerLabel')
+                    : t('ownerInvite.estateRoleGuestLabel');
+                const showRevoke = canRevoke(inv.estateId, role);
+                const canPickRole = canChangeRole(inv.estateId);
+                return (
+                  <View
+                    key={inv.id}
+                    style={[
+                      styles.accessRow,
+                      i < guestInvitations.length - 1 && {
+                        borderBottomColor: colors.border,
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.accessIcon, { backgroundColor: dotColor + '22' }]}>
+                      <IconSymbol name="building.2.fill" size={18} color={dotColor} />
                     </View>
-                  }
-                  isLast={i === guestInvitations.length - 1}
-                  icon="building.2.fill"
-                  iconColor={dotColor}
-                  iconBackgroundColor={dotColor + '22'}
-                />
-              );
-            })}
-          </GroupedList>
-        )}
+                    <ThemedText type="defaultSemiBold" style={styles.accessName} numberOfLines={1}>
+                      {estate?.name ?? inv.estateId}
+                    </ThemedText>
+                    <TouchableOpacity
+                      style={[
+                        styles.actionChip,
+                        {
+                          borderColor: canPickRole ? colors.border : colors.border,
+                          backgroundColor: colors.surfaceMuted ?? colors.surface,
+                        },
+                      ]}
+                      onPress={canPickRole ? () => promptChangeRole(inv.id, role) : undefined}
+                      disabled={!canPickRole}
+                      activeOpacity={canPickRole ? 0.7 : 1}
+                    >
+                      <ThemedText type="defaultSemiBold" style={styles.actionChipText} numberOfLines={1}>
+                        {roleLabel}
+                      </ThemedText>
+                      {canPickRole ? (
+                        <IconSymbol name="chevron.up.chevron.down" size={11} color={colors.icon} />
+                      ) : null}
+                    </TouchableOpacity>
+                    {showRevoke ? (
+                      <TouchableOpacity
+                        style={[
+                          styles.actionChip,
+                          { backgroundColor: colors.error + '12', borderColor: colors.error + '30' },
+                        ]}
+                        onPress={() => confirmRevoke(inv.id, estate?.name ?? inv.estateId)}
+                        activeOpacity={0.75}
+                      >
+                        <ThemedText type="defaultSemiBold" style={[styles.actionChipText, { color: colors.error }]}>
+                          {t('guestsList.revokeCta')}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </GroupedList>
+          )}
+        </View>
 
         {addableEstates.length > 0 && (
           <OutlineButton
@@ -239,17 +289,16 @@ export default function GuestDetail() {
         )}
 
         {guestInvitations.length > 0 && canRemoveAll && (
-          <View style={[styles.dangerZone, { borderColor: colors.error + '30' }]}>
-            <SectionLabel>Danger Zone</SectionLabel>
-            <TouchableOpacity
-              style={[styles.removeBtn, { backgroundColor: colors.error + '12', borderColor: colors.error + '30' }]}
-              onPress={confirmRemoveAll}
-              activeOpacity={0.75}
-            >
-              <IconSymbol name="trash.fill" size={16} color={colors.error} />
-              <ThemedText style={[styles.removeBtnText, { color: colors.error }]}>Remove Guest</ThemedText>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[styles.deleteBtn, { borderColor: colors.error }]}
+            onPress={confirmRemoveAll}
+            activeOpacity={0.7}
+          >
+            <IconSymbol name="trash" size={16} color={colors.error} />
+            <ThemedText style={{ color: colors.error, fontWeight: '600' }}>
+              {t('guestsList.removeGuest')}
+            </ThemedText>
+          </TouchableOpacity>
         )}
       </ScreenScroll>
     </ScreenShell>
@@ -257,12 +306,14 @@ export default function GuestDetail() {
 }
 
 const styles = StyleSheet.create({
+  form: { paddingTop: 8 },
+  field: { gap: 6 },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
   },
   avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
@@ -270,22 +321,43 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1, gap: 3 },
   profileName: { fontSize: 18 },
   profileEmail: { fontSize: 13 },
-  colorBlock: { gap: 10 },
-  noAccess: { fontSize: 14, marginBottom: 8 },
-  accessTrailing: { alignItems: 'flex-end', gap: 6 },
-  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  roleBadgeText: { fontSize: 11, fontWeight: '600' },
-  revokeBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
-  revokeBtnText: { fontSize: 12, fontWeight: '600' },
-  dangerZone: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10, marginTop: 8 },
-  removeBtn: {
+  noAccess: { fontSize: 14 },
+  accessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 56,
+  },
+  accessIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accessName: { flex: 1, minWidth: 0, fontSize: 16 },
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minWidth: 84,
+    minHeight: 32,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  actionChipText: { fontSize: 12 },
+  deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: 14,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1,
   },
-  removeBtnText: { fontSize: 14, fontWeight: '700' },
 });

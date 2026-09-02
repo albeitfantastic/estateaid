@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -52,12 +52,13 @@ export default function GuestsIndex() {
         onClose={() => setPickerOpen(false)}
       />
 
-      <ScreenScroll contentContainerStyle={styles.scroll} gap={16}>
-        <GuestList />
-        <FilledButton
-          label={t('guestsList.inviteCta')}
-          onPress={startInvite}
-          style={{ marginTop: 20 }}
+      <ScreenScroll>
+        <GuestList
+          actions={
+            <View style={styles.actions}>
+              <FilledButton tone="accent" label={t('guestsList.inviteCta')} onPress={startInvite} />
+            </View>
+          }
         />
       </ScreenScroll>
     </ScreenShell>
@@ -65,5 +66,5 @@ export default function GuestsIndex() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: 8 },
+  actions: { gap: 12 },
 });

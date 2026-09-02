@@ -499,6 +499,7 @@ export default function HomeDashboard() {
       <ScreenScroll
         gap={0}
         contentContainerStyle={styles.scroll}
+        scrollToTopOnFocus
       >
         <OverAllocationChooser />
 

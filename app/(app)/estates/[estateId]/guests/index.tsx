@@ -1,7 +1,8 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
+import { AddOfflineGuest } from '@/components/guests/add-offline-guest';
 import { GuestList } from '@/components/guests/guest-list';
 import { FilledButton, ScreenScroll, ScreenShell } from '@/components/ui/screen-layout';
 import { useCan } from '@/lib/entitlements/capabilities';
@@ -26,12 +27,15 @@ export default function GuestsList() {
 
   return (
     <ScreenShell title={t('titles.guests')}>
-      <ScreenScroll contentContainerStyle={styles.scroll} gap={16}>
-        <GuestList estateId={estateId} />
-        <FilledButton
-          label={t('guestsList.inviteCta')}
-          onPress={goInvite}
-          style={{ marginTop: 20 }}
+      <ScreenScroll>
+        <GuestList
+          estateId={estateId}
+          actions={
+            <View style={styles.actions}>
+              <FilledButton tone="accent" label={t('guestsList.inviteCta')} onPress={goInvite} />
+              <AddOfflineGuest estateId={estateId} variant="button" />
+            </View>
+          }
         />
       </ScreenScroll>
     </ScreenShell>
@@ -39,5 +43,5 @@ export default function GuestsList() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: 8 },
+  actions: { gap: 12 },
 });

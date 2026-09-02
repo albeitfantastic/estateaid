@@ -1,4 +1,4 @@
-import { useContext, type ReactNode } from 'react';
+import { useCallback, useContext, useRef, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -13,7 +13,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import { useRouter } from 'expo-router';
+import { useScrollToTop } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -118,6 +119,8 @@ type ScreenScrollProps = ScrollViewProps & {
   /** Extra space above the tab bar / home indicator. Default 32. */
   bottomInset?: number;
   gap?: number;
+  /** When this tab/screen is focused, jump to the top of the scroll view. */
+  scrollToTopOnFocus?: boolean;
 };
 
 export function ScreenScroll({
@@ -127,6 +130,7 @@ export function ScreenScroll({
   gap = 20,
   keyboardShouldPersistTaps = 'handled',
   showsVerticalScrollIndicator = false,
+  scrollToTopOnFocus = false,
   ...rest
 }: ScreenScrollProps) {
   const insets = useSafeAreaInsets();
@@ -135,13 +139,24 @@ export function ScreenScroll({
   const chrome =
     typeof tabBarHeight === 'number' && tabBarHeight > 0 ? tabBarHeight : insets.bottom;
   const padBottom = chrome + extra;
+  const scrollRef = useRef<ScrollView>(null);
+
+  useScrollToTop(scrollRef);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!scrollToTopOnFocus) return;
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [scrollToTopOnFocus])
+  );
 
   return (
     <ScrollView
+      {...rest}
+      ref={scrollRef}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       contentContainerStyle={[styles.scroll, { gap }, contentContainerStyle, { paddingBottom: padBottom }]}
-      {...rest}
     >
       {children}
     </ScrollView>

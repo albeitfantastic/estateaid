@@ -423,6 +423,8 @@ export const catalogPartA: Record<string, unknown> = {
     enterCode: 'Enter a code',
     joinWithCode: 'Join with a code',
     addEstate: 'Add property',
+    roleSponsored: 'Sponsored',
+    roleInvited: 'Invited to',
     slotsUsage: '{{used}} of {{total}} slots in use · {{remaining}} available',
     lockedTap: 'Locked — tap to upgrade',
     lockedDetailTitle: 'Host tools locked',

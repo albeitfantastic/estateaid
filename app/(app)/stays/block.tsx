@@ -31,6 +31,7 @@ import {
 } from '@/lib/availability-rule-blocking';
 import { formatDateRange, nightCount } from '@/lib/date-utils';
 import { generateUuidV4 } from '@/lib/id';
+import { guestProfileEstateIds } from '@/types';
 
 function paramString(v: string | string[] | undefined): string {
   if (typeof v === 'string') return v;
@@ -96,9 +97,8 @@ export default function BlockStay() {
         subtitle: inv?.guestEmail ?? '',
       };
     });
-    const managedIds = new Set(estates.map((e) => e.id));
     const offline = guestProfiles
-      .filter((p) => managedIds.has(p.estateId))
+      .filter((p) => !!selectedEstateId && guestProfileEstateIds(p).includes(selectedEstateId))
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((p) => ({
         key: `p:${p.id}`,
@@ -111,9 +111,11 @@ export default function BlockStay() {
   function pickEstate(id: string) {
     setSelectedEstateId(id);
     const selfKey = currentUser ? `u:${currentUser.id}` : null;
-    setSelectedGuestIds((prev) =>
-      prev.filter((key) => key.startsWith('p:') || key === selfKey)
-    );
+    setSelectedGuestIds((prev) => {
+      const next = prev.filter((key) => key.startsWith('p:') || key === selfKey);
+      setGuestCount(Math.max(next.length, MIN_GUEST_COUNT));
+      return next;
+    });
     setFrom(null);
     setTo(null);
   }
@@ -121,7 +123,7 @@ export default function BlockStay() {
   function toggleGuest(id: string) {
     setSelectedGuestIds((prev) => {
       const next = prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id];
-      setGuestCount((n) => Math.max(n, next.length, MIN_GUEST_COUNT));
+      setGuestCount(Math.max(next.length, MIN_GUEST_COUNT));
       return next;
     });
   }
@@ -254,7 +256,7 @@ export default function BlockStay() {
                   const key = `p:${profile.id}`;
                   if (prev.includes(key)) return prev;
                   const next = [...prev, key];
-                  setGuestCount((n) => Math.max(n, next.length, MIN_GUEST_COUNT));
+                  setGuestCount(Math.max(next.length, MIN_GUEST_COUNT));
                   return next;
                 });
               }}
@@ -287,6 +289,7 @@ export default function BlockStay() {
             <GuestCountRow
               value={guestCount}
               onChange={setGuestCount}
+              min={selectedGuestIds.length}
               hint={t('blockDates.guestCountHint')}
             />
           </View>

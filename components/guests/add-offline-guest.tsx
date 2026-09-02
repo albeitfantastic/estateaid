@@ -7,6 +7,7 @@ import {
   FormSheet,
   GroupedList,
   GroupedRow,
+  OutlineButton,
 } from '@/components/ui/screen-layout';
 import { generateUuidV4 } from '@/lib/id';
 import { useAuthStore } from '@/store/auth-store';
@@ -16,9 +17,11 @@ import type { GuestProfile } from '@/types';
 type AddOfflineGuestProps = {
   estateId: string;
   onCreated?: (profile: GuestProfile) => void;
+  /** `button` matches maintenance CTAs at the top of the screen. */
+  variant?: 'row' | 'button';
 };
 
-export function AddOfflineGuest({ estateId, onCreated }: AddOfflineGuestProps) {
+export function AddOfflineGuest({ estateId, onCreated, variant = 'row' }: AddOfflineGuestProps) {
   const { t } = useTranslation();
   const currentUser = useAuthStore((s) => s.currentUser);
   const addProfile = useGuestProfileStore((s) => s.addProfile);
@@ -38,7 +41,7 @@ export function AddOfflineGuest({ estateId, onCreated }: AddOfflineGuestProps) {
     setSaving(true);
     const profile: GuestProfile = {
       id: generateUuidV4(),
-      estateId,
+      estateIds: [estateId],
       createdBy: currentUser.id,
       name: trimmed,
       createdAt: new Date().toISOString(),
@@ -56,15 +59,19 @@ export function AddOfflineGuest({ estateId, onCreated }: AddOfflineGuestProps) {
 
   return (
     <>
-      <GroupedList>
-        <GroupedRow
-          icon="person.badge.plus"
-          title={t('blockDates.addOffline')}
-          subtitle={t('guestsList.offlineHint')}
-          onPress={() => setOpen(true)}
-          isLast
-        />
-      </GroupedList>
+      {variant === 'button' ? (
+        <OutlineButton label={t('guestsList.addOffline')} onPress={() => setOpen(true)} />
+      ) : (
+        <GroupedList>
+          <GroupedRow
+            icon="person.badge.plus"
+            title={t('blockDates.addOffline')}
+            subtitle={t('guestsList.offlineHint')}
+            onPress={() => setOpen(true)}
+            isLast
+          />
+        </GroupedList>
+      )}
       <FormSheet
         visible={open}
         title={t('blockDates.addOffline')}

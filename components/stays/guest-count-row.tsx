@@ -12,12 +12,14 @@ type GuestCountRowProps = {
   value: number;
   onChange: (next: number) => void;
   hint?: string;
+  min?: number;
 };
 
-export function GuestCountRow({ value, onChange, hint }: GuestCountRowProps) {
+export function GuestCountRow({ value, onChange, hint, min = MIN_GUEST_COUNT }: GuestCountRowProps) {
   const { t } = useTranslation();
   const { colors } = useScreenTheme();
-  const atMin = value <= MIN_GUEST_COUNT;
+  const floor = Math.max(MIN_GUEST_COUNT, min);
+  const atMin = value <= floor;
   const atMax = value >= MAX_GUEST_COUNT;
 
   return (
@@ -30,7 +32,7 @@ export function GuestCountRow({ value, onChange, hint }: GuestCountRowProps) {
           <View style={styles.stepper}>
             <TouchableOpacity
               style={[styles.stepperBtn, { backgroundColor: colors.tintMuted }]}
-              onPress={() => onChange(Math.max(MIN_GUEST_COUNT, value - 1))}
+              onPress={() => onChange(Math.max(floor, value - 1))}
               disabled={atMin}
               activeOpacity={0.7}
               accessibilityRole="button"

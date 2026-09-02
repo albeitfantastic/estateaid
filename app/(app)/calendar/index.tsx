@@ -1,8 +1,9 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
+import { CalendarDayWeather } from '@/components/calendar/day-weather';
 import { DayInfo, MonthGrid } from '@/components/calendar/month-grid';
 import {
   StayRequestsList,
@@ -66,6 +67,7 @@ function parseSegment(raw: string): CalendarSegment | null {
 export default function CalendarScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{
     segment?: string | string[];
     /** @deprecated Old Stays-tab query. Same three segments for every role; `view` is ignored. */
@@ -108,6 +110,7 @@ export default function CalendarScreen() {
   const [selectedEstateId, setSelectedEstateId] = useState<string>(scopedEstateId ?? '');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
+  const estateRowRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (paramSegment) setSegment(paramSegment);
@@ -126,6 +129,19 @@ export default function CalendarScreen() {
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
+
+  useEffect(() => {
+    const unsub = navigation.addListener('tabPress', () => {
+      setSegment('month');
+      if (estateIds[0]) setSelectedEstateId(estateIds[0]);
+      const n = new Date();
+      setViewYear(n.getFullYear());
+      setViewMonth(n.getMonth());
+      setSelectedDay(null);
+      estateRowRef.current?.scrollTo({ x: 0, animated: false });
+    });
+    return unsub;
+  }, [navigation, estateIds]);
 
   // ── Segment data ────────────────────────────────────────────────────────────
   const incomingRequests = useIncomingStayRequests(scopedEstateId);
@@ -330,8 +346,9 @@ export default function CalendarScreen() {
       />
 
       {segment === 'month' && (
-        <ScreenScroll gap={0}>
+        <ScreenScroll gap={0} scrollToTopOnFocus>
           <ScrollView
+            ref={estateRowRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.estateRow}
@@ -451,9 +468,16 @@ export default function CalendarScreen() {
                   ]}
                 />
                 <View style={styles.infoText}>
-                  <ThemedText type="defaultSemiBold" style={styles.infoDate}>
-                    {formatDate(selectedDay)}
-                  </ThemedText>
+                  <View style={styles.infoDateRow}>
+                    <ThemedText type="defaultSemiBold" style={styles.infoDate}>
+                      {formatDate(selectedDay)}
+                    </ThemedText>
+                    <CalendarDayWeather
+                      location={selectedEstate?.location}
+                      timeZone={selectedEstate?.timeZone}
+                      date={selectedDay}
+                    />
+                  </View>
                   {selectedDayData.type === 'occupied' &&
                     occupiedStays.map((stay) => {
                       const isSelf = stayIsSelf(stay, currentUser?.id);
@@ -657,7 +681,7 @@ export default function CalendarScreen() {
 
       {segment === 'stays' &&
         (managesAny ? (
-          <ScreenScroll gap={16}>
+          <ScreenScroll gap={16} scrollToTopOnFocus>
             <FilledButton
               label={t('estateHub.addStay')}
               icon="plus"
@@ -684,7 +708,7 @@ export default function CalendarScreen() {
             }
           />
         ) : (
-          <ScreenScroll gap={16}>
+          <ScreenScroll gap={16} scrollToTopOnFocus>
             <StaysList mode="mine" estateId={scopedEstateId} hideWhenEmpty />
             {guestsAnywhere && (
               <OutlineButton
@@ -712,7 +736,7 @@ export default function CalendarScreen() {
             }
           />
         ) : (
-          <ScreenScroll gap={0}>
+          <ScreenScroll gap={0} scrollToTopOnFocus>
             {managesAny && incomingRequests.length > 0 && (
               <>
                 <SectionLabel>{t('calendarTab.requestsIncomingSection')}</SectionLabel>
@@ -771,7 +795,13 @@ const styles = StyleSheet.create({
   infoCardInner: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   infoDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
   infoText: { flex: 1, gap: 3 },
-  infoDate: { fontSize: 13 },
+  infoDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  infoDate: { fontSize: 13, flex: 1 },
   infoMain: { fontSize: 13, fontWeight: '600' },
   infoSub: { fontSize: 12 },
   occupantRow: { gap: 2 },

@@ -13,6 +13,14 @@ function shouldHideTabBar(segments: string[]): boolean {
   );
 }
 
+function isNestedStack(tabState: { routes: { name: string; state?: { index?: number; routes?: { name: string }[] } }[] }, tabName: string) {
+  const route = tabState.routes.find((r) => r.name === tabName);
+  const stack = route?.state;
+  if (!stack || typeof stack.index !== 'number') return false;
+  const focused = stack.routes?.[stack.index];
+  return stack.index > 0 || (!!focused && focused.name !== 'index');
+}
+
 export default function AppTabLayout() {
   const appTheme = useAppTheme();
   const { t, i18n } = useTranslation();
@@ -62,6 +70,11 @@ export default function AppTabLayout() {
           title: t('tabs.home'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'house.fill' : 'house'} color={color} />,
         }}
+        listeners={{
+          tabPress: () => {
+            router.replace('/(app)/home' as never);
+          },
+        }}
       />
       <Tabs.Screen
         name="estates"
@@ -69,11 +82,13 @@ export default function AppTabLayout() {
           title: t('tabs.properties'),
           tabBarIcon: ({ color, focused }) => <IconSymbol name={focused ? 'building.2.fill' : 'building.2'} color={color} />,
         }}
-        listeners={{
+        listeners={({ navigation }) => ({
           tabPress: () => {
-            router.replace('/(app)/estates' as never);
+            if (isNestedStack(navigation.getState(), 'estates')) {
+              router.replace('/(app)/estates' as never);
+            }
           },
-        }}
+        })}
       />
       <Tabs.Screen
         name="calendar/index"
@@ -82,6 +97,11 @@ export default function AppTabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol name="calendar" color={color} weight={focused ? 'semibold' : 'regular'} />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            router.replace('/(app)/calendar?segment=month' as never);
+          },
         }}
       />
       {/* Reachable from Home and deep links, but not a tab of its own. */}

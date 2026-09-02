@@ -82,7 +82,7 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
 
   if (estates.length === 0) {
     return (
-      <ScreenScroll contentContainerStyle={styles.scroll}>
+      <ScreenScroll contentContainerStyle={styles.scroll} scrollToTopOnFocus>
         <EmptyState
           icon="ticket.fill"
           title={t('guestHome.emptyTitle')}
@@ -95,7 +95,7 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
 
   if (!visibleEstate) {
     return (
-      <ScreenScroll contentContainerStyle={styles.scroll}>
+      <ScreenScroll contentContainerStyle={styles.scroll} scrollToTopOnFocus>
         <EmptyState
           icon="calendar"
           title={t('guestHome.noStayTitle')}
@@ -106,7 +106,7 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
   }
 
   return (
-    <ScreenScroll gap={0} contentContainerStyle={styles.scroll}>
+    <ScreenScroll gap={0} contentContainerStyle={styles.scroll} scrollToTopOnFocus>
       <View style={styles.heroBlock}>
         <StayHeroPager pages={stayPages} onIndexChange={setPropertyIndex} />
         {visibleStay ? (

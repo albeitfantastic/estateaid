@@ -29,16 +29,17 @@ export type WeatherStayForecast = {
 export type PropertyWeather = {
   now: WeatherNow | null;
   stay: WeatherStayForecast | null;
+  daily: Record<string, WeatherStayForecast>;
 };
 
 type Coords = { latitude: number; longitude: number };
 
 const geocodeCache = new Map<string, Coords | null>();
-const weatherCache = new Map<string, { at: number; data: PropertyWeather }>();
+const weatherCache = new Map<string, { at: number; now: WeatherNow | null; daily: Record<string, WeatherStayForecast> }>();
 const WEATHER_TTL_MS = 20 * 60 * 1000;
 
-function weatherCacheKey(coords: Coords, stayFrom?: string, stayTo?: string): string {
-  return `${coords.latitude.toFixed(3)},${coords.longitude.toFixed(3)}:${stayFrom ?? ''}:${stayTo ?? ''}`;
+function weatherCacheKey(coords: Coords): string {
+  return `${coords.latitude.toFixed(3)},${coords.longitude.toFixed(3)}`;
 }
 
 function uniqueQueries(location: string): string[] {
@@ -118,6 +119,34 @@ function todayYmd(): string {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 }
 
+function stayForecastForRange(
+  daily: Record<string, WeatherStayForecast>,
+  stayFrom?: string,
+  stayTo?: string
+): WeatherStayForecast | null {
+  if (!stayFrom || !stayTo) return null;
+  const horizonEnd = addDaysYmd(todayYmd(), WEATHER_FORECAST_HORIZON_DAYS - 1);
+  const from = stayFrom > todayYmd() ? stayFrom : todayYmd();
+  const to = stayTo < horizonEnd ? stayTo : horizonEnd;
+  if (from > to || from > horizonEnd) return null;
+  const picked: WeatherStayForecast[] = [];
+  for (const [day, forecast] of Object.entries(daily)) {
+    if (day < from || day > to) continue;
+    picked.push(forecast);
+  }
+  if (picked.length === 0) return null;
+  const weatherCode = picked.reduce(
+    (best, d) => (severity(d.weatherCode) > severity(best) ? d.weatherCode : best),
+    picked[0]!.weatherCode
+  );
+  return {
+    minC: Math.min(...picked.map((d) => d.minC)),
+    maxC: Math.max(...picked.map((d) => d.maxC)),
+    weatherCode,
+    icon: weatherIcon(weatherCode, true),
+  };
+}
+
 export function formatTempC(c: number): string {
   return `${Math.round(c)}°`;
 }
@@ -142,75 +171,70 @@ export async function fetchPropertyWeather(opts: {
   const coords = await geocode(location, opts.signal);
   if (!coords) return null;
 
-  const cacheKey = weatherCacheKey(coords, opts.stayFrom, opts.stayTo);
+  const cacheKey = weatherCacheKey(coords);
   const cached = weatherCache.get(cacheKey);
-  if (cached && Date.now() - cached.at < WEATHER_TTL_MS) return cached.data;
+  let now: WeatherNow | null;
+  let daily: Record<string, WeatherStayForecast>;
+  if (cached && Date.now() - cached.at < WEATHER_TTL_MS) {
+    now = cached.now;
+    daily = cached.daily;
+  } else {
+    const tz = opts.timeZone?.trim() || 'auto';
+    const url = new URL('https://api.open-meteo.com/v1/forecast');
+    url.searchParams.set('latitude', String(coords.latitude));
+    url.searchParams.set('longitude', String(coords.longitude));
+    url.searchParams.set('current', 'temperature_2m,weather_code,is_day');
+    url.searchParams.set('daily', 'weather_code,temperature_2m_max,temperature_2m_min');
+    url.searchParams.set('timezone', tz);
+    url.searchParams.set('forecast_days', String(WEATHER_FORECAST_HORIZON_DAYS));
 
-  const tz = opts.timeZone?.trim() || 'auto';
-  const url = new URL('https://api.open-meteo.com/v1/forecast');
-  url.searchParams.set('latitude', String(coords.latitude));
-  url.searchParams.set('longitude', String(coords.longitude));
-  url.searchParams.set('current', 'temperature_2m,weather_code,is_day');
-  url.searchParams.set('daily', 'weather_code,temperature_2m_max,temperature_2m_min');
-  url.searchParams.set('timezone', tz);
-  url.searchParams.set('forecast_days', String(WEATHER_FORECAST_HORIZON_DAYS));
-
-  const res = await fetch(url.toString(), { signal: opts.signal });
-  if (!res.ok) return null;
-  const json = (await res.json()) as {
-    current?: { temperature_2m?: number; weather_code?: number; is_day?: number };
-    daily?: {
-      time?: string[];
-      weather_code?: number[];
-      temperature_2m_max?: number[];
-      temperature_2m_min?: number[];
+    const res = await fetch(url.toString(), { signal: opts.signal });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      current?: { temperature_2m?: number; weather_code?: number; is_day?: number };
+      daily?: {
+        time?: string[];
+        weather_code?: number[];
+        temperature_2m_max?: number[];
+        temperature_2m_min?: number[];
+      };
     };
-  };
 
-  const cur = json.current;
-  const now: WeatherNow | null =
-    cur && Number.isFinite(cur.temperature_2m) && Number.isFinite(cur.weather_code)
-      ? {
-          temperatureC: cur.temperature_2m!,
-          weatherCode: cur.weather_code!,
-          isDay: cur.is_day !== 0,
-          icon: weatherIcon(cur.weather_code!, cur.is_day !== 0),
-        }
-      : null;
+    const cur = json.current;
+    now =
+      cur && Number.isFinite(cur.temperature_2m) && Number.isFinite(cur.weather_code)
+        ? {
+            temperatureC: cur.temperature_2m!,
+            weatherCode: cur.weather_code!,
+            isDay: cur.is_day !== 0,
+            icon: weatherIcon(cur.weather_code!, cur.is_day !== 0),
+          }
+        : null;
 
-  let stay: WeatherStayForecast | null = null;
-  const times = json.daily?.time ?? [];
-  const codes = json.daily?.weather_code ?? [];
-  const maxes = json.daily?.temperature_2m_max ?? [];
-  const mins = json.daily?.temperature_2m_min ?? [];
-  if (opts.stayFrom && opts.stayTo && times.length > 0) {
-    const horizonEnd = addDaysYmd(todayYmd(), WEATHER_FORECAST_HORIZON_DAYS - 1);
-    const from = opts.stayFrom > todayYmd() ? opts.stayFrom : todayYmd();
-    const to = opts.stayTo < horizonEnd ? opts.stayTo : horizonEnd;
-    if (from <= to && from <= horizonEnd) {
-      const picked: { code: number; min: number; max: number }[] = [];
-      for (let i = 0; i < times.length; i++) {
-        const day = times[i];
-        if (!day || day < from || day > to) continue;
-        const code = codes[i];
-        const min = mins[i];
-        const max = maxes[i];
-        if (!Number.isFinite(code) || !Number.isFinite(min) || !Number.isFinite(max)) continue;
-        picked.push({ code: code!, min: min!, max: max! });
-      }
-      if (picked.length > 0) {
-        const weatherCode = picked.reduce((best, d) => (severity(d.code) > severity(best) ? d.code : best), picked[0]!.code);
-        stay = {
-          minC: Math.min(...picked.map((d) => d.min)),
-          maxC: Math.max(...picked.map((d) => d.max)),
-          weatherCode,
-          icon: weatherIcon(weatherCode, true),
-        };
-      }
+    daily = {};
+    const times = json.daily?.time ?? [];
+    const codes = json.daily?.weather_code ?? [];
+    const maxes = json.daily?.temperature_2m_max ?? [];
+    const mins = json.daily?.temperature_2m_min ?? [];
+    for (let i = 0; i < times.length; i++) {
+      const day = times[i];
+      const code = codes[i];
+      const min = mins[i];
+      const max = maxes[i];
+      if (!day || !Number.isFinite(code) || !Number.isFinite(min) || !Number.isFinite(max)) continue;
+      daily[day] = {
+        minC: min!,
+        maxC: max!,
+        weatherCode: code!,
+        icon: weatherIcon(code!, true),
+      };
     }
+    weatherCache.set(cacheKey, { at: Date.now(), now, daily });
   }
 
-  const data: PropertyWeather = { now, stay };
-  weatherCache.set(cacheKey, { at: Date.now(), data });
-  return data;
+  return {
+    now,
+    stay: stayForecastForRange(daily, opts.stayFrom, opts.stayTo),
+    daily,
+  };
 }

@@ -3,14 +3,12 @@ import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
+import { PropertyUsageBar } from '@/components/estates/property-usage-bar';
 import { EstateCard } from '@/components/ui/estate-card';
 import { BootstrapErrorBanner } from '@/components/ui/bootstrap-error-banner';
 import { EmptyState } from '@/components/ui/empty-state';
-import { HostProLockTouchable } from '@/components/ui/host-pro-lock';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
   OutlineButton,
-  ScreenFootnote,
   ScreenScroll,
   ScreenShell,
   useScreenTheme,
@@ -26,23 +24,21 @@ import { useEstateStore } from '@/store/estate-store';
 export default function EstatesList() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { colors, cardShadow } = useScreenTheme();
+  const { colors } = useScreenTheme();
   const allEstates = useEstateStore((s) => s.estates);
   const coverageById = useEstateCoverageStore((s) => s.byId);
   const { estates: managedEstates, roleById } = useManagedEstates();
   const can = useCan();
   const canCreate = can('property.create');
-  const addLocked = !canCreate;
   const { slotCount, propertiesSponsored } = useAccountContext();
-  const slotsRemaining = Math.max(0, slotCount - propertiesSponsored);
-  const slotsLine =
-    slotCount > 0
-      ? t('estatesList.slotsUsage', {
-          used: propertiesSponsored,
-          total: slotCount,
-          remaining: slotsRemaining,
-        })
-      : null;
+
+  const invitedCount = useMemo(
+    () => allEstates.filter((e) => {
+      const role = roleById[e.id];
+      return role === 'owner' || role === 'guest';
+    }).length,
+    [allEstates, roleById]
+  );
 
   const isCoOwnerElsewhere = useMemo(
     () => Object.values(roleById).some((role) => role === 'owner'),
@@ -66,32 +62,20 @@ export default function EstatesList() {
     });
   }
 
+  const usageBar = (
+    <PropertyUsageBar
+      sponsoredUsed={propertiesSponsored}
+      sponsoredTotal={slotCount}
+      invitedCount={invitedCount}
+    />
+  );
+
   return (
-    <ScreenShell
-      title={t('titles.properties')}
-      showBack={false}
-      headerRight={
-        <HostProLockTouchable
-          locked={addLocked}
-          feature={isCoOwnerElsewhere ? 'estate.createAsCoOwner' : 'estate.create'}
-          returnTo="/(app)/estates/new"
-          shrinkToContent
-          accessibilityRole="button"
-          accessibilityLabel={t('estatesList.addEstate')}
-          onPress={onAdd}
-          style={[styles.addBtn, { backgroundColor: colors.tint }, cardShadow]}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="plus" size={20} color={colors.textOnBrand} />
-        </HostProLockTouchable>
-      }
-    >
+    <ScreenShell title={t('titles.properties')} showBack={false}>
       <BootstrapErrorBanner />
       {estates.length === 0 ? (
         <>
-          {slotsLine ? (
-            <ScreenFootnote style={styles.slotsLine}>{slotsLine}</ScreenFootnote>
-          ) : null}
+          <View style={styles.emptyUsage}>{usageBar}</View>
           <EmptyState
             icon="building.2.fill"
             title={t('estatesList.emptyTitle')}
@@ -105,8 +89,8 @@ export default function EstatesList() {
           />
         </>
       ) : (
-        <ScreenScroll contentContainerStyle={styles.list} gap={0}>
-          {slotsLine ? <ScreenFootnote>{slotsLine}</ScreenFootnote> : null}
+        <ScreenScroll contentContainerStyle={styles.list} gap={0} scrollToTopOnFocus>
+          {usageBar}
           {estates.map((estate) => {
             const role = roleById[estate.id] ?? 'none';
             const coverage = coverageById[estate.id];
@@ -156,15 +140,8 @@ export default function EstatesList() {
 }
 
 const styles = StyleSheet.create({
-  addBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   list: { gap: 20, paddingTop: 8 },
-  slotsLine: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 8 },
+  emptyUsage: { paddingHorizontal: Layout.screenPaddingX, paddingTop: 8 },
   cardWrap: { position: 'relative' },
   downgradeBadge: {
     position: 'absolute',

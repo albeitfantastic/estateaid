@@ -17,7 +17,7 @@ import { useInvitationStore } from '@/store/invitation-store';
 import { useGuestProfileStore } from '@/store/guest-profile-store';
 import { useProfileStore } from '@/store/profile-store';
 import { useStayStore } from '@/store/stay-store';
-import type { Stay } from '@/types';
+import { normalizeInviteRole, type Stay } from '@/types';
 
 /** Confirmed stays on properties the actor manages (sponsor or invited host). */
 export function useManagedStays(estateId?: string): Stay[] {
@@ -129,6 +129,25 @@ export function StaysList({
         }
 
         const isSelf = stayIsSelf(stay, currentUser?.id);
+        const estate = allEstates.find((e) => e.id === stay.estateId);
+        const occupantId = stay.guestId;
+        const occupantIsSponsor = !!occupantId && estate?.sponsorUserId === occupantId;
+        const occupantIsHost =
+          !!occupantId &&
+          !occupantIsSponsor &&
+          (estate?.ownerId === occupantId ||
+            invitations.some(
+              (inv) =>
+                inv.estateId === stay.estateId &&
+                inv.guestId === occupantId &&
+                inv.status === 'accepted' &&
+                normalizeInviteRole(inv.role) === 'owner'
+            ));
+        const roleTag = occupantIsSponsor
+          ? t('guestsList.roleSponsor')
+          : occupantIsHost || isSelf
+            ? t('ownerInvite.estateRoleCoOwnerLabel')
+            : null;
         const guestColor = isSelf
           ? colors.tint
           : resolveStayOccupantColor(stay, invitations, guestProfiles);
@@ -147,10 +166,10 @@ export function StaysList({
                 <ThemedText type="defaultSemiBold" style={styles.guestName}>
                   {guestLabel}
                 </ThemedText>
-                {isSelf ? (
+                {roleTag ? (
                   <View style={[styles.hostBadge, { backgroundColor: colors.tint + '18' }]}>
                     <ThemedText style={[styles.hostBadgeText, { color: colors.tint }]}>
-                      {t('ownerInvite.estateRoleCoOwnerLabel')}
+                      {roleTag}
                     </ThemedText>
                   </View>
                 ) : null}
