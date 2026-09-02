@@ -96,7 +96,7 @@ export const useFaqStore = create<FaqState>()(
           .sort((a, b) => a.order - b.order),
     }),
     {
-      name: '@estateaid/faqs',
+      name: '@maison/faqs',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

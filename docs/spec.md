@@ -1,4 +1,4 @@
-# Maison (EstateAid) — Product & Technical Specification v2
+# Maison — Product & Technical Specification v2
 
 **Target:** Expo / React Native (expo-router), Supabase, RevenueCat
 **Mode:** Plan first, then implement. Do not edit files until the plan is confirmed.

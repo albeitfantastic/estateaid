@@ -104,7 +104,7 @@ export const useContactStore = create<ContactState>()(
           .sort((a, b) => a.order - b.order),
     }),
     {
-      name: '@estateaid/contacts',
+      name: '@maison/contacts',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

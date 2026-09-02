@@ -399,7 +399,7 @@ export const useEventStore = create<EventState>()(
       },
     }),
     {
-      name: '@estateaid/events',
+      name: '@maison/events',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

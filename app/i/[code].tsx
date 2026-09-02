@@ -30,7 +30,7 @@ type InvitePreview = {
   inviterName: string | null;
 };
 
-/** Deep link: https://estateaid.app/i/CODE or estateaid://i/CODE */
+/** Deep link: https://maison.app/i/CODE or maison://i/CODE */
 export default function InviteDeepLink() {
   const { code } = useLocalSearchParams<{ code?: string }>();
   const c = typeof code === 'string' ? code.trim().toUpperCase() : '';

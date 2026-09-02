@@ -72,7 +72,7 @@ export const useActivityLogStore = create<ActivityLogState>()(
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     }),
     {
-      name: '@estateaid/activity-log',
+      name: '@maison/activity-log',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

@@ -15,11 +15,18 @@ import { supabase } from '@/lib/supabase';
  *
  * Redirect URLs: one entry per line, e.g.
  *   - exp://192.168.x.x:8081/--/auth/callback  (Expo Go — requires Expo Go installed)
- *   - estateaid://auth/callback                 (dev / prod builds with scheme from app.json)
+ *   - maison://auth/callback                    (dev / prod builds with scheme from app.json)
  *
  * Optional: set EXPO_PUBLIC_AUTH_REDIRECT_URI in .env.local to force the exact string when
  * your LAN IP changes (and add the same string to Redirect URLs + Site URL in Supabase).
  */
+function appScheme(): string {
+  const s = Constants.expoConfig?.scheme;
+  if (typeof s === 'string' && s) return s;
+  if (Array.isArray(s) && typeof s[0] === 'string' && s[0]) return s[0];
+  return 'maison';
+}
+
 function computeAuthRedirectUri(): string {
   const override = process.env.EXPO_PUBLIC_AUTH_REDIRECT_URI?.trim();
   if (override) return override;
@@ -28,12 +35,12 @@ function computeAuthRedirectUri(): string {
     return Linking.createURL('auth/callback');
   }
 
-  return Linking.createURL('auth/callback', { scheme: 'estateaid' });
+  return Linking.createURL('auth/callback', { scheme: appScheme() });
 }
 
 export const authRedirectUri = computeAuthRedirectUri();
 
-const PENDING_PROFILE_KEY = '@estateaid/pending-signup-profile';
+const PENDING_PROFILE_KEY = '@maison/pending-signup-profile';
 
 export type PendingSignupProfile = {
   userId: string;

@@ -1,11 +1,12 @@
 import type { EstateInviteRole } from '@/types';
 
-export const APP_STORE_URL = 'https://apps.apple.com/app/estateaid';
-export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.estateaid';
+export const APP_WEB_HOST = 'maison.app';
+export const APP_STORE_URL = 'https://apps.apple.com/app/maison';
+export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.maison.app';
 
 /** HTTPS universal-link invite (primary share URL). */
 export function inviteHttpsLink(code: string): string {
-  return `https://estateaid.app/i/${encodeURIComponent(code.trim().toUpperCase())}`;
+  return `https://${APP_WEB_HOST}/i/${encodeURIComponent(code.trim().toUpperCase())}`;
 }
 
 /** App-scheme fallback. Prefer {@link inviteHttpsLink} in share text. */

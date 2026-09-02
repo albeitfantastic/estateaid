@@ -167,7 +167,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: '@estateaid/auth/v11',
+      name: '@maison/auth/v11',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         hasCompletedOnboarding: state.hasCompletedOnboarding,

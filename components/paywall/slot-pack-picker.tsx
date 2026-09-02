@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useScreenTheme } from '@/components/ui/screen-layout';
 import { Radius } from '@/constants/theme';
+import { SUPPORT_EMAIL } from '@/lib/support';
 import {
   DEFAULT_SLOT_PACK_ID,
   SLOT_PACKS,
@@ -97,7 +98,7 @@ export function SlotPackPicker({ selected, billing, onSelectPack, onSelectBillin
       })}
 
       <Text style={[styles.contact, { color: colors.textSecondary }]}>
-        Need more than 7 properties? Contact support@estateaid.app
+        Need more than 7 properties? Contact {SUPPORT_EMAIL}
       </Text>
     </View>
   );

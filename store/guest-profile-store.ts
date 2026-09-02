@@ -89,7 +89,7 @@ export const useGuestProfileStore = create<GuestProfileState>()(
           .sort((a, b) => a.name.localeCompare(b.name)),
     }),
     {
-      name: '@estateaid/guest-profiles',
+      name: '@maison/guest-profiles',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

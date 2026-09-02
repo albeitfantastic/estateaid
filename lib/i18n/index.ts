@@ -14,7 +14,7 @@ import ru from './locales/ru.json';
 export const APP_LANGUAGES = ['en', 'de', 'pl', 'es', 'fr', 'ru', 'pt'] as const;
 export type AppLanguage = (typeof APP_LANGUAGES)[number];
 
-export const APP_LANGUAGE_STORAGE_KEY = '@estateaid/app_language';
+export const APP_LANGUAGE_STORAGE_KEY = '@maison/app_language';
 
 function isAppLanguage(code: string): code is AppLanguage {
   return (APP_LANGUAGES as readonly string[]).includes(code);

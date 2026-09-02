@@ -476,7 +476,7 @@ export const useStayStore = create<StayState>()(
         ).length,
     }),
     {
-      name: '@estateaid/stays',
+      name: '@maison/stays',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

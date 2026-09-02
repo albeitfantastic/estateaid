@@ -91,7 +91,7 @@ export const useAvailabilityRuleStore = create<AvailabilityRuleState>()(
       getRulesByEstate: (estateId) => get().rules.filter((r) => r.estateId === estateId),
     }),
     {
-      name: '@estateaid/availability-rules',
+      name: '@maison/availability-rules',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

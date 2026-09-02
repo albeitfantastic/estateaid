@@ -1,5 +1,12 @@
-# Supabase local / deploy configuration.
+# Local / deploy configuration.
 # RevenueCat sends a shared secret (Bearer token), not a Supabase JWT — disable JWT verification for this function.
+#
+# [auth] below is for `supabase start` only. Hosted redirect URLs are already set on the
+# linked project. Do not `supabase config push` this file — it is not a full hosted auth config.
+
+[auth]
+site_url = "maison://auth/callback"
+additional_redirect_urls = ["maison://auth/callback"]
 
 [functions.revenuecat-webhook]
 verify_jwt = false

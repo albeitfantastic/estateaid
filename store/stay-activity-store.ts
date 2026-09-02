@@ -96,7 +96,7 @@ export const useStayActivityStore = create<StayActivityState>()(
           .sort((a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt)),
     }),
     {
-      name: '@estateaid/stay-activities',
+      name: '@maison/stay-activities',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

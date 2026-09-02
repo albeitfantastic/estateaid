@@ -19,7 +19,7 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
-  // EstateAid icons
+  // Maison icons
   'building.2.fill': 'villa',
   'person.fill': 'account-circle',
   'person.badge.plus': 'person-add',

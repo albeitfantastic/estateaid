@@ -98,7 +98,7 @@ export const useDocumentStore = create<DocumentState>()(
         get().documents.filter((d) => d.estateId === estateId && d.category === category),
     }),
     {
-      name: '@estateaid/documents',
+      name: '@maison/documents',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

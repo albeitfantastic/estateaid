@@ -1,17 +1,17 @@
 {
   "expo": {
     "name": "Maison",
-    "slug": "EstateAid",
+    "slug": "maison",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./logo_1426.png",
-    "scheme": "estateaid",
+    "scheme": "maison",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.estateaid.app",
-      "associatedDomains": ["applinks:estateaid.app"],
+      "bundleIdentifier": "com.maison.app",
+      "associatedDomains": ["applinks:maison.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": ["whatsapp", "tg", "sms"],
@@ -21,7 +21,7 @@
       }
     },
     "android": {
-      "package": "com.estateaid.app",
+      "package": "com.maison.app",
       "adaptiveIcon": {
         "foregroundImage": "./logo_1426.png",
         "backgroundColor": "#FAFAF8"
@@ -45,7 +45,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "estateaid.app",
+              "host": "maison.app",
               "pathPrefix": "/i"
             }
           ],

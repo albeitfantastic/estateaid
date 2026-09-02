@@ -373,7 +373,7 @@ export const useInvitationStore = create<InvitationState>()(
           .map((inv) => inv.estateId),
     }),
     {
-      name: '@estateaid/invitations',
+      name: '@maison/invitations',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

@@ -1,6 +1,6 @@
 # Maison
 
-Property app for hosts and invited guests: calendars, stay requests, house info, and maintenance. Repo name is **EstateAid**; product name is **Maison**.
+Property app for hosts and invited guests: calendars, stay requests, house info, and maintenance.
 
 ## Run
 
@@ -11,7 +11,7 @@ npx expo start
 
 Also: `npm run ios`, `npm run android`, `npm run web`, or `npm run start:dev` for a development client.
 
-Scheme: `estateaid`. Bundle: `com.estateaid.app`.
+Scheme: `maison`. Bundle / package: `com.maison.app`. Invites: `https://maison.app/i/...`.
 
 ## Stack
 

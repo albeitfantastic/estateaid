@@ -168,7 +168,7 @@ export const useEstateStore = create<EstateState>()(
         get().estates.filter((e) => e.ownerId === ownerId),
     }),
     {
-      name: '@estateaid/estates',
+      name: '@maison/estates',
       storage: createJSONStorage(() => AsyncStorage),
       merge: (persisted, current) => {
         const p = persisted as { estates?: Estate[] } | undefined;
