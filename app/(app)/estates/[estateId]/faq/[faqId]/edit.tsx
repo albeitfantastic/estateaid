@@ -20,11 +20,11 @@ export default function EditFaq() {
   const [question, setQuestion] = useState(faq?.question ?? '');
   const [answer, setAnswer] = useState(faq?.answer ?? '');
 
-  if (!faq) return <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ThemedText>Not found.</ThemedText></ThemedView>;
+  if (!faq) return <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ThemedText>{t('common.notFound')}</ThemedText></ThemedView>;
 
   function submit() {
-    if (!isRequired(question)) { Alert.alert('Required', 'Please enter a question.'); return; }
-    if (!isRequired(answer)) { Alert.alert('Required', 'Please enter an answer.'); return; }
+    if (!isRequired(question)) { Alert.alert(t('common.required'), t('forms.requiredQuestion')); return; }
+    if (!isRequired(answer)) { Alert.alert(t('common.required'), t('forms.requiredAnswer')); return; }
     updateFaq(faqId, { question: question.trim(), answer: answer.trim() });
     router.back();
   }
@@ -34,7 +34,7 @@ export default function EditFaq() {
       title={t('titles.editFaq')}
       headerRight={
         <TouchableOpacity onPress={submit}>
-          <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+          <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>{t('common.save')}</ThemedText>
         </TouchableOpacity>
       }
     >

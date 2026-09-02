@@ -137,7 +137,7 @@ export default function InviteGuest() {
   if (!estate) {
     return (
       <ScreenShell title={t('titles.invite')}>
-        <ThemedText style={{ padding: 24 }}>Estate not found.</ThemedText>
+        <ThemedText style={{ padding: 24 }}>{t('estateHub.notFound')}</ThemedText>
       </ScreenShell>
     );
   }

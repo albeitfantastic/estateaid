@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, StyleSheet, Switch } from 'react-native';
+import { Alert, Platform, StyleSheet, Switch, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { ThemedText } from '@/components/themed-text';
+import { inputBaseStyle } from '@/components/ui/focus-input';
 import {
   GroupedList,
   GroupedRow,
-  ScreenFootnote,
   ScreenScroll,
   ScreenShell,
-  SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { Layout } from '@/constants/theme';
 import {
   enableCalendarExport,
   getCalendarExportPrefs,
@@ -106,69 +105,77 @@ export default function CalendarSettingsScreen() {
 
   return (
     <ScreenShell title={t('calendarSettings.title')}>
-      <ScreenScroll contentContainerStyle={styles.scroll}>
-        {web ? <ScreenFootnote>{t('calendarSettings.webOnly')}</ScreenFootnote> : null}
+      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
+        {web ? (
+          <ThemedText style={[styles.hint, { color: colors.icon }]}>{t('calendarSettings.webOnly')}</ThemedText>
+        ) : null}
         {Platform.OS === 'ios' && masterOn && !hasGoogle ? (
-          <ScreenFootnote>{t('calendarSettings.googleMissing')}</ScreenFootnote>
+          <ThemedText style={[styles.hint, { color: colors.icon }]}>{t('calendarSettings.googleMissing')}</ThemedText>
         ) : null}
 
-        <SectionLabel>{t('calendarSettings.destinations')}</SectionLabel>
-        <GroupedList>
-          <GroupedRow
-            title={t('calendarSettings.master')}
-            subtitle={t('calendarSettings.masterSub')}
-            trailing={
-              <Switch
-                value={masterOn}
-                disabled={!prefs || web}
-                onValueChange={(v) => void toggleMaster(v)}
-                trackColor={{ false: colors.border, true: colors.tint }}
-                thumbColor={colors.textOnBrand}
-              />
-            }
-            isLast={web}
-          />
-          {!web ? (
-            <>
-              <GroupedRow
-                title={t('calendarSettings.apple')}
-                subtitle={
-                  Platform.OS === 'ios'
-                    ? t('calendarSettings.appleSub')
-                    : t('calendarSettings.appleMissing')
-                }
-                trailing={
-                  <Switch
-                    value={!!prefs?.appleEnabled}
-                    disabled={!prefs || !masterOn || Platform.OS !== 'ios'}
-                    onValueChange={(v) => void toggleKind('apple', v)}
-                    trackColor={{ false: colors.border, true: colors.tint }}
-                    thumbColor={colors.textOnBrand}
-                  />
-                }
-              />
-              <GroupedRow
-                title={t('calendarSettings.google')}
-                subtitle={t('calendarSettings.googleSub')}
-                trailing={
-                  <Switch
-                    value={!!prefs?.googleEnabled}
-                    disabled={!prefs || !masterOn}
-                    onValueChange={(v) => void toggleKind('google', v)}
-                    trackColor={{ false: colors.border, true: colors.tint }}
-                    thumbColor={colors.textOnBrand}
-                  />
-                }
-                isLast
-              />
-            </>
-          ) : null}
-        </GroupedList>
+        <View style={styles.field}>
+          <ThemedText style={[inputBaseStyle.label, { color: colors.icon }]}>
+            {t('calendarSettings.destinations')}
+          </ThemedText>
+          <GroupedList>
+            <GroupedRow
+              title={t('calendarSettings.master')}
+              subtitle={t('calendarSettings.masterSub')}
+              trailing={
+                <Switch
+                  value={masterOn}
+                  disabled={!prefs || web}
+                  onValueChange={(v) => void toggleMaster(v)}
+                  trackColor={{ false: colors.border, true: colors.tint }}
+                  thumbColor={colors.textOnBrand}
+                />
+              }
+              isLast={web}
+            />
+            {!web ? (
+              <>
+                <GroupedRow
+                  title={t('calendarSettings.apple')}
+                  subtitle={
+                    Platform.OS === 'ios'
+                      ? t('calendarSettings.appleSub')
+                      : t('calendarSettings.appleMissing')
+                  }
+                  trailing={
+                    <Switch
+                      value={!!prefs?.appleEnabled}
+                      disabled={!prefs || !masterOn || Platform.OS !== 'ios'}
+                      onValueChange={(v) => void toggleKind('apple', v)}
+                      trackColor={{ false: colors.border, true: colors.tint }}
+                      thumbColor={colors.textOnBrand}
+                    />
+                  }
+                />
+                <GroupedRow
+                  title={t('calendarSettings.google')}
+                  subtitle={t('calendarSettings.googleSub')}
+                  trailing={
+                    <Switch
+                      value={!!prefs?.googleEnabled}
+                      disabled={!prefs || !masterOn}
+                      onValueChange={(v) => void toggleKind('google', v)}
+                      trackColor={{ false: colors.border, true: colors.tint }}
+                      thumbColor={colors.textOnBrand}
+                    />
+                  }
+                  isLast
+                />
+              </>
+            ) : null}
+          </GroupedList>
+        </View>
       </ScreenScroll>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: Layout.sectionGap - 8 },
+  form: { paddingTop: 8 },
+  field: { gap: 6 },
+  hint: { fontSize: 13, lineHeight: 18 },
 });

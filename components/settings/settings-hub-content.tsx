@@ -10,7 +10,6 @@ import {
   ScreenScroll,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { Layout, Radius } from '@/constants/theme';
 import { LEGAL_ROUTES } from '@/lib/legal-routes';
 import { setPushMasterEnabled } from '@/lib/notifications';
 import { supportMailto } from '@/lib/support';
@@ -21,7 +20,7 @@ import type { SettingsDestination } from './settings-sheet';
 
 const SETTINGS_BASE = '/(app)/settings' as const;
 
-const MENU_ITEMS: { icon: string; labelKey?: string; label?: string; dest?: SettingsDestination }[] = [
+const MENU_ITEMS: { icon: string; labelKey: string; dest: SettingsDestination }[] = [
   { icon: 'person.fill', labelKey: 'common.profile', dest: 'profile' },
   { icon: 'globe', labelKey: 'common.language', dest: 'language' },
   { icon: 'bell.fill', labelKey: 'common.notifications', dest: 'notifications' },
@@ -58,17 +57,15 @@ export function SettingsHubContent() {
   }
 
   return (
-    <ScreenScroll contentContainerStyle={styles.list}>
-      <View style={[styles.profileCard, { borderColor: colors.border }]}>
+    <ScreenScroll contentContainerStyle={styles.form} gap={16}>
+      <View style={styles.profileBlock}>
         <View style={[styles.avatar, { backgroundColor: colors.tint }]}>
           <ThemedText style={[styles.avatarText, { color: colors.textOnBrand }]}>{initials}</ThemedText>
         </View>
-        <ThemedText type="display" style={styles.profileName} numberOfLines={2}>
+        <ThemedText type="defaultSemiBold" style={styles.profileName} numberOfLines={2}>
           {currentUser?.name}
         </ThemedText>
-        <ThemedText style={[styles.email, { color: colors.textSecondary }]}>
-          {currentUser?.email}
-        </ThemedText>
+        <ThemedText style={[styles.email, { color: colors.icon }]}>{currentUser?.email}</ThemedText>
         <View style={[styles.slotBadge, { backgroundColor: colors.tint + '18' }]}>
           <ThemedText style={[styles.slotText, { color: colors.tint }]}>{slotLabel}</ThemedText>
         </View>
@@ -79,9 +76,9 @@ export function SettingsHubContent() {
           <GroupedRow
             key={item.dest}
             icon={item.icon}
-            title={item.labelKey ? t(item.labelKey) : (item.label ?? '')}
+            title={t(item.labelKey)}
             trailing={<IconSymbol name="chevron.right" size={14} color={colors.icon} />}
-            onPress={() => item.dest && pushSection(item.dest)}
+            onPress={() => pushSection(item.dest)}
           />
         ))}
         <GroupedRow
@@ -112,16 +109,16 @@ export function SettingsHubContent() {
         />
         <GroupedRow
           icon="gearshape.fill"
-          title="Account"
+          title={t('common.account')}
           trailing={<IconSymbol name="chevron.right" size={14} color={colors.icon} />}
           onPress={() => pushSection('account')}
         />
         <GroupedRow
           icon="questionmark.circle.fill"
-          title="Help & Support"
+          title={t('common.helpSupport')}
           trailing={<IconSymbol name="chevron.right" size={14} color={colors.icon} />}
           onPress={() => {
-            void Linking.openURL(supportMailto('Help & Support', 'I need help with Maison.'));
+            void Linking.openURL(supportMailto(t('common.helpSupport'), t('settingsHub.helpBody')));
           }}
         />
         <GroupedRow
@@ -146,7 +143,7 @@ export function SettingsHubContent() {
       </GroupedList>
 
       <TouchableOpacity
-        style={[styles.signOutBtn, { borderColor: colors.error }]}
+        style={[styles.deleteBtn, { borderColor: colors.error }]}
         onPress={() => {
           Alert.alert(t('settingsHub.signOutTitle'), t('settingsHub.signOutConfirm'), [
             { text: t('common.cancel'), style: 'cancel' },
@@ -167,28 +164,26 @@ export function SettingsHubContent() {
 }
 
 const styles = StyleSheet.create({
-  list: { paddingTop: 8, gap: Layout.sectionGap },
-  profileCard: {
+  form: { paddingTop: 8 },
+  profileBlock: {
     alignItems: 'center',
-    paddingVertical: 28,
-    paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 8,
+    paddingTop: 8,
   },
-  avatar: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  avatar: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 22, fontWeight: '700' },
-  profileName: { textAlign: 'center' },
+  profileName: { textAlign: 'center', fontSize: 18 },
   email: { fontSize: 14, textAlign: 'center' },
   slotBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, marginTop: 4 },
   slotText: { fontSize: 12, fontWeight: '600' },
-  signOutBtn: {
+  deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 20,
   },
 });

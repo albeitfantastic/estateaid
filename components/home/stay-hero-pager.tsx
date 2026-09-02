@@ -9,6 +9,7 @@ import {
   type ViewToken,
 } from 'react-native';
 
+import { HeroWeather } from '@/components/home/hero-weather';
 import { ThemedText } from '@/components/themed-text';
 import { PhotoHero, photoHeroOverlayText } from '@/components/ui/photo-hero';
 import { useScreenTheme } from '@/components/ui/screen-layout';
@@ -18,9 +19,12 @@ export type StayHeroPage = {
   id: string;
   imageUrl?: string | null;
   accessibilityLabel: string;
-  eyebrow: string;
   title: string;
   subtitle: string;
+  location?: string;
+  timeZone?: string;
+  stayFrom?: string;
+  stayTo?: string;
   onPress: () => void;
 };
 
@@ -30,7 +34,7 @@ type Props = {
   onIndexChange?: (index: number) => void;
 };
 
-const HERO_HEIGHT = 280;
+const HERO_HEIGHT = 310;
 
 export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Props) {
   const { colors } = useScreenTheme();
@@ -87,15 +91,18 @@ export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Pr
           onPress={item.onPress}
           accessibilityLabel={item.accessibilityLabel}
         >
-          <ThemedText type="overline" style={styles.heroEyebrow} numberOfLines={1}>
-            {item.eyebrow}
-          </ThemedText>
           <ThemedText type="display" style={styles.heroTitle} numberOfLines={2}>
             {item.title}
           </ThemedText>
           <ThemedText style={styles.heroSub} numberOfLines={2}>
             {item.subtitle}
           </ThemedText>
+          <HeroWeather
+            location={item.location}
+            timeZone={item.timeZone}
+            stayFrom={item.stayFrom}
+            stayTo={item.stayTo}
+          />
         </PhotoHero>
       </View>
     );
@@ -161,11 +168,6 @@ export function StayHeroPager({ pages, height = HERO_HEIGHT, onIndexChange }: Pr
 }
 
 const styles = StyleSheet.create({
-  heroEyebrow: {
-    color: photoHeroOverlayText,
-    opacity: 0.85,
-    textAlign: 'center',
-  },
   heroTitle: { color: photoHeroOverlayText, textAlign: 'center' },
   heroSub: {
     color: photoHeroOverlayText,

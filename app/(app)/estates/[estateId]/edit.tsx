@@ -56,7 +56,7 @@ export default function EditEstate() {
   if (!estate) {
     return (
       <ThemedView style={styles.center}>
-        <ThemedText>Estate not found.</ThemedText>
+        <ThemedText>{t('estateHub.notFound')}</ThemedText>
       </ThemedView>
     );
   }
@@ -75,15 +75,15 @@ export default function EditEstate() {
   }
 
   async function submit() {
-    if (!isRequired(name)) { Alert.alert('Required', 'Please enter an estate name.'); return; }
-    if (!isRequired(location)) { Alert.alert('Required', 'Please enter a location.'); return; }
+    if (!isRequired(name)) { Alert.alert(t('common.required'), t('forms.requiredEstateName')); return; }
+    if (!isRequired(location)) { Alert.alert(t('common.required'), t('forms.requiredLocation')); return; }
     setSaving(true);
     try {
       let remoteCover = coverImageUrl || undefined;
       if (remoteCover && !isRemoteImageUrl(remoteCover)) {
-        const uploaded = await uploadEstateCover(estateId, remoteCover, coverMime);
+        const uploaded = await uploadEstateCover(estateId, remoteCover, coverMime, estate.coverImageUrl);
         if (!uploaded.url) {
-          Alert.alert('Could not save photo', uploaded.error ?? 'Upload failed');
+          Alert.alert(t('estateForm.savePhotoFailed'), uploaded.error ?? t('forms.uploadFailed'));
           return;
         }
         remoteCover = uploaded.url;
@@ -116,7 +116,7 @@ export default function EditEstate() {
           {saving ? (
             <ActivityIndicator color={colors.tint} size="small" />
           ) : (
-            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>{t('common.save')}</ThemedText>
           )}
         </TouchableOpacity>
       }
@@ -133,24 +133,24 @@ export default function EditEstate() {
             <View style={styles.photoPlaceholder}>
               <IconSymbol name="camera.fill" size={28} color={colors.tint} />
               <ThemedText style={{ color: colors.tint, fontWeight: '600', marginTop: 8 }}>
-                Add Cover Photo
+                {t('estateForm.addCoverPhoto')}
               </ThemedText>
               <ThemedText style={{ color: colors.icon, fontSize: 12, marginTop: 2 }}>
-                16 : 9 recommended
+                {t('estateForm.coverAspectHint')}
               </ThemedText>
             </View>
           )}
         </TouchableOpacity>
 
-        <FocusInput label="Name *" placeholder="e.g. Villa Serena" value={name} onChangeText={setName} />
+        <FocusInput label={t('estateForm.nameLabel')} placeholder={t('estateForm.namePlaceholder')} value={name} onChangeText={setName} />
         <LocationSearchField
-          label="Location *"
-          placeholder="Search a city or region"
+          label={t('estateForm.locationLabel')}
+          placeholder={t('estateForm.locationPlaceholder')}
           value={location}
           onChangeText={setLocation}
         />
-        <FocusInput label="Time Zone" placeholder="e.g. Europe/Rome" value={timeZone} onChangeText={setTimeZone} />
-        <FocusInput label="Description" placeholder="Optional description…" value={description} onChangeText={setDescription} multiline numberOfLines={4} textAlignVertical="top" style={styles.multiline} />
+        <FocusInput label={t('estateForm.timeZoneLabel')} placeholder={t('estateForm.timeZonePlaceholder')} value={timeZone} onChangeText={setTimeZone} />
+        <FocusInput label={t('estateForm.descriptionLabel')} placeholder={t('estateForm.descriptionPlaceholder')} value={description} onChangeText={setDescription} multiline numberOfLines={4} textAlignVertical="top" style={styles.multiline} />
 
         <View style={[styles.dangerZone, { borderColor: colors.error + '55' }]}>
           <ThemedText style={[styles.dangerTitle, { color: colors.error }]}>{t('editEstateScreen.deleteProperty')}</ThemedText>

@@ -1,26 +1,26 @@
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 
+import { CalendarColorHint, CalendarColorPicker } from '@/components/guests/calendar-color-picker';
+import { ThemedText } from '@/components/themed-text';
 import { EstatePickerSheet } from '@/components/ui/estate-picker-sheet';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ThemedText } from '@/components/themed-text';
 import {
-  GroupedList,
-  GroupedRow,
-  OutlineButton,
-  ScreenScroll,
-  ScreenShell,
-  SectionLabel,
-  useScreenTheme,
+    GroupedList,
+    GroupedRow,
+    OutlineButton,
+    ScreenScroll,
+    ScreenShell,
+    SectionLabel,
+    useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { CalendarColorHint, CalendarColorPicker } from '@/components/guests/calendar-color-picker';
 import { EstateColors } from '@/constants/theme';
+import { useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { resolveGuestCalendarColor } from '@/lib/guest-calendar-color';
 import { useInvitationStore } from '@/store/invitation-store';
 import { resolveUserDisplayName, useProfileStore } from '@/store/profile-store';
-import { useCan, useManagedEstates } from '@/lib/entitlements/capabilities';
 import { normalizeInviteRole } from '@/types';
 
 export default function GuestDetail() {

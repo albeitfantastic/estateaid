@@ -3,17 +3,15 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
+import { inputBaseStyle } from '@/components/ui/focus-input';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
   GroupedList,
   GroupedRow,
-  ScreenFootnote,
   ScreenScroll,
   ScreenShell,
-  SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { Layout } from '@/constants/theme';
 import {
   type AppLanguage,
   clearAppLanguagePreference,
@@ -78,31 +76,36 @@ export function LanguageSettingsContent() {
 
   return (
     <ScreenShell title={t('language.screenTitle')}>
-      <ScreenScroll contentContainerStyle={styles.scroll}>
-        <ScreenFootnote>{t('language.description')}</ScreenFootnote>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
+        <ThemedText style={[styles.hint, { color: colors.icon }]}>{t('language.description')}</ThemedText>
 
-        <SectionLabel>{t('language.sectionApp')}</SectionLabel>
-
-        <GroupedList>
-          {rows.map((row, i) => (
-            <GroupedRow
-              key={row.key}
-              title={row.title}
-              subtitle={row.subtitle}
-              trailing={
-                row.selected ? <IconSymbol name="checkmark.circle.fill" size={22} color={colors.tint} /> : null
-              }
-              onPress={row.onPress}
-              isLast={i === rows.length - 1}
-            />
-          ))}
-        </GroupedList>
+        <View style={styles.field}>
+          <ThemedText style={[inputBaseStyle.label, { color: colors.icon }]}>
+            {t('language.sectionApp')}
+          </ThemedText>
+          <GroupedList>
+            {rows.map((row, i) => (
+              <GroupedRow
+                key={row.key}
+                title={row.title}
+                subtitle={row.subtitle}
+                trailing={
+                  row.selected ? <IconSymbol name="checkmark.circle.fill" size={22} color={colors.tint} /> : null
+                }
+                onPress={row.onPress}
+                isLast={i === rows.length - 1}
+              />
+            ))}
+          </GroupedList>
+        </View>
       </ScreenScroll>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: Layout.sectionGap - 8 },
+  form: { paddingTop: 8 },
+  field: { gap: 6 },
+  hint: { fontSize: 13, lineHeight: 18 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { ConversionCard } from '@/components/home/conversion-card';
 import { GuestHomeBody } from '@/components/home/guest-home';
 import { MaisonTopBar } from '@/components/home/maison-top-bar';
+import { WeekendWeatherChip } from '@/components/home/weekend-weather-chip';
 import { StayHeroPager, type StayHeroPage } from '@/components/home/stay-hero-pager';
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -44,8 +45,8 @@ import { addDays, formatDate, formatDateRange, today } from '@/lib/date-utils';
 import { getEventOccurrences } from '@/lib/event-utils';
 import {
   busiestPropertyNights,
-  emptyEstateNamesThisWeekend,
   heaviestGuestNights,
+  nextFreeWeekend,
   weekOccupancy,
   yearSpendTotal,
 } from '@/lib/home-host-briefing';
@@ -214,11 +215,17 @@ export default function HomeDashboard() {
     [allStays, estateIds, todayStr]
   );
 
-  const emptyWeekendNames = useMemo(() => {
-    const namesById: Record<string, string> = {};
-    for (const e of estates) namesById[e.id] = e.name;
-    return emptyEstateNamesThisWeekend(estateIds, namesById, allStays, todayStr);
-  }, [estates, estateIds, allStays, todayStr]);
+  const nextFreeWeekends = useMemo(() => {
+    const rows = estates
+      .map((estate) => {
+        const weekend = nextFreeWeekend(estate.id, allStays, todayStr);
+        if (!weekend) return null;
+        return { estate, ...weekend };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+    rows.sort((a, b) => a.from.localeCompare(b.from) || a.estate.name.localeCompare(b.estate.name));
+    return rows;
+  }, [estates, allStays, todayStr]);
 
   const attentionIssues = useMemo(() => {
     return allMaintenanceEvents
@@ -445,11 +452,14 @@ export default function HomeDashboard() {
         id: h.estate.id,
         imageUrl: h.estate.coverImageUrl,
         accessibilityLabel: h.estate.name,
-        eyebrow: t('ownerHome.nextStay'),
         title: h.estate.name,
         subtitle: stay
           ? `${stay.guestLabel} · ${formatDateRange(stay.stay.from, stay.stay.to)}`
           : t('ownerHome.noStayOnProperty'),
+        location: h.estate.location,
+        timeZone: h.estate.timeZone,
+        stayFrom: stay?.stay.from,
+        stayTo: stay?.stay.to,
         onPress: () => {
           openEstateHub(h.estate.id, { fromHome: true });
         },
@@ -557,19 +567,29 @@ export default function HomeDashboard() {
           </TouchableOpacity>
         </View>
 
-        {emptyWeekendNames.length > 0 ? (
-          <TouchableOpacity
-            onPress={() => router.push('/(app)/estates' as never)}
-            style={styles.emptyWeekend}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-          >
-            <ThemedText style={[styles.emptyWeekendText, { color: colors.textSecondary }]}>
-              {emptyWeekendNames.length === 1
-                ? t('ownerHome.emptyWeekendOne', { name: emptyWeekendNames[0] })
-                : t('ownerHome.emptyWeekendMany', { count: emptyWeekendNames.length })}
-            </ThemedText>
-          </TouchableOpacity>
+        {nextFreeWeekends.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader title={t('ownerHome.nextFreeWeekend')} />
+            <GroupedList>
+              {nextFreeWeekends.map((row, i) => (
+                <GroupedRow
+                  key={row.estate.id}
+                  title={row.estate.name}
+                  subtitle={formatDateRange(row.from, row.to)}
+                  trailing={
+                    <WeekendWeatherChip
+                      location={row.estate.location}
+                      timeZone={row.estate.timeZone}
+                      from={row.from}
+                      to={row.to}
+                    />
+                  }
+                  onPress={() => openEstateHub(row.estate.id, { fromHome: true })}
+                  isLast={i === nextFreeWeekends.length - 1}
+                />
+              ))}
+            </GroupedList>
+          </View>
         ) : null}
 
         {(pendingCount > 0 || attentionIssues.length > 0) ? (
@@ -789,13 +809,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   statLabel: { textAlign: 'center' },
-
-  emptyWeekend: {
-    paddingVertical: 8,
-    marginBottom: 4,
-    alignSelf: 'flex-start',
-  },
-  emptyWeekendText: { fontSize: 14, lineHeight: 20 },
 
   section: { marginTop: 28 },
 

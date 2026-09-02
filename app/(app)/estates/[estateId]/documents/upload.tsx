@@ -70,11 +70,11 @@ export default function UploadDocument() {
 
   async function submit() {
     if (!isRequired(title)) {
-      Alert.alert('Required', 'Please enter a document title.');
+      Alert.alert(t('common.required'), t('forms.documentTitle'));
       return;
     }
     if (!pickedFile) {
-      Alert.alert('Required', 'Please choose a file to upload.');
+      Alert.alert(t('common.required'), t('forms.chooseFile'));
       return;
     }
 
@@ -83,7 +83,7 @@ export default function UploadDocument() {
     const uploadResult = await uploadEstateDocumentFile(estateId, documentId, pickedFile);
     setUploading(false);
     if (uploadResult.error) {
-      Alert.alert('Upload Failed', uploadResult.error);
+      Alert.alert(t('forms.uploadFailed'), uploadResult.error);
       return;
     }
 

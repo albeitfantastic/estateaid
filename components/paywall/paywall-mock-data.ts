@@ -1,5 +1,5 @@
-import type { Benefit, Reassurance, TimelineItem } from './paywall-types';
 import { STORE_TRIAL_DAYS } from '@/lib/subscription-config';
+import type { Benefit, Reassurance, TimelineItem } from './paywall-types';
 
 // ─── Screen 1 — Trust ────────────────────────────────────────────────────────
 

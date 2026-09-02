@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
-import { ScreenFootnote, ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
-import { Layout, Radius } from '@/constants/theme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ScreenScroll, ScreenShell, useScreenTheme } from '@/components/ui/screen-layout';
 import { supportMailto } from '@/lib/support';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -38,16 +38,19 @@ export function AccountSettingsContent() {
   }
 
   return (
-    <ScreenShell title="Account">
-      <ScreenScroll contentContainerStyle={styles.scroll}>
-        <ScreenFootnote>{t('accountSettings.copy')}</ScreenFootnote>
+    <ScreenShell title={t('settingsScreens.accountTitle')}>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
+        <ThemedText style={[styles.hint, { color: colors.icon }]}>{t('accountSettings.copy')}</ThemedText>
 
         <TouchableOpacity
-          style={[styles.dangerBtn, { borderColor: colors.error }]}
+          style={[styles.deleteBtn, { borderColor: colors.error }]}
           onPress={requestDeleteAccount}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <ThemedText style={{ color: colors.error, fontWeight: '700' }}>{t('common.deleteAccount')}</ThemedText>
+          <IconSymbol name="trash" size={16} color={colors.error} />
+          <ThemedText style={{ color: colors.error, fontWeight: '600' }}>
+            {t('common.deleteAccount')}
+          </ThemedText>
         </TouchableOpacity>
       </ScreenScroll>
     </ScreenShell>
@@ -55,12 +58,16 @@ export function AccountSettingsContent() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: Layout.sectionGap - 8 },
-  dangerBtn: {
-    paddingVertical: 16,
-    borderRadius: Radius.md,
+  form: { paddingTop: 8 },
+  hint: { fontSize: 13, lineHeight: 18 },
+  deleteBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    marginTop: 8,
+    marginTop: 20,
   },
 });

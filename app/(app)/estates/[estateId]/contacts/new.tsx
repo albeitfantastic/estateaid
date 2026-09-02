@@ -40,15 +40,15 @@ export default function NewContact() {
   async function submit() {
     if (saving) return;
     if (!estateId) {
-      Alert.alert(t('common.error'), 'Missing property for this contact.');
+      Alert.alert(t('common.error'), t('forms.missingProperty'));
       return;
     }
     if (!isRequired(name)) {
-      Alert.alert('Required', 'Please enter a name.');
+      Alert.alert(t('common.required'), t('forms.requiredName'));
       return;
     }
     if (!isRequired(role)) {
-      Alert.alert('Required', 'Please enter a role/title.');
+      Alert.alert(t('common.required'), t('forms.requiredRole'));
       return;
     }
     const existing = getContactsByEstate(estateId);

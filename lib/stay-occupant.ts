@@ -1,6 +1,6 @@
-import type { GuestProfile, Invitation, Stay } from '@/types';
 import { resolveGuestCalendarColor } from '@/lib/guest-calendar-color';
 import { resolveUserDisplayName, type ProfileRow } from '@/store/profile-store';
+import type { GuestProfile, Invitation, Stay } from '@/types';
 
 export function stayIsSelf(stay: Stay, userId?: string | null): boolean {
   return !!userId && !!stay.guestId && stay.guestId === userId;

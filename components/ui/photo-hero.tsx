@@ -54,6 +54,7 @@ export function PhotoHero({
           source={{ uri: remoteUrl }}
           style={styles.fill}
           contentFit="cover"
+          recyclingKey={remoteUrl}
         />
       ) : (
         <View style={[styles.fill, styles.placeholder, { backgroundColor: INK }]}>

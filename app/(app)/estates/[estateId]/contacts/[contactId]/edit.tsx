@@ -33,14 +33,14 @@ export default function EditContact() {
   if (!contact) {
     return (
       <ThemedView style={styles.center}>
-        <ThemedText>Not found.</ThemedText>
+        <ThemedText>{t('common.notFound')}</ThemedText>
       </ThemedView>
     );
   }
 
   function submit() {
     if (!isRequired(name)) {
-      Alert.alert('Required', 'Please enter a name.');
+      Alert.alert(t('common.required'), t('forms.requiredName'));
       return;
     }
     updateContact(contactId, {

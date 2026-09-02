@@ -1,8 +1,10 @@
-import { Alert, Linking, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
+import { inputBaseStyle } from '@/components/ui/focus-input';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
   GroupedList,
   GroupedRow,
@@ -10,10 +12,8 @@ import {
   FilledButton,
   ScreenScroll,
   ScreenShell,
-  SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { Layout, Radius } from '@/constants/theme';
 import { trialDaysRemaining } from '@/lib/access-tier-core';
 import { useAccountContext } from '@/lib/entitlements/capabilities';
 import { formatDate } from '@/lib/date-utils';
@@ -51,7 +51,6 @@ export function SubscriptionSettingsContent() {
     ? t('subscriptionSettings.slotsHeld', { count: slotCount })
     : t('subscriptionSettings.noSlots');
 
-  /** §6.1: trial length, end date, and that the plan renews unless cancelled. */
   const subtitleLines = [
     hasSlots
       ? t('subscriptionSettings.slotsInUse', { used: propertiesSponsored, total: slotCount })
@@ -140,79 +139,87 @@ export function SubscriptionSettingsContent() {
 
   return (
     <ScreenShell title={t('settingsHub.manageSubscription')}>
-      <ScreenScroll contentContainerStyle={styles.scroll}>
-        <SectionLabel>{t('subscriptionSettings.currentPlan')}</SectionLabel>
-        <GroupedList>
-          <GroupedRow
-            title={planLine + (loading ? t('subscriptionSettings.loadingSuffix') : '')}
-            subtitle={subtitleLines.join('\n') || undefined}
-            isLast
-          />
-        </GroupedList>
-
-        {!hasSlots && (
-          <>
-            <SectionLabel marginTop={Layout.sectionGap}>{t('subscriptionSettings.upgradeSection')}</SectionLabel>
-            <FilledButton
-              tone="accent"
-              label={t('subscriptionSettings.startTrialFlow')}
-              onPress={() => router.push('./paywall-trust' as never)}
-            />
-            <ThemedText style={[styles.sub, { color: colors.textSecondary, marginTop: 8 }]}>
-              {t('subscriptionSettings.standardUpgradeHint')}
-            </ThemedText>
-          </>
-        )}
-
-        {!isPro && (
-          <>
-            <SectionLabel marginTop={Layout.sectionGap}>
-              {t('subscriptionSettings.maisonSection', { plan })}
-            </SectionLabel>
-            <FilledButton
-              tone="accent"
-              label={t('subscriptionSettings.viewPaywall')}
-              onPress={() => router.push('./paywall' as never)}
-            />
-            <OutlineButton label={t('subscriptionSettings.syncStore')} onPress={() => void syncPurchasesAndRefetch()} />
-          </>
-        )}
-
-        <SectionLabel marginTop={Layout.sectionGap}>{t('subscriptionSettings.manageSection')}</SectionLabel>
-        {storeLooksActive && isRevenueCatUiAvailable() && (
-          <OutlineButton
-            label={t('subscriptionSettings.customerCenter')}
-            onPress={() => router.push('./customer-center' as never)}
-          />
-        )}
-        {storeLooksActive && isPro && (
-          <OutlineButton
-            label={t('subscriptionSettings.systemSubSettings')}
-            onPress={() => void openManageSubscriptions()}
-          />
-        )}
-        <TouchableOpacity
-          style={[styles.dangerOutline, { borderColor: colors.error }]}
-          onPress={cancelOrManage}
-          activeOpacity={0.8}
-        >
-          <ThemedText style={{ color: colors.error, fontWeight: '600' }}>
-            {isPro ? t('subscriptionSettings.cancelOrChange') : t('subscriptionSettings.cancelSub')}
+      <ScreenScroll contentContainerStyle={styles.form} gap={16}>
+        <View style={styles.field}>
+          <ThemedText style={[inputBaseStyle.label, { color: colors.icon }]}>
+            {t('subscriptionSettings.currentPlan')}
           </ThemedText>
-        </TouchableOpacity>
+          <GroupedList>
+            <GroupedRow
+              title={planLine + (loading ? t('subscriptionSettings.loadingSuffix') : '')}
+              subtitle={subtitleLines.join('\n') || undefined}
+              isLast
+            />
+          </GroupedList>
+        </View>
+
+        <View style={styles.actions}>
+          {!hasSlots ? (
+            <>
+              <FilledButton
+                tone="accent"
+                label={t('subscriptionSettings.startTrialFlow')}
+                onPress={() => router.push('./paywall-trust' as never)}
+              />
+              <ThemedText style={[styles.hint, { color: colors.icon }]}>
+                {t('subscriptionSettings.standardUpgradeHint')}
+              </ThemedText>
+            </>
+          ) : null}
+
+          {!isPro ? (
+            <>
+              <FilledButton
+                tone="accent"
+                label={t('subscriptionSettings.viewPaywall')}
+                onPress={() => router.push('./paywall' as never)}
+              />
+              <OutlineButton label={t('subscriptionSettings.syncStore')} onPress={() => void syncPurchasesAndRefetch()} />
+            </>
+          ) : null}
+
+          {storeLooksActive && isRevenueCatUiAvailable() ? (
+            <OutlineButton
+              label={t('subscriptionSettings.customerCenter')}
+              onPress={() => router.push('./customer-center' as never)}
+            />
+          ) : null}
+
+          {storeLooksActive && isPro ? (
+            <OutlineButton
+              label={t('subscriptionSettings.systemSubSettings')}
+              onPress={() => void openManageSubscriptions()}
+            />
+          ) : null}
+
+          <TouchableOpacity
+            style={[styles.deleteBtn, { borderColor: colors.error }]}
+            onPress={cancelOrManage}
+            activeOpacity={0.7}
+          >
+            <IconSymbol name="trash" size={16} color={colors.error} />
+            <ThemedText style={{ color: colors.error, fontWeight: '600' }}>
+              {isPro ? t('subscriptionSettings.cancelOrChange') : t('subscriptionSettings.cancelSub')}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
       </ScreenScroll>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: Layout.sectionGap - 8 },
-  sub: { fontSize: 14, marginTop: 8, lineHeight: 20 },
-  dangerOutline: {
-    marginTop: 8,
-    paddingVertical: 14,
-    borderRadius: Radius.md,
+  form: { paddingTop: 8 },
+  field: { gap: 6 },
+  actions: { gap: 16, marginTop: 20 },
+  hint: { fontSize: 13, lineHeight: 18 },
+  deleteBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
 });

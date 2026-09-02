@@ -1,36 +1,36 @@
-import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FocusInput } from '@/components/ui/focus-input';
-import { LocationSearchField } from '@/components/ui/location-search-field';
-import {
-  GroupedList,
-  GroupedRow,
-  ScreenScroll,
-  ScreenShell,
-  SectionLabel,
-  useScreenTheme,
-} from '@/components/ui/screen-layout';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAuthStore } from '@/store/auth-store';
-import { useEstateStore } from '@/store/estate-store';
+import { FocusInput } from '@/components/ui/focus-input';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LocationSearchField } from '@/components/ui/location-search-field';
+import {
+    GroupedList,
+    GroupedRow,
+    ScreenScroll,
+    ScreenShell,
+    SectionLabel,
+    useScreenTheme,
+} from '@/components/ui/screen-layout';
 import { useCan } from '@/lib/entitlements/capabilities';
-import { getEstateActorRole } from '@/lib/estate-role';
-import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
-import { generateUuidV4 } from '@/lib/id';
-import { isRequired } from '@/lib/validators';
 import { uploadEstateCover } from '@/lib/estate-cover-storage';
+import { getEstateActorRole } from '@/lib/estate-role';
+import { generateUuidV4 } from '@/lib/id';
+import { openEstateCreatePaywall } from '@/lib/maison-pro-upgrade';
 import { ONBOARDING_USE_CASES, type OnboardingUseCase } from '@/lib/onboarding-starters';
 import {
-  markPropertyTypeReasked,
-  shouldReaskPropertyType,
+    markPropertyTypeReasked,
+    shouldReaskPropertyType,
 } from '@/lib/use-case-profile';
+import { isRequired } from '@/lib/validators';
+import { useAuthStore } from '@/store/auth-store';
+import { useEstateStore } from '@/store/estate-store';
 import { useInvitationStore } from '@/store/invitation-store';
 
 export default function NewEstate() {
@@ -103,10 +103,10 @@ export default function NewEstate() {
   }
 
   async function submit() {
-    if (!isRequired(name)) { Alert.alert('Required', 'Please enter an estate name.'); return; }
-    if (!isRequired(location)) { Alert.alert('Required', 'Please enter a location.'); return; }
+    if (!isRequired(name)) { Alert.alert(t('common.required'), t('forms.requiredEstateName')); return; }
+    if (!isRequired(location)) { Alert.alert(t('common.required'), t('forms.requiredLocation')); return; }
     if (!currentUser) {
-      Alert.alert('Not signed in', 'Please sign in again.');
+      Alert.alert(t('forms.notSignedInTitle'), t('forms.notSignedInBody'));
       return;
     }
 
@@ -140,7 +140,7 @@ export default function NewEstate() {
         return;
       }
       if (error) {
-        Alert.alert('Could not save property', error);
+        Alert.alert(t('forms.couldNotSaveProperty'), error);
         return;
       }
       if (coverImageUrl) {
@@ -149,10 +149,10 @@ export default function NewEstate() {
           await updateEstate(estateId, { coverImageUrl: uploaded.url });
         } else {
           Alert.alert(
-            'Property saved',
+            t('estateForm.propertySaved'),
             uploaded.error
-              ? `The cover photo could not be uploaded (${uploaded.error}). You can add it from Edit property.`
-              : 'The cover photo could not be uploaded. You can add it from Edit property.'
+              ? t('estateForm.coverUploadFailedReason', { error: uploaded.error })
+              : t('estateForm.coverUploadFailed')
           );
         }
       }
@@ -173,7 +173,7 @@ export default function NewEstate() {
           {saving ? (
             <ActivityIndicator color={colors.tint} size="small" />
           ) : (
-            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>Save</ThemedText>
+            <ThemedText style={{ color: colors.tint, fontWeight: '600', fontSize: 16 }}>{t('common.save')}</ThemedText>
           )}
         </TouchableOpacity>
       }
@@ -190,19 +190,19 @@ export default function NewEstate() {
             <View style={styles.photoPlaceholder}>
               <IconSymbol name="camera.fill" size={28} color={colors.tint} />
               <ThemedText style={{ color: colors.tint, fontWeight: '600', marginTop: 8 }}>
-                Add Cover Photo
+                {t('estateForm.addCoverPhoto')}
               </ThemedText>
               <ThemedText style={{ color: colors.icon, fontSize: 12, marginTop: 2 }}>
-                16 : 9 recommended
+                {t('estateForm.coverAspectHint')}
               </ThemedText>
             </View>
           )}
         </TouchableOpacity>
 
-        <FocusInput label="Name *" placeholder="e.g. Villa Serena" value={name} onChangeText={setName} />
+        <FocusInput label={t('estateForm.nameLabel')} placeholder={t('estateForm.namePlaceholder')} value={name} onChangeText={setName} />
         <LocationSearchField
-          label="Location *"
-          placeholder="Search a city or region"
+          label={t('estateForm.locationLabel')}
+          placeholder={t('estateForm.locationPlaceholder')}
           value={location}
           onChangeText={setLocation}
         />
@@ -235,10 +235,10 @@ export default function NewEstate() {
             </GroupedList>
           </>
         ) : null}
-        <FocusInput label="Time Zone" placeholder="e.g. Europe/Rome" value={timeZone} onChangeText={setTimeZone} />
+        <FocusInput label={t('estateForm.timeZoneLabel')} placeholder={t('estateForm.timeZonePlaceholder')} value={timeZone} onChangeText={setTimeZone} />
         <FocusInput
-          label="Description"
-          placeholder="Optional description for your guests…"
+          label={t('estateForm.descriptionLabel')}
+          placeholder={t('estateForm.descriptionPlaceholderGuests')}
           value={description}
           onChangeText={setDescription}
           multiline

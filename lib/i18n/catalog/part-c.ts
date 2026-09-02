@@ -463,4 +463,26 @@ export const catalogPartC: Record<string, unknown> = {
     invitationRevoked: '{{name}} revoked an invite',
     someone: 'Someone',
   },
+  heroWeather: {
+    now: 'Now',
+    stay: 'Stay',
+  },
+  estateForm: {
+    addCoverPhoto: 'Add Cover Photo',
+    coverAspectHint: '16 : 9 recommended',
+    savePhotoFailed: 'Could not save photo',
+    propertySaved: 'Property saved',
+    coverUploadFailed: 'The cover photo could not be uploaded. You can add it from Edit property.',
+    coverUploadFailedReason:
+      'The cover photo could not be uploaded ({{error}}). You can add it from Edit property.',
+    nameLabel: 'Name *',
+    namePlaceholder: 'e.g. Villa Serena',
+    locationLabel: 'Location *',
+    locationPlaceholder: 'Search a city or region',
+    timeZoneLabel: 'Time Zone',
+    timeZonePlaceholder: 'e.g. Europe/Rome',
+    descriptionLabel: 'Description',
+    descriptionPlaceholder: 'Optional description…',
+    descriptionPlaceholderGuests: 'Optional description for your guests…',
+  },
 };

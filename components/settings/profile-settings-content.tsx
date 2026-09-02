@@ -1,18 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, TextInput } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
+import { FocusInput } from '@/components/ui/focus-input';
 import {
   FilledButton,
-  GroupedList,
-  GroupedRow,
   ScreenScroll,
   ScreenShell,
-  SectionLabel,
   useScreenTheme,
 } from '@/components/ui/screen-layout';
-import { Layout } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
 import { useProfileStore } from '@/store/profile-store';
@@ -32,7 +29,7 @@ export function ProfileSettingsContent() {
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      Alert.alert('Name required', 'Please enter a display name.');
+      Alert.alert(t('profileSettings.nameRequiredTitle'), t('profileSettings.nameRequiredBody'));
       return;
     }
     if (!currentUser) return;
@@ -52,32 +49,24 @@ export function ProfileSettingsContent() {
   }
 
   return (
-    <ScreenShell title="Profile">
-      <ScreenScroll contentContainerStyle={styles.scroll}>
-        <SectionLabel>Email</SectionLabel>
-        <GroupedList>
-          <GroupedRow title={currentUser?.email ?? '—'} isLast />
-        </GroupedList>
+    <ScreenShell title={t('settingsScreens.profileTitle')}>
+      <ScreenScroll contentContainerStyle={styles.form} gap={16} keyboardShouldPersistTaps="handled">
+        <FocusInput
+          label={t('profileSettings.email')}
+          value={currentUser?.email ?? '—'}
+          editable={false}
+        />
 
-        <SectionLabel marginTop={Layout.sectionGap}>Display name</SectionLabel>
-        <GroupedList>
-          <GroupedRow
-            title={
-              <TextInput
-                style={[styles.input, { color: colors.text }]}
-                value={name}
-                onChangeText={setName}
-                placeholder={t('profileSettings.placeholderName')}
-                placeholderTextColor={colors.textSecondary}
-                autoCapitalize="words"
-                editable={!saving}
-              />
-            }
-            isLast
-          />
-        </GroupedList>
-        <ThemedText style={[styles.hint, { color: colors.textSecondary }]}>
-          This name is shown to hosts, guests, and in messages.
+        <FocusInput
+          label={t('profileSettings.displayName')}
+          value={name}
+          onChangeText={setName}
+          placeholder={t('profileSettings.placeholderName')}
+          autoCapitalize="words"
+          editable={!saving}
+        />
+        <ThemedText style={[styles.hint, { color: colors.icon }]}>
+          {t('profileSettings.hint')}
         </ThemedText>
 
         <FilledButton
@@ -85,7 +74,7 @@ export function ProfileSettingsContent() {
           onPress={() => void save()}
           disabled={saving}
           loading={saving}
-          style={{ marginTop: 24 }}
+          style={{ marginTop: 20 }}
         />
       </ScreenScroll>
     </ScreenShell>
@@ -93,7 +82,6 @@ export function ProfileSettingsContent() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: Layout.sectionGap - 8 },
-  input: { fontSize: 16, padding: 0, minHeight: 22 },
-  hint: { fontSize: 13, marginTop: 8, lineHeight: 18 },
+  form: { paddingTop: 8 },
+  hint: { fontSize: 13, lineHeight: 18, marginTop: -8 },
 });

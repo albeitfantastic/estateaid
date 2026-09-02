@@ -64,9 +64,12 @@ export function GuestHomeBody({ estates, stays, userId }: Props) {
         id: h.estate.id,
         imageUrl: h.estate.coverImageUrl,
         accessibilityLabel: h.estate.name,
-        eyebrow: t('guestHome.nextStay'),
         title: h.estate.name,
         subtitle: stay ? formatDateRange(stay.from, stay.to) : t('ownerHome.noStayOnProperty'),
+        location: h.estate.location,
+        timeZone: h.estate.timeZone,
+        stayFrom: stay?.from,
+        stayTo: stay?.to,
         onPress: () => openEstateHub(h.estate.id, { fromHome: true }),
       };
     });

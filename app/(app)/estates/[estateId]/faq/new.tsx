@@ -29,15 +29,15 @@ export default function NewFaq() {
   async function submit() {
     if (saving) return;
     if (!estateId) {
-      Alert.alert(t('common.error'), 'Missing property for this FAQ.');
+      Alert.alert(t('common.error'), t('forms.missingProperty'));
       return;
     }
     if (!isRequired(question)) {
-      Alert.alert('Required', 'Please enter a question.');
+      Alert.alert(t('common.required'), t('forms.requiredQuestion'));
       return;
     }
     if (!isRequired(answer)) {
-      Alert.alert('Required', 'Please enter an answer.');
+      Alert.alert(t('common.required'), t('forms.requiredAnswer'));
       return;
     }
     const existing = getFaqsByEstate(estateId);

@@ -88,7 +88,7 @@ export default function OfflineGuestDetail() {
   if (!profile) {
     return (
       <ScreenShell title={t('guestsList.offlineSection')}>
-        <ThemedText style={{ padding: 20, color: colors.icon }}>Not found.</ThemedText>
+        <ThemedText style={{ padding: 20, color: colors.icon }}>{t('common.notFound')}</ThemedText>
       </ScreenShell>
     );
   }

@@ -52,6 +52,7 @@ export const catalogPartA: Record<string, unknown> = {
     nights_one: '{{count}} night',
     nights_other: '{{count}} nights',
     error: 'Error',
+    notFound: 'Not found.',
     estateAid: 'Maison',
     you: 'You',
     unknownEstate: 'Unknown Estate',

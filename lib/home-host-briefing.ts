@@ -35,21 +35,28 @@ export function weekOccupancy(stays: Stay[], estateIds: string[], todayStr: stri
   return { inHouse, arriving, departing };
 }
 
-export function emptyEstateNamesThisWeekend(
-  estateIds: string[],
-  namesById: Record<string, string>,
+const MAX_FREE_WEEKEND_LOOKAHEAD = 52;
+
+function weekendOccupied(estateId: string, stays: Stay[], from: string, to: string): boolean {
+  for (const s of stays) {
+    if (s.estateId !== estateId || !s.from || !s.to) continue;
+    if (datesOverlap(s.from, s.to, from, to)) return true;
+  }
+  return false;
+}
+
+/** Next Fri–Sun (or remaining current weekend) with no overlapping stay, or null. */
+export function nextFreeWeekend(
+  estateId: string,
   stays: Stay[],
   todayStr: string
-): string[] {
-  if (estateIds.length === 0) return [];
-  const { from, to } = briefingWeekendRange(todayStr);
-  const scope = new Set(estateIds);
-  const occupied = new Set<string>();
-  for (const s of stays) {
-    if (!scope.has(s.estateId) || !s.from || !s.to) continue;
-    if (datesOverlap(s.from, s.to, from, to)) occupied.add(s.estateId);
+): { from: string; to: string } | null {
+  let range = briefingWeekendRange(todayStr);
+  for (let i = 0; i < MAX_FREE_WEEKEND_LOOKAHEAD; i++) {
+    if (!weekendOccupied(estateId, stays, range.from, range.to)) return range;
+    range = { from: addDays(range.from, 7), to: addDays(range.to, 7) };
   }
-  return estateIds.filter((id) => !occupied.has(id)).map((id) => namesById[id] ?? id);
+  return null;
 }
 
 function nightsClippedToYear(stay: Stay, year: number): number {
